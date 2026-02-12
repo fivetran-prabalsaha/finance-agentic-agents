@@ -1,4 +1,4 @@
-# NetSuite SOD Compliance & Risk Assessment Framework
+# SOD Compliance & Risk Assessment Agentic Framework
 
 > **Status**: ✅ **Production Ready** | **Version**: 2.0.0 (Optimized) | Last Updated: 2026-02-11
 

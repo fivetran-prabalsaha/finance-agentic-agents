@@ -207,6 +207,7 @@ define(['N/search', 'N/record', 'N/query', 'N/runtime'], function(search, record
                     email: user.email,
                     employee_id: user.employeeId,
                     status: user.status,
+                    title: user.title || null,  // Job title
                     subsidiary: user.subsidiary,
                     department: user.department,
                     last_login: user.lastLogin,
@@ -333,7 +334,8 @@ define(['N/search', 'N/record', 'N/query', 'N/runtime'], function(search, record
                         summary: search.Summary.GROUP
                     });
 
-                    if (roleId && roleName && internalId) {
+                    // FILTER: Only include roles that start with "Fivetran -"
+                    if (roleId && roleName && internalId && roleName.indexOf('Fivetran -') === 0) {
                         var userId = userIdMap[internalId];
 
                         if (userId) {
@@ -520,6 +522,7 @@ define(['N/search', 'N/record', 'N/query', 'N/runtime'], function(search, record
                 search.createColumn({ name: 'lastname' }),
                 search.createColumn({ name: 'email' }),
                 search.createColumn({ name: 'isinactive' }),
+                search.createColumn({ name: 'title' }),         // Job title field
                 search.createColumn({ name: 'subsidiary' }),
                 search.createColumn({ name: 'department' }),
                 search.createColumn({ name: 'lastmodifieddate' })
@@ -545,6 +548,7 @@ define(['N/search', 'N/record', 'N/query', 'N/runtime'], function(search, record
                     email: result.getValue('email'),
                     employeeId: null, // Field may not exist in all accounts
                     status: status,
+                    title: result.getValue('title') || null,  // Job title
                     subsidiary: result.getText('subsidiary'),
                     department: result.getText('department'),
                     lastLogin: result.getValue('lastmodifieddate')

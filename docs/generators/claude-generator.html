@@ -1,0 +1,2836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CLAUDE_MULTI_AGENT.md Generator</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy:   #1a1f36;
+    --indigo: #5865f2;
+    --indigo-hover: #4752c4;
+    --bg:     #f5f6fa;
+    --white:  #ffffff;
+    --border: #dde1ef;
+    --text:   #1a1f36;
+    --muted:  #6b7280;
+    --label:  #374151;
+    --accent-bg: #eef0fd;
+    --danger: #ef4444;
+    --success: #22c55e;
+    --section-header: #f0f1fa;
+  }
+
+  html, body { height: 100%; }
+
+  body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 14px;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ── Header ── */
+  header {
+    background: var(--navy);
+    color: #fff;
+    padding: 0 20px;
+    height: 54px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    border-bottom: 2px solid var(--indigo);
+    z-index: 10;
+  }
+  header h1 {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  header h1 .badge {
+    background: var(--indigo);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 4px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .header-actions { display: flex; gap: 8px; }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 13px;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, opacity 0.15s;
+    font-family: inherit;
+  }
+  .btn-primary { background: var(--indigo); color: #fff; }
+  .btn-primary:hover { background: var(--indigo-hover); }
+  .btn-ghost {
+    background: rgba(255,255,255,0.12);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+  .btn-ghost:hover { background: rgba(255,255,255,0.2); }
+  .btn-sm { padding: 4px 10px; font-size: 12px; }
+  .btn-danger { background: #fef2f2; color: var(--danger); border: 1px solid #fecaca; }
+  .btn-danger:hover { background: #fee2e2; }
+  .btn-add {
+    background: var(--accent-bg);
+    color: var(--indigo);
+    border: 1px dashed var(--indigo);
+    font-size: 12px;
+    padding: 5px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: inherit;
+    transition: background 0.15s;
+  }
+  .btn-add:hover { background: #dde1fd; }
+
+  /* ── Layout ── */
+  .workspace {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    gap: 0;
+  }
+
+  /* ── Left Panel ── */
+  .left-panel {
+    width: 55%;
+    overflow-y: auto;
+    background: var(--bg);
+    padding: 16px 18px 32px;
+    border-right: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  /* ── Right Panel ── */
+  .right-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--white);
+  }
+  .right-panel-header {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    background: var(--section-header);
+  }
+  .right-panel-header span {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .output-area {
+    flex: 1;
+    width: 100%;
+    border: none;
+    outline: none;
+    resize: none;
+    font-family: "SF Mono", "Fira Code", "Cascadia Mono", Consolas, monospace;
+    font-size: 12px;
+    line-height: 1.65;
+    padding: 16px;
+    background: var(--white);
+    color: #1e2a3a;
+    tab-size: 2;
+  }
+
+  /* ── Accordion Sections ── */
+  .section-card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+  .section-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 11px 15px;
+    background: var(--section-header);
+    cursor: pointer;
+    user-select: none;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-title:hover { background: #e8eaf7; }
+  .section-title-left {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+  }
+  .section-num {
+    background: var(--indigo);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .section-title h2 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .chevron {
+    font-size: 11px;
+    color: var(--muted);
+    transition: transform 0.2s;
+    display: inline-block;
+  }
+  .chevron.open { transform: rotate(180deg); }
+  .section-body {
+    padding: 14px 15px;
+    display: none;
+  }
+  .section-body.open { display: block; }
+
+  /* ── Form Elements ── */
+  .field { margin-bottom: 11px; }
+  .field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--label);
+    margin-bottom: 4px;
+  }
+  .field .helper {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 3px;
+    line-height: 1.5;
+  }
+  input[type="text"],
+  input[type="number"],
+  input[type="date"],
+  textarea,
+  select {
+    width: 100%;
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text);
+    background: var(--white);
+    transition: border-color 0.15s, box-shadow 0.15s;
+    outline: none;
+  }
+  input[type="text"]:focus,
+  input[type="number"]:focus,
+  input[type="date"]:focus,
+  textarea:focus,
+  select:focus {
+    border-color: var(--indigo);
+    box-shadow: 0 0 0 3px rgba(88, 101, 242, 0.12);
+  }
+  textarea { resize: vertical; line-height: 1.5; }
+  input[type="number"] { width: 80px; }
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .field-row-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+  }
+  .checkbox-field {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 4px;
+  }
+  .checkbox-field input[type="checkbox"] {
+    width: 15px; height: 15px;
+    accent-color: var(--indigo);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .checkbox-field label {
+    font-size: 12px;
+    color: var(--label);
+    cursor: pointer;
+    margin: 0;
+  }
+
+  /* ── Dynamic Item Cards ── */
+  .dynamic-list { display: flex; flex-direction: column; gap: 10px; }
+  .item-card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fafbff;
+  }
+  .item-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 11px;
+    background: #f0f1fa;
+    border-bottom: 1px solid var(--border);
+  }
+  .item-card-header span {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--indigo);
+  }
+  .item-card-body { padding: 11px; }
+
+  /* ── Copy feedback ── */
+  .copy-feedback {
+    font-size: 11px;
+    color: var(--success);
+    font-weight: 600;
+    opacity: 0;
+    transition: opacity 0.3s;
+    margin-left: 8px;
+  }
+  .copy-feedback.show { opacity: 1; }
+
+  /* ── Required / Optional badges ── */
+  .req-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 10px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+  .req-badge.required {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fcd34d;
+  }
+  .req-badge.optional {
+    background: #f1f5f9;
+    color: #64748b;
+    border: 1px solid #cbd5e1;
+  }
+  .req-badge.optional-later {
+    background: #eff6ff;
+    color: #3b82f6;
+    border: 1px solid #93c5fd;
+  }
+  .compaction-rule {
+    background: #fff8e1;
+    border: 1px solid #f59e0b;
+    border-left: 4px solid #f59e0b;
+    border-radius: 4px;
+    padding: 10px 12px;
+    font-size: 12px;
+    line-height: 1.6;
+    margin-top: 12px;
+    color: #78350f;
+  }
+  .compaction-rule code {
+    background: #fef3c7;
+    border: 1px solid #fcd34d;
+    border-radius: 3px;
+    padding: 1px 4px;
+    font-family: monospace;
+    font-size: 11px;
+  }
+  .section-hint {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 0;
+    margin-bottom: 10px;
+    padding: 6px 9px;
+    background: #f8f9ff;
+    border-left: 3px solid var(--indigo);
+    border-radius: 0 4px 4px 0;
+    line-height: 1.5;
+  }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #c5cadf; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #9ea7c8; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════ HEADER -->
+<header>
+  <h1>
+    <span class="badge">MD</span>
+    CLAUDE_MULTI_AGENT.md Generator
+  </h1>
+  <div class="header-actions">
+    <span class="copy-feedback" id="copyFeedback">Copied!</span>
+    <button class="btn btn-ghost" onclick="copyOutput()">
+      &#x2398; Copy
+    </button>
+    <button class="btn btn-primary" onclick="downloadFile()">
+      &#8595; Download CLAUDE_MULTI_AGENT.md
+    </button>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════════ WORKSPACE -->
+<div class="workspace">
+
+  <!-- ════════════════════ LEFT PANEL (FORM) ════════════════════ -->
+  <div class="left-panel" id="leftPanel">
+
+    <!-- ── Section 1: Project Overview ── -->
+    <div class="section-card">
+      <div class="section-title" onclick="toggleSection('s1')">
+        <div class="section-title-left">
+          <div class="section-num">1</div>
+          <h2>Project Overview</h2>
+          <span class="req-badge required">Required</span>
+        </div>
+        <span class="chevron open" id="chev-s1">&#9660;</span>
+      </div>
+      <div class="section-body open" id="s1">
+        <p class="section-hint">Fill this in first. Name, description, tech stack, and version are the minimum Claude needs to understand the project.</p>
+        <div class="field">
+          <label>System Name</label>
+          <input type="text" id="systemName" placeholder="e.g. Acme Monitoring Agent" oninput="generate()">
+        </div>
+        <div class="field">
+          <label>One-line System Description</label>
+          <input type="text" id="systemDesc" placeholder="e.g. AI-powered automated monitoring across ERP, CRM, and Identity systems" oninput="generate()">
+        </div>
+        <div class="field">
+          <label>What It Does — System at a Glance</label>
+          <textarea id="systemGlance" rows="3" placeholder="Describe the system in 2-4 sentences. E.g.: This system autonomously monitors user access across business systems and detects access control issues using Claude Opus 4.6. It runs a scheduled sync agent, exposes API tools for real-time monitoring queries, and delivers results via a Slack bot with multi-turn agentic reasoning." oninput="generate()"></textarea>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Tech Stack (comma-separated)</label>
+            <input type="text" id="techStack" placeholder="Python, FastAPI, PostgreSQL, Redis, Slack, LangChain" oninput="generate()">
+          </div>
+          <div class="field">
+            <label>Version</label>
+            <input type="text" id="version" value="1.0.0" oninput="generate()">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Author / Team</label>
+            <input type="text" id="author" placeholder="Prabal Saha" oninput="generate()">
+          </div>
+          <div class="field">
+            <label>Date</label>
+            <input type="date" id="docDate" oninput="generate()">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 2: Data Flow ── -->
+    <div class="section-card">
+      <div class="section-title" onclick="toggleSection('s2')">
+        <div class="section-title-left">
+          <div class="section-num">2</div>
+          <h2>Data Flow (System Diagram)</h2>
+          <span class="req-badge required">Required</span>
+        </div>
+        <span class="chevron open" id="chev-s2">&#9660;</span>
+      </div>
+      <div class="section-body open" id="s2">
+        <p class="section-hint">The single most important diagram. Even a rough sketch of input → component → output is enough on day 0.</p>
+        <div class="field">
+          <label>Data Flow Description</label>
+          <textarea id="dataFlow" rows="4" placeholder="Describe each step on its own line, e.g.:&#10;Slack DM  →  Slack Bot (Socket Mode)&#10;Slack Bot  →  Claude Haiku (tool dispatch)&#10;Claude Haiku  →  MCP Tools (37 tools)&#10;MCP Tools  →  PostgreSQL / Redis Cache&#10;PostgreSQL  →  Claude Opus 4.6 (synthesis)&#10;Claude Opus 4.6  →  Slack Response" oninput="generate()"></textarea>
+          <div class="helper">Each line becomes one row in the flow block. Use arrows (→, ←, ↓) freely.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 3: Agent Roster ── -->
+    <div class="section-card">
+      <div class="section-title" onclick="toggleSection('s3')">
+        <div class="section-title-left">
+          <div class="section-num">3</div>
+          <h2>Agent Roster</h2>
+          <span class="req-badge required">Required</span>
+        </div>
+        <span class="chevron open" id="chev-s3">&#9660;</span>
+      </div>
+      <div class="section-body open" id="s3">
+        <p class="section-hint">List every agent with its ID, phase, and one-line role. This is how Claude maps "who does what" in the system.</p>
+        <div class="dynamic-list" id="agentRosterList"></div>
+        <div style="margin-top:10px">
+          <button class="btn-add" onclick="addRosterAgent()">+ Add Agent</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 4: Phases ── -->
+    <div class="section-card">
+      <div class="section-title" onclick="toggleSection('s4')">
+        <div class="section-title-left">
+          <div class="section-num">4</div>
+          <h2>Phases</h2>
+          <span class="req-badge optional">Optional</span>
+        </div>
+        <span class="chevron open" id="chev-s4">&#9660;</span>
+      </div>
+      <div class="section-body open" id="s4">
+        <p class="section-hint">Useful for multi-agent systems where startup order matters. Can be skipped for single-agent projects or added once you know the execution graph.</p>
+        <div class="dynamic-list" id="phaseList"></div>
+        <div style="margin-top:10px">
+          <button class="btn-add" onclick="addPhase()">+ Add Phase</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 5: Agent Definitions ── -->
+    <div class="section-card">
+      <div class="section-title" onclick="toggleSection('s5')">
+        <div class="section-title-left">
+          <div class="section-num">5</div>
+          <h2>Agent Definitions</h2>
+          <span class="req-badge optional-later">Add later</span>
+        </div>
+        <span class="chevron open" id="chev-s5">&#9660;</span>
+      </div>
+      <div class="section-body open" id="s5">
+        <p class="section-hint">Fill in goal, inputs, and produces once you start building each agent. Add the prompt excerpt and verification gate after the agent is working.</p>
+        <div class="dynamic-list" id="agentDefList"></div>
+        <div style="margin-top:10px">
+          <button class="btn-add" onclick="addAgentDef()">+ Add Agent Definition</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 6: Critical Rules ── -->
+    <div class="section-card">
+      <div class="section-title" onclick="toggleSection('s6')">
+        <div class="section-title-left">
+          <div class="section-num">6</div>
+          <h2>Critical Rules</h2>
+          <span class="req-badge required">Required</span>
+        </div>
+        <span class="chevron open" id="chev-s6">&#9660;</span>
+      </div>
+      <div class="section-body open" id="s6">
+        <p class="section-hint">Add every known constraint on day 0. This is the most valuable section — it prevents Claude from repeating mistakes you have already made.</p>
+        <div class="dynamic-list" id="ruleList"></div>
+        <div style="margin-top:10px">
+          <button class="btn-add" onclick="addRule()">+ Add Rule</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 7: Environment Variables ── -->
+    <div class="section-card">
+      <div class="section-title" onclick="toggleSection('s7')">
+        <div class="section-title-left">
+          <div class="section-num">7</div>
+          <h2>Environment Variables</h2>
+          <span class="req-badge required">Required</span>
+        </div>
+        <span class="chevron open" id="chev-s7">&#9660;</span>
+      </div>
+      <div class="section-body open" id="s7">
+        <p class="section-hint">List every variable Claude needs to run the system. Use placeholder values — never commit real credentials.</p>
+        <div class="dynamic-list" id="envGroupList"></div>
+        <div style="margin-top:10px">
+          <button class="btn-add" onclick="addEnvGroup()">+ Add Group</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 8: Anti-Patterns ── -->
+    <div class="section-card">
+      <div class="section-title" onclick="toggleSection('s8')">
+        <div class="section-title-left">
+          <div class="section-num">8</div>
+          <h2>Anti-Patterns</h2>
+          <span class="req-badge optional-later">Add later</span>
+        </div>
+        <span class="chevron open" id="chev-s8">&#9660;</span>
+      </div>
+      <div class="section-body open" id="s8">
+        <p class="section-hint">Add an entry every time something breaks in an unexpected way. This section grows with the project — leave it empty on day 0 if nothing has broken yet.</p>
+        <div class="dynamic-list" id="antiPatternList"></div>
+        <div style="margin-top:10px">
+          <button class="btn-add" onclick="addAntiPattern()">+ Add Anti-Pattern</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 9: Starting Order ── -->
+    <div class="section-card">
+      <div class="section-title" onclick="toggleSection('s9')">
+        <div class="section-title-left">
+          <div class="section-num">9</div>
+          <h2>Starting Order</h2>
+          <span class="req-badge required">Required</span>
+        </div>
+        <span class="chevron open" id="chev-s9">&#9660;</span>
+      </div>
+      <div class="section-body open" id="s9">
+        <p class="section-hint">Even a two-line startup sequence prevents "why won't it start?" confusion. Add health check commands as you confirm each step works.</p>
+        <div class="field">
+          <label>Bash Commands (one per line, in startup order)</label>
+          <textarea id="startingOrder" rows="8" placeholder="# 1. Database
+python3 my-agent/database/setup.py
+
+# 2. API Server
+cd my-agent && python3 -m api.server > /tmp/api_server.log 2>&1 &
+
+# 3. Bot
+python3 my-agent/bot.py" oninput="generate()"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 10: External APIs / Data Sources ── -->
+    <div class="section-card">
+      <div class="section-title" onclick="toggleSection('s10')">
+        <div class="section-title-left">
+          <div class="section-num">10</div>
+          <h2>External APIs / Data Sources</h2>
+          <span class="req-badge optional">Optional</span>
+        </div>
+        <span class="chevron open" id="chev-s10">&#9660;</span>
+      </div>
+      <div class="section-body open" id="s10">
+        <p class="section-hint">Add once you have confirmed the endpoint URL and auth method. Especially important for APIs with non-obvious constraints (no pagination, field name casing, etc.).</p>
+        <div class="dynamic-list" id="externalApiList"></div>
+        <div style="margin-top:10px">
+          <button class="btn-add" onclick="addExternalApi()">+ Add Data Source</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 11: Registered Tools ── -->
+    <div class="section-card">
+      <div class="section-title" onclick="toggleSection('s11')">
+        <div class="section-title-left">
+          <div class="section-num">11</div>
+          <h2>Registered Tools</h2>
+          <span class="req-badge optional-later">Add later</span>
+        </div>
+        <span class="chevron open" id="chev-s11">&#9660;</span>
+      </div>
+      <div class="section-body open" id="s11">
+        <p class="section-hint">The tool list does not exist yet on day 0 — add entries here as you build and register each MCP/API tool. Claude uses this section to know which tools to call.</p>
+        <div class="field">
+          <label>Registry note</label>
+          <input type="text" id="toolRegistryNote" placeholder="Every tool must be @register'd in utils/tool_router.py or Claude will never see it." oninput="generate()">
+        </div>
+        <div class="dynamic-list" id="registeredToolList"></div>
+        <div style="margin-top:10px">
+          <button class="btn-add" onclick="addRegisteredTool()">+ Add Tool</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 12: Verified Smoke Tests ── -->
+    <div class="section-card">
+      <div class="section-title" onclick="toggleSection('s12')">
+        <div class="section-title-left">
+          <div class="section-num">12</div>
+          <h2>Verified Smoke Tests</h2>
+          <span class="req-badge optional-later">Add later</span>
+        </div>
+        <span class="chevron open" id="chev-s12">&#9660;</span>
+      </div>
+      <div class="section-body open" id="s12">
+        <p class="section-hint">Only add tests you have actually run and confirmed. Add an entry each time you verify a query end-to-end in production or staging.</p>
+        <div class="dynamic-list" id="smokeTestList"></div>
+        <div style="margin-top:10px">
+          <button class="btn-add" onclick="addSmokeTest()">+ Add Smoke Test</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 13: File Structure ── -->
+    <div class="section-card">
+      <div class="section-title" onclick="toggleSection('s13')">
+        <div class="section-title-left">
+          <div class="section-num">13</div>
+          <h2>File Structure</h2>
+          <span class="req-badge optional">Optional</span>
+        </div>
+        <span class="chevron open" id="chev-s13">&#9660;</span>
+      </div>
+      <div class="section-body open" id="s13">
+        <p class="section-hint">Add once the folder layout is stable. Helps Claude navigate the project without asking "where is X?" — especially useful for new contributors.</p>
+        <div class="field">
+          <label>Directory Tree (paste or type your project layout)</label>
+          <textarea id="fileStructure" rows="10" placeholder="project-root/
+├── agents/
+│   └── data_collector.py      # Agent A — description
+├── api/
+│   └── server.py              # FastAPI server
+├── mcp/
+│   └── mcp_server.py          # MCP STDIO bridge (optional)
+├── utils/
+│   └── tool_router.py         # Tool registry
+├── bot.py                     # Slack bot
+├── start.sh                   # Ordered startup script
+├── requirements.txt
+├── .env                       # Local credentials (gitignored)
+├── .env.example
+└── .gitignore" oninput="generate()"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 14: LLM Pipeline ── -->
+    <div class="section-card">
+      <div class="section-title" onclick="toggleSection('s14')">
+        <div class="section-title-left">
+          <div class="section-num">14</div>
+          <h2>LLM Pipeline</h2>
+          <span class="req-badge required">Required</span>
+        </div>
+        <span class="chevron open" id="chev-s14">&#9660;</span>
+      </div>
+      <div class="section-body open" id="s14">
+        <p class="section-hint">Document model selection, thinking mode, streaming, and compaction. The compaction rule is always written into the output — never remove it.</p>
+        <div class="field-row">
+          <div class="field">
+            <label>Dispatch Model (Turn 1)</label>
+            <input type="text" id="llmDispatchModel" value="claude-haiku-4-5" placeholder="claude-haiku-4-5" oninput="generate()">
+          </div>
+          <div class="field">
+            <label>Synthesis Model (Turn 2)</label>
+            <input type="text" id="llmSynthesisModel" value="claude-opus-4-6" placeholder="claude-opus-4-6" oninput="generate()">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Thinking Mode</label>
+            <select id="llmThinking" oninput="generate()">
+              <option value="adaptive">adaptive — Opus 4.6 / Sonnet 4.6</option>
+              <option value="none">none</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Streaming</label>
+            <select id="llmStreaming" oninput="generate()">
+              <option value="yes">Yes — .stream() + .get_final_message()</option>
+              <option value="no">No</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label>Compaction</label>
+          <select id="llmCompaction" oninput="generate()">
+            <option value="enabled">Enabled — betas=["compact-2026-01-12"] (Opus 4.6 only)</option>
+            <option value="disabled">Disabled</option>
+          </select>
+        </div>
+        <div class="compaction-rule">
+          ⚠️ <strong>Compaction rule — always included in generated output:</strong><br>
+          Always append <code>response.content</code> (the full array) to <code>messages</code> on every turn —
+          never <code>response.content[0].text</code>.<br>
+          The compaction block lives inside <code>response.content</code> and is silently lost if you extract
+          only the text string. The API uses it to reconstruct summarized history on the next request.
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ── Section 19: Production Standards ── -->
+    <div class="section-card">
+      <div class="section-title" onclick="toggleSection('s19')">
+        <div class="section-title-left">
+          <div class="section-num">19</div>
+          <h2>Production Standards</h2>
+          <span class="req-badge required">Required</span>
+        </div>
+        <span class="chevron open" id="chev-s19">&#9660;</span>
+      </div>
+      <div class="section-body open" id="s19">
+        <p class="section-hint">Rules are only effective when they are specific, tied to a file reference, and paired with an anti-pattern. Generic advice ("handle errors properly") is ignored. Each toggle below generates a concrete, actionable rule block.</p>
+
+        <div class="field">
+          <label>Enable principles</label>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px">
+            <label style="display:flex;align-items:center;gap:5px;font-weight:400"><input type="checkbox" id="prodRetry"      oninput="generate()" checked> Retry &amp; resilience</label>
+            <label style="display:flex;align-items:center;gap:5px;font-weight:400"><input type="checkbox" id="prodCircuit"    oninput="generate()" checked> Circuit breaker</label>
+            <label style="display:flex;align-items:center;gap:5px;font-weight:400"><input type="checkbox" id="prodErrors"     oninput="generate()" checked> Error handling</label>
+            <label style="display:flex;align-items:center;gap:5px;font-weight:400"><input type="checkbox" id="prodBulk"       oninput="generate()" checked> Bulk operations</label>
+            <label style="display:flex;align-items:center;gap:5px;font-weight:400"><input type="checkbox" id="prodValidation" oninput="generate()" checked> Input validation</label>
+            <label style="display:flex;align-items:center;gap:5px;font-weight:400"><input type="checkbox" id="prodCache"      oninput="generate()" checked> Cache invalidation</label>
+            <label style="display:flex;align-items:center;gap:5px;font-weight:400"><input type="checkbox" id="prodLogging"    oninput="generate()" checked> Structured logging</label>
+            <label style="display:flex;align-items:center;gap:5px;font-weight:400"><input type="checkbox" id="prodAsync"      oninput="generate()" checked> Async / blocking calls</label>
+            <label style="display:flex;align-items:center;gap:5px;font-weight:400"><input type="checkbox" id="prodSecurity"   oninput="generate()" checked> Security</label>
+            <label style="display:flex;align-items:center;gap:5px;font-weight:400"><input type="checkbox" id="prodObs"        oninput="generate()" checked> Observability</label>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Retry library</label>
+          <select id="prodRetryLib" oninput="generate()">
+            <option value="tenacity">tenacity (Python — @retry decorator)</option>
+            <option value="stamina">stamina (tenacity wrapper, structured)</option>
+            <option value="backoff">backoff (lightweight decorator)</option>
+            <option value="custom">Custom exponential backoff</option>
+          </select>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Retry attempts</label>
+            <input type="number" id="prodRetryAttempts" value="3" oninput="generate()">
+          </div>
+          <div class="field">
+            <label>Retry on (comma-separated exception names)</label>
+            <input type="text" id="prodRetryOn" value="requests.Timeout, requests.ConnectionError, httpx.TimeoutException" oninput="generate()">
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Circuit breaker failure threshold</label>
+            <input type="number" id="prodCbThreshold" value="5" oninput="generate()">
+          </div>
+          <div class="field">
+            <label>Circuit breaker recovery window (seconds)</label>
+            <input type="number" id="prodCbWindow" value="60" oninput="generate()">
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Log format</label>
+          <select id="prodLogFormat" oninput="generate()">
+            <option value="json">JSON (structlog / python-json-logger)</option>
+            <option value="text">Plain text (logging.basicConfig)</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Required log fields (comma-separated)</label>
+          <input type="text" id="prodLogFields" value="request_id, user_id, tool_name, duration_ms, error_code" oninput="generate()">
+        </div>
+
+        <div class="field">
+          <label>Bulk operation method</label>
+          <select id="prodBulkMethod" oninput="generate()">
+            <option value="bulk_insert_mappings">SQLAlchemy bulk_insert_mappings / bulk_update_mappings</option>
+            <option value="execute_many">psycopg2 executemany</option>
+            <option value="copy_from">psycopg2 COPY FROM (fastest)</option>
+            <option value="orm_batch">SQLAlchemy add_all + single commit</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Custom anti-patterns for this project (one per line — what not to do)</label>
+          <textarea id="prodAntiPatterns" rows="4" placeholder="Never call a repository method inside a for loop — use bulk_insert_mappings&#10;Never catch bare Exception — catch specific error types&#10;Never append response.content[0].text to messages — append response.content&#10;Never pass page_size=1000 to NetSuite — cap at 200" oninput="generate()"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 15: Data Lineage ── -->
+    <div class="section-card">
+      <div class="section-title" onclick="toggleSection('s15')">
+        <div class="section-title-left">
+          <div class="section-num">15</div>
+          <h2>Data Lineage</h2>
+          <span class="req-badge optional">Optional</span>
+        </div>
+        <span class="chevron open" id="chev-s15">&#9660;</span>
+      </div>
+      <div class="section-body open" id="s15">
+        <p class="section-hint">Know where every input to your LLM came from. Tag each retrieved chunk with its originating table, column, and dbt transformation step so responses can be fully audited and stale data detected.</p>
+        <div class="field-row">
+          <div class="field">
+            <label>dbt Project Name</label>
+            <input type="text" id="dbtProject" placeholder="e.g. fivetran_dwh" oninput="generate()">
+          </div>
+          <div class="field">
+            <label>OpenLineage Backend</label>
+            <select id="lineageBackend" oninput="generate()">
+              <option value="marquez">Marquez (open-source)</option>
+              <option value="datahub">DataHub</option>
+              <option value="atlas">Apache Atlas</option>
+              <option value="custom">Custom HTTP</option>
+              <option value="none">None — log-only</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Namespace</label>
+            <input type="text" id="lineageNamespace" placeholder="e.g. compliance-agent" oninput="generate()">
+          </div>
+          <div class="field">
+            <label>OpenLineage Endpoint URL</label>
+            <input type="text" id="lineageUrl" placeholder="e.g. http://marquez:5000" oninput="generate()">
+          </div>
+        </div>
+        <div class="field">
+          <label>LLM Input Source Tags emitted per chunk (comma-separated)</label>
+          <input type="text" id="lineageTags" placeholder="source_table, source_column, dbt_model, run_id, snapshot_ts" oninput="generate()">
+        </div>
+        <div class="field">
+          <label>Enable</label>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:4px">
+            <label style="display:flex;align-items:center;gap:5px;font-weight:400"><input type="checkbox" id="lineageDbtFreshness" oninput="generate()" checked> dbt source freshness checks</label>
+            <label style="display:flex;align-items:center;gap:5px;font-weight:400"><input type="checkbox" id="lineageSchemaContracts" oninput="generate()"> dbt schema contracts</label>
+            <label style="display:flex;align-items:center;gap:5px;font-weight:400"><input type="checkbox" id="lineageColumnLevel" oninput="generate()"> Column-level lineage</label>
+            <label style="display:flex;align-items:center;gap:5px;font-weight:400"><input type="checkbox" id="lineageJobRuns" oninput="generate()" checked> Emit OpenLineage RunEvent on pipeline start / complete / fail</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 16: Chunking Strategy ── -->
+    <div class="section-card">
+      <div class="section-title" onclick="toggleSection('s16')">
+        <div class="section-title-left">
+          <div class="section-num">16</div>
+          <h2>Chunking Strategy</h2>
+          <span class="req-badge optional">Optional</span>
+        </div>
+        <span class="chevron open" id="chev-s16">&#9660;</span>
+      </div>
+      <div class="section-body open" id="s16">
+        <p class="section-hint">How you split documents matters more than which model you use. Wrong chunk size degrades retrieval precision faster than model quality ever can.</p>
+        <div class="field-row">
+          <div class="field">
+            <label>Primary Strategy</label>
+            <select id="chunkStrategy" oninput="generate()">
+              <option value="recursive">Recursive character — LangChain default</option>
+              <option value="markdown">Markdown-aware (headers as boundaries)</option>
+              <option value="semantic">Semantic (embedding-similarity splits)</option>
+              <option value="sentence">Sentence-level (NLTK / spaCy)</option>
+              <option value="fixed">Fixed-size (simple, fast)</option>
+              <option value="agentic">Agentic / LLM-based chunking</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Chunk Size (tokens)</label>
+            <input type="number" id="chunkSize" value="512" oninput="generate()">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Overlap (tokens)</label>
+            <input type="number" id="chunkOverlap" value="64" oninput="generate()">
+          </div>
+          <div class="field">
+            <label>Embedding Model</label>
+            <input type="text" id="chunkEmbModel" placeholder="e.g. text-embedding-3-small, MiniLM-384" oninput="generate()">
+          </div>
+        </div>
+        <div class="field">
+          <label>Per-document-type overrides (one per line: type → strategy, size, overlap)</label>
+          <textarea id="chunkDocTypes" rows="4" placeholder="Compliance policies → markdown-aware, 512 tokens, 64 overlap&#10;API docs → recursive, 256 tokens, 32 overlap&#10;SOD rules JSON → whole-document (no chunking)&#10;Slack threads → sentence-level, 128 tokens, 16 overlap" oninput="generate()"></textarea>
+        </div>
+        <div class="field">
+          <label>Retrieval Method</label>
+          <select id="chunkRetrieval" oninput="generate()">
+            <option value="cosine">Cosine similarity (ANN — IVFFLAT / HNSW)</option>
+            <option value="hybrid">Hybrid: cosine + BM25 (Reciprocal Rank Fusion)</option>
+            <option value="mmr">MMR — Maximum Marginal Relevance (diversity)</option>
+            <option value="rerank">Two-stage: ANN first pass → cross-encoder reranker</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 18: Retrieval Pipeline ── -->
+    <div class="section-card">
+      <div class="section-title" onclick="toggleSection('s18')">
+        <div class="section-title-left">
+          <div class="section-num">18</div>
+          <h2>Retrieval Pipeline</h2>
+          <span class="req-badge optional">Optional</span>
+        </div>
+        <span class="chevron open" id="chev-s18">&#9660;</span>
+      </div>
+      <div class="section-body open" id="s18">
+        <p class="section-hint">Vector store choice, hybrid search, and re-ranking together determine what context your LLM actually sees. Document the decision so it's reproducible.</p>
+        <div class="field">
+          <label>Vector Store</label>
+          <select id="retrievalVectorStore" oninput="generate()">
+            <option value="pgvector">pgvector — PostgreSQL extension (already in your stack)</option>
+            <option value="pinecone">Pinecone — managed, serverless, production-grade</option>
+            <option value="weaviate">Weaviate — open-source, built-in hybrid BM25+vector</option>
+            <option value="qdrant">Qdrant — open-source, payload filtering, on-prem</option>
+            <option value="chroma">Chroma — lightweight, local-first, dev/test</option>
+            <option value="opensearch">OpenSearch — kNN + full-text in one index</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Hybrid Search</label>
+          <select id="retrievalHybrid" oninput="generate()">
+            <option value="none">Dense only (cosine / dot-product)</option>
+            <option value="rrf">Dense + BM25 → Reciprocal Rank Fusion (RRF)</option>
+            <option value="weighted">Dense + BM25 → weighted linear combination</option>
+            <option value="native">Native hybrid (Weaviate / OpenSearch built-in)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Re-ranking</label>
+          <select id="retrievalRerank" oninput="generate()">
+            <option value="none">None — top-k from retrieval sent directly to LLM</option>
+            <option value="cohere">Cohere Rerank API (rerank-english-v3.0)</option>
+            <option value="cross-encoder">Local cross-encoder (ms-marco-MiniLM, BAAI/bge-reranker)</option>
+            <option value="llm">LLM-as-reranker (ask Claude to score relevance)</option>
+          </select>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Retrieval top-k (before rerank)</label>
+            <input type="number" id="retrievalTopK" value="50" oninput="generate()">
+          </div>
+          <div class="field">
+            <label>Final top-k (after rerank, sent to LLM)</label>
+            <input type="number" id="retrievalFinalK" value="5" oninput="generate()">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 17: Chunk Metadata Schema ── -->
+    <div class="section-card">
+      <div class="section-title" onclick="toggleSection('s17')">
+        <div class="section-title-left">
+          <div class="section-num">17</div>
+          <h2>Chunk Metadata Schema</h2>
+          <span class="req-badge required">Required</span>
+        </div>
+        <span class="chevron open" id="chev-s17">&#9660;</span>
+      </div>
+      <div class="section-body open" id="s17">
+        <p class="section-hint">Every chunk needs four minimum fields: source, timestamp, owner, sensitivity classification. These enable retrieval filtering, access control, freshness gating, and audit trails.</p>
+        <div class="field-row">
+          <div class="field">
+            <label>Source Field Name</label>
+            <input type="text" id="metaSource" value="source" oninput="generate()">
+          </div>
+          <div class="field">
+            <label>Source Description</label>
+            <input type="text" id="metaSourceDesc" placeholder="System or dataset this chunk came from" oninput="generate()">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Timestamp Field Name</label>
+            <input type="text" id="metaTimestamp" value="ingested_at" oninput="generate()">
+          </div>
+          <div class="field">
+            <label>Freshness TTL (hours — stale chunks excluded from retrieval)</label>
+            <input type="number" id="metaTTL" value="24" oninput="generate()">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Owner Field Name</label>
+            <input type="text" id="metaOwner" value="owner" oninput="generate()">
+          </div>
+          <div class="field">
+            <label>Owner Type</label>
+            <select id="metaOwnerType" oninput="generate()">
+              <option value="team">Team (e.g. finance, security)</option>
+              <option value="email">Email address</option>
+              <option value="system">Source system name</option>
+              <option value="user_id">User ID</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Sensitivity Field Name</label>
+            <input type="text" id="metaSensitivity" value="sensitivity" oninput="generate()">
+          </div>
+          <div class="field">
+            <label>Sensitivity Levels (comma-separated, ascending)</label>
+            <input type="text" id="metaSensitivityLevels" value="public, internal, confidential, restricted" oninput="generate()">
+          </div>
+        </div>
+        <div class="field">
+          <label>Additional Fields (one per line: field_name — description)</label>
+          <textarea id="metaExtra" rows="5" placeholder="chunk_id — SHA-256 of content, stable across re-ingestion&#10;doc_id — parent document identifier&#10;chunk_index — position within parent document&#10;model_version — embedding model used (needed for re-indexing)&#10;dbt_run_id — lineage back to the transformation job" oninput="generate()"></textarea>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /left-panel -->
+
+  <!-- ════════════════════ RIGHT PANEL (OUTPUT) ════════════════════ -->
+  <div class="right-panel">
+    <div class="right-panel-header">
+      <span>Live Preview — CLAUDE_MULTI_AGENT.md</span>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-sm btn-ghost" style="color:#555;background:#eef;border:1px solid #c5cadf" onclick="copyOutput()">&#x2398; Copy</button>
+      </div>
+    </div>
+    <textarea class="output-area" id="outputArea" readonly spellcheck="false"></textarea>
+  </div>
+
+</div><!-- /workspace -->
+
+<!-- ═══════════════════════════════════════════════════ JAVASCRIPT -->
+<script>
+// ─────────────────────────────────────────────────────
+// Accordion
+// ─────────────────────────────────────────────────────
+function toggleSection(id) {
+  const body = document.getElementById(id);
+  const chev = document.getElementById('chev-' + id);
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  body.style.display = isOpen ? 'none' : 'block';
+  chev.classList.toggle('open', !isOpen);
+}
+// Init: all open on load (display already set via CSS .open { display:block })
+
+// ─────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────
+function val(id) {
+  const el = document.getElementById(id);
+  return el ? el.value.trim() : '';
+}
+
+function makeDeleteBtn(onclick) {
+  const btn = document.createElement('button');
+  btn.className = 'btn btn-sm btn-danger';
+  btn.textContent = '✕ Remove';
+  btn.onclick = onclick;
+  return btn;
+}
+
+function pad(str, len) {
+  return String(str).padEnd(len, ' ');
+}
+
+let rosterAgentCount = 0;
+let phaseCount = 0;
+let agentDefCount = 0;
+let ruleCount = 0;
+let envGroupCount = 0;
+let antiPatternCount = 0;
+let smokeTestCount = 0;
+let externalApiCount = 0;
+let registeredToolCount = 0;
+
+// ─────────────────────────────────────────────────────
+// Section 3 — Agent Roster
+// ─────────────────────────────────────────────────────
+const rosterDefaults = [
+  { id: 'A', name: 'Data Collector',    phase: 0, role: 'Fetch Workday RAAS, filter by geography/worker_type, aggregate counts', parallel: true },
+  { id: 'B', name: 'Environment Setup', phase: 0, role: 'Validate .env vars and pip dependencies', parallel: true },
+  { id: 'C', name: 'API Server',        phase: 1, role: 'FastAPI on :8081 — expose /tools/call and /health endpoints', parallel: false },
+  { id: 'D', name: 'Slack Bot',         phase: 2, role: 'Two-turn pipeline: Haiku dispatch + Opus synthesis with adaptive thinking', parallel: false },
+];
+
+function addRosterAgent(defaults) {
+  rosterAgentCount++;
+  const idx = rosterAgentCount;
+  const d = defaults || {};
+  const container = document.getElementById('agentRosterList');
+  const card = document.createElement('div');
+  card.className = 'item-card';
+  card.id = 'rosterAgent-' + idx;
+  card.innerHTML = `
+    <div class="item-card-header">
+      <span>Agent #${idx}</span>
+    </div>
+    <div class="item-card-body">
+      <div class="field-row-3">
+        <div class="field">
+          <label>Agent ID</label>
+          <input type="text" class="roster-id" placeholder="A" value="${d.id||''}" oninput="generate()">
+        </div>
+        <div class="field">
+          <label>Agent Name</label>
+          <input type="text" class="roster-name" placeholder="Database Setup" value="${d.name||''}" oninput="generate()">
+        </div>
+        <div class="field">
+          <label>Phase #</label>
+          <input type="number" class="roster-phase" placeholder="0" value="${d.phase !== undefined ? d.phase : ''}" min="0" oninput="generate()">
+        </div>
+      </div>
+      <div class="field">
+        <label>Role / Description</label>
+        <input type="text" class="roster-role" placeholder="Create DB schema, run migrations" value="${d.role||''}" oninput="generate()">
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+        <div class="checkbox-field">
+          <input type="checkbox" class="roster-parallel" id="rp-${idx}" ${d.parallel ? 'checked' : ''} onchange="generate()">
+          <label for="rp-${idx}">Can run in parallel?</label>
+        </div>
+      </div>
+    </div>`;
+  const delBtn = makeDeleteBtn(() => { card.remove(); generate(); });
+  card.querySelector('.item-card-header').appendChild(delBtn);
+  container.appendChild(card);
+  generate();
+}
+
+function getRosterAgents() {
+  const cards = document.querySelectorAll('#agentRosterList .item-card');
+  return Array.from(cards).map(c => ({
+    id:       c.querySelector('.roster-id').value.trim(),
+    name:     c.querySelector('.roster-name').value.trim(),
+    phase:    c.querySelector('.roster-phase').value.trim(),
+    role:     c.querySelector('.roster-role').value.trim(),
+    parallel: c.querySelector('.roster-parallel').checked,
+  }));
+}
+
+// ─────────────────────────────────────────────────────
+// Section 4 — Phases
+// ─────────────────────────────────────────────────────
+const phaseDefaults = [
+  { num: 0, name: 'Setup',      agents: 'A, B', parallel: true,  desc: 'Data collector and env validation — run in parallel first' },
+  { num: 1, name: 'API Server', agents: 'C',    parallel: false, desc: 'FastAPI server on :8081 — sequential after Phase 0' },
+  { num: 2, name: 'Slack Bot',  agents: 'D',    parallel: false, desc: 'Slack bot — starts after API server is healthy' },
+];
+
+function addPhase(defaults) {
+  phaseCount++;
+  const idx = phaseCount;
+  const d = defaults || {};
+  const container = document.getElementById('phaseList');
+  const card = document.createElement('div');
+  card.className = 'item-card';
+  card.id = 'phase-' + idx;
+  card.innerHTML = `
+    <div class="item-card-header">
+      <span>Phase Entry #${idx}</span>
+    </div>
+    <div class="item-card-body">
+      <div class="field-row">
+        <div class="field">
+          <label>Phase Number</label>
+          <input type="number" class="phase-num" placeholder="0" value="${d.num !== undefined ? d.num : ''}" min="0" oninput="generate()">
+        </div>
+        <div class="field">
+          <label>Phase Name</label>
+          <input type="text" class="phase-name" placeholder="Infrastructure" value="${d.name||''}" oninput="generate()">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Agent IDs in this phase (comma-separated)</label>
+          <input type="text" class="phase-agents" placeholder="A, B" value="${d.agents||''}" oninput="generate()">
+        </div>
+        <div class="field">
+          <label>Brief Description</label>
+          <input type="text" class="phase-desc" placeholder="Run in parallel after Phase N" value="${d.desc||''}" oninput="generate()">
+        </div>
+      </div>
+      <div class="checkbox-field" style="margin-top:4px">
+        <input type="checkbox" class="phase-parallel" id="pp-${idx}" ${d.parallel ? 'checked' : ''} onchange="generate()">
+        <label for="pp-${idx}">Agents in this phase run concurrently?</label>
+      </div>
+    </div>`;
+  const delBtn = makeDeleteBtn(() => { card.remove(); generate(); });
+  card.querySelector('.item-card-header').appendChild(delBtn);
+  container.appendChild(card);
+  generate();
+}
+
+function getPhases() {
+  const cards = document.querySelectorAll('#phaseList .item-card');
+  return Array.from(cards).map(c => ({
+    num:      c.querySelector('.phase-num').value.trim(),
+    name:     c.querySelector('.phase-name').value.trim(),
+    agents:   c.querySelector('.phase-agents').value.trim(),
+    desc:     c.querySelector('.phase-desc').value.trim(),
+    parallel: c.querySelector('.phase-parallel').checked,
+  }));
+}
+
+// ─────────────────────────────────────────────────────
+// Section 5 — Agent Definitions
+// ─────────────────────────────────────────────────────
+const agentDefDefaults = [
+  {
+    id: 'A',
+    name: 'Data Collector',
+    goal: 'Workday RAAS is reachable and returns ~1,665 worker records in a single response.',
+    inputs: 'agents/data_collector.py, .env (WORKDAY_BASE_URL, WORKDAY_USERNAME, WORKDAY_PASSWORD)',
+    produces: 'Worker records: Worker, Worker_Type, Location_Address_-_Country, location',
+    prompt: `You are the Data Collector Agent. Fetch all worker records from the Workday RAAS endpoint.
+
+Steps:
+1. Build URL: {WORKDAY_BASE_URL}/{WORKDAY_TENANT}/{WORKDAY_ISU}/{WORKDAY_REPORT}?format=json
+2. GET with HTTP Basic auth (WORKDAY_USERNAME / WORKDAY_PASSWORD)
+3. Parse response — expect Report_Entry array with ~1,665 records
+
+CRITICAL rules:
+- NEVER pass page or page_size params — Workday returns HTTP 500
+- Filter client-side after fetching all records
+- Worker_Type values are exactly "Employee" or "Contingent Worker"`,
+    verification: 'python3 -c "from agents.data_collector import get_worker_information; r=get_worker_information(); print(len(r))" | grep -v "^0$"',
+  },
+  {
+    id: 'C',
+    name: 'API Server',
+    goal: 'FastAPI server is running on port 8081 and all 4 Workday tools respond correctly.',
+    inputs: 'api/server.py, utils/tool_router.py, .env (API_PORT=8081)',
+    produces: 'Running API at http://localhost:8081, /health returns {"status":"ok"}',
+    prompt: `You are the API Server Agent. Build and start the FastAPI server exposing Workday tools.
+
+Steps:
+1. pip install -r requirements.txt
+2. python3 -m uvicorn api.server:app --host 0.0.0.0 --port 8081
+3. curl -s http://localhost:8081/health
+
+CRITICAL rules:
+- Port 8080 is taken by another local service — always use 8081
+- Register every tool in utils/tool_router.py or Claude will never see it
+- Never pass page_size to Workday RAAS inside tool implementations`,
+    verification: 'curl -s http://localhost:8081/health | python3 -c "import sys,json; d=json.load(sys.stdin); exit(0 if d.get(\'status\')==\'ok\' else 1)"',
+  },
+];
+
+function addAgentDef(defaults) {
+  agentDefCount++;
+  const idx = agentDefCount;
+  const d = defaults || {};
+  const container = document.getElementById('agentDefList');
+  const card = document.createElement('div');
+  card.className = 'item-card';
+  card.id = 'agentDef-' + idx;
+  card.innerHTML = `
+    <div class="item-card-header">
+      <span>Agent Definition #${idx}</span>
+    </div>
+    <div class="item-card-body">
+      <div class="field-row">
+        <div class="field">
+          <label>Agent ID</label>
+          <input type="text" class="def-id" placeholder="A" value="${d.id||''}" oninput="generate()">
+        </div>
+        <div class="field">
+          <label>Agent Name</label>
+          <input type="text" class="def-name" placeholder="Database Setup Agent" value="${escHtml(d.name||'')}" oninput="generate()">
+        </div>
+      </div>
+      <div class="field">
+        <label>Goal (observable output when done)</label>
+        <textarea class="def-goal" rows="2" placeholder="PostgreSQL database is running with all tables created and reference data seeded." oninput="generate()">${escHtml(d.goal||'')}</textarea>
+      </div>
+      <div class="field">
+        <label>Inputs (files / services / data this agent needs)</label>
+        <textarea class="def-inputs" rows="2" placeholder="database/migrations/*.sql, database/seed_data/rules.json, .env (DATABASE_URL)" oninput="generate()">${escHtml(d.inputs||'')}</textarea>
+      </div>
+      <div class="field">
+        <label>Produces (files / DB state this agent creates or modifies)</label>
+        <textarea class="def-produces" rows="2" placeholder="Running PostgreSQL with tables: users, issues, scans, rules" oninput="generate()">${escHtml(d.produces||'')}</textarea>
+      </div>
+      <div class="field">
+        <label>Key Prompt Excerpt</label>
+        <textarea class="def-prompt" rows="3" placeholder="You are the Database Setup Agent. Run alembic upgrade head, seed reference data, verify database connection.&#10;&#10;CRITICAL rules:&#10;- Never use 'metadata' as a column name&#10;- Python enum values must be UPPERCASE" oninput="generate()">${escHtml(d.prompt||'')}</textarea>
+      </div>
+      <div class="field">
+        <label>Verification Gate (one bash command)</label>
+        <input type="text" class="def-verify" placeholder='psql $DATABASE_URL -c "SELECT COUNT(*) FROM rules;" | grep -v "^0$"' value="${escHtml(d.verification||'')}" oninput="generate()">
+      </div>
+    </div>`;
+  const delBtn = makeDeleteBtn(() => { card.remove(); generate(); });
+  card.querySelector('.item-card-header').appendChild(delBtn);
+  container.appendChild(card);
+  generate();
+}
+
+function getAgentDefs() {
+  const cards = document.querySelectorAll('#agentDefList .item-card');
+  return Array.from(cards).map(c => ({
+    id:       c.querySelector('.def-id').value.trim(),
+    name:     c.querySelector('.def-name').value.trim(),
+    goal:     c.querySelector('.def-goal').value.trim(),
+    inputs:   c.querySelector('.def-inputs').value.trim(),
+    produces: c.querySelector('.def-produces').value.trim(),
+    prompt:   c.querySelector('.def-prompt').value.trim(),
+    verify:   c.querySelector('.def-verify').value.trim(),
+  }));
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─────────────────────────────────────────────────────
+// Section 10 — External APIs / Data Sources
+// ─────────────────────────────────────────────────────
+const externalApiDefaults = [
+  {
+    name: 'Workday RAAS',
+    url: 'https://&lt;host&gt;.myworkday.com/ccx/service/customreport2/tenant/isu/Report_Name?format=json',
+    auth: 'HTTP Basic — <your-username> / <your-password>',
+    fields: 'Worker, Worker_Type (Employee | Contingent Worker), Location_Address_-_Country, location',
+    notes: 'No pagination — all records returned in a single response. Never pass page or page_size params (causes 500).',
+  },
+];
+
+function addExternalApi(defaults) {
+  externalApiCount++;
+  const idx = externalApiCount;
+  const d = defaults || {};
+  const container = document.getElementById('externalApiList');
+  const card = document.createElement('div');
+  card.className = 'item-card';
+  card.id = 'externalApi-' + idx;
+  card.innerHTML = `
+    <div class="item-card-header">
+      <span>Data Source #${idx}</span>
+    </div>
+    <div class="item-card-body">
+      <div class="field-row">
+        <div class="field">
+          <label>Name</label>
+          <input type="text" class="api-name" placeholder="Workday RAAS" value="${escHtml(d.name||'')}" oninput="generate()">
+        </div>
+        <div class="field">
+          <label>Auth Method</label>
+          <input type="text" class="api-auth" placeholder="HTTP Basic / OAuth 2.0 / Bearer Token / TBA" value="${escHtml(d.auth||'')}" oninput="generate()">
+        </div>
+      </div>
+      <div class="field">
+        <label>Endpoint URL</label>
+        <input type="text" class="api-url" placeholder="https://api.example.com/v1/resource?format=json" value="${escHtml(d.url||'')}" oninput="generate()">
+      </div>
+      <div class="field">
+        <label>Key Response Fields</label>
+        <input type="text" class="api-fields" placeholder="id, name, status, created_at" value="${escHtml(d.fields||'')}" oninput="generate()">
+      </div>
+      <div class="field">
+        <label>Pagination / Gotchas</label>
+        <input type="text" class="api-notes" placeholder="No pagination — single response. Never pass page_size (causes 500)." value="${escHtml(d.notes||'')}" oninput="generate()">
+      </div>
+    </div>`;
+  const delBtn = makeDeleteBtn(() => { card.remove(); generate(); });
+  card.querySelector('.item-card-header').appendChild(delBtn);
+  container.appendChild(card);
+  generate();
+}
+
+function getExternalApis() {
+  const cards = document.querySelectorAll('#externalApiList .item-card');
+  return Array.from(cards).map(c => ({
+    name:   c.querySelector('.api-name').value.trim(),
+    auth:   c.querySelector('.api-auth').value.trim(),
+    url:    c.querySelector('.api-url').value.trim(),
+    fields: c.querySelector('.api-fields').value.trim(),
+    notes:  c.querySelector('.api-notes').value.trim(),
+  }));
+}
+
+// ─────────────────────────────────────────────────────
+// Section 11 — Registered Tools
+// ─────────────────────────────────────────────────────
+const registeredToolDefaults = [
+  { name: 'get_worker_information',    desc: 'Full records, optional geography + worker_type filter' },
+  { name: 'get_headcount_by_geography', desc: 'Single count for a country/location' },
+  { name: 'get_headcount_all_countries', desc: 'Breakdown by country, sorted descending' },
+  { name: 'list_countries',            desc: 'All countries present in workforce' },
+];
+
+function addRegisteredTool(defaults) {
+  registeredToolCount++;
+  const idx = registeredToolCount;
+  const d = defaults || {};
+  const container = document.getElementById('registeredToolList');
+  const card = document.createElement('div');
+  card.className = 'item-card';
+  card.id = 'registeredTool-' + idx;
+  card.innerHTML = `
+    <div class="item-card-header">
+      <span>Tool #${idx}</span>
+    </div>
+    <div class="item-card-body">
+      <div class="field-row">
+        <div class="field">
+          <label>Tool Name</label>
+          <input type="text" class="tool-name" placeholder="get_worker_information" value="${escHtml(d.name||'')}" oninput="generate()">
+        </div>
+        <div class="field">
+          <label>Description</label>
+          <input type="text" class="tool-desc" placeholder="What this tool does and any key params" value="${escHtml(d.desc||'')}" oninput="generate()">
+        </div>
+      </div>
+    </div>`;
+  const delBtn = makeDeleteBtn(() => { card.remove(); generate(); });
+  card.querySelector('.item-card-header').appendChild(delBtn);
+  container.appendChild(card);
+  generate();
+}
+
+function getRegisteredTools() {
+  const cards = document.querySelectorAll('#registeredToolList .item-card');
+  return Array.from(cards).map(c => ({
+    name: c.querySelector('.tool-name').value.trim(),
+    desc: c.querySelector('.tool-desc').value.trim(),
+  }));
+}
+
+// ─────────────────────────────────────────────────────
+// Section 12 — Verified Smoke Tests
+// ─────────────────────────────────────────────────────
+const smokeTestDefaults = [
+  { query: '"How many employees in India?"',       tool: 'get_headcount_by_geography', result: '313 employees' },
+  { query: '"Headcount breakdown by country"',     tool: 'get_headcount_all_countries', result: '24 countries, 1,665 total' },
+  { query: '"Employees vs contingent workers"',    tool: 'get_worker_information',     result: '1,554 employees / 111 contingent' },
+];
+
+function addSmokeTest(defaults) {
+  smokeTestCount++;
+  const idx = smokeTestCount;
+  const d = defaults || {};
+  const container = document.getElementById('smokeTestList');
+  const card = document.createElement('div');
+  card.className = 'item-card';
+  card.id = 'smokeTest-' + idx;
+  card.innerHTML = `
+    <div class="item-card-header">
+      <span>Test #${idx}</span>
+    </div>
+    <div class="item-card-body">
+      <div class="field">
+        <label>Query / Action</label>
+        <input type="text" class="smoke-query" placeholder='"How many employees in India?"' value="${escHtml(d.query||'')}" oninput="generate()">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Tool Dispatched (optional)</label>
+          <input type="text" class="smoke-tool" placeholder="get_headcount_by_geography" value="${escHtml(d.tool||'')}" oninput="generate()">
+        </div>
+        <div class="field">
+          <label>Expected Result</label>
+          <input type="text" class="smoke-result" placeholder="313 employees" value="${escHtml(d.result||'')}" oninput="generate()">
+        </div>
+      </div>
+    </div>`;
+  const delBtn = makeDeleteBtn(() => { card.remove(); generate(); });
+  card.querySelector('.item-card-header').appendChild(delBtn);
+  container.appendChild(card);
+  generate();
+}
+
+function getSmokeTests() {
+  const cards = document.querySelectorAll('#smokeTestList .item-card');
+  return Array.from(cards).map(c => ({
+    query:  c.querySelector('.smoke-query').value.trim(),
+    tool:   c.querySelector('.smoke-tool').value.trim(),
+    result: c.querySelector('.smoke-result').value.trim(),
+  }));
+}
+
+// ─────────────────────────────────────────────────────
+// Section 6 — Critical Rules
+// ─────────────────────────────────────────────────────
+const ruleDefaults = [
+  { title: 'Never pass page or page_size to RAAS',            detail: 'Workday returns HTTP 500 for any paginated request — all ~1,665 records come in a single response with ?format=json',  impact: 'DATA_LOSS' },
+  { title: 'Register every tool in utils/tool_router.py',     detail: "Claude's tool list is built from this registry — unregistered tools are invisible to Claude and will never be called",    impact: 'SILENT_FAILURE' },
+  { title: 'Always use tool_choice: {type: any} in Haiku dispatch turn', detail: 'Forces a live tool call every time — without this Claude may answer from training data and hallucinate headcount', impact: 'WRONG_ANSWER' },
+  { title: 'Port 8080 is taken by another local service',     detail: 'Set API_PORT=8081 in .env — starting on 8080 causes an immediate port conflict and the server will not start',           impact: 'SILENT_FAILURE' },
+];
+
+const impactOptions = ['SILENT_FAILURE', 'IMPORT_ERROR', 'DATA_LOSS', 'WRONG_ANSWER', 'SECURITY'];
+
+function addRule(defaults) {
+  ruleCount++;
+  const idx = ruleCount;
+  const d = defaults || {};
+  const container = document.getElementById('ruleList');
+  const card = document.createElement('div');
+  card.className = 'item-card';
+  card.id = 'rule-' + idx;
+  const opts = impactOptions.map(o =>
+    `<option value="${o}" ${(d.impact||'') === o ? 'selected' : ''}>${o}</option>`
+  ).join('');
+  card.innerHTML = `
+    <div class="item-card-header">
+      <span>Rule #${idx}</span>
+    </div>
+    <div class="item-card-body">
+      <div class="field-row">
+        <div class="field">
+          <label>Rule Title</label>
+          <input type="text" class="rule-title" placeholder="Never use reserved names" value="${escHtml(d.title||'')}" oninput="generate()">
+        </div>
+        <div class="field">
+          <label>Impact</label>
+          <select class="rule-impact" onchange="generate()">${opts}</select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Rule Detail</label>
+        <input type="text" class="rule-detail" placeholder="The specific constraint and what breaks if violated" value="${escHtml(d.detail||'')}" oninput="generate()">
+      </div>
+    </div>`;
+  const delBtn = makeDeleteBtn(() => { card.remove(); generate(); });
+  card.querySelector('.item-card-header').appendChild(delBtn);
+  container.appendChild(card);
+  generate();
+}
+
+function getRules() {
+  const cards = document.querySelectorAll('#ruleList .item-card');
+  return Array.from(cards).map((c, i) => ({
+    num:    i + 1,
+    title:  c.querySelector('.rule-title').value.trim(),
+    detail: c.querySelector('.rule-detail').value.trim(),
+    impact: c.querySelector('.rule-impact').value,
+  }));
+}
+
+// ─────────────────────────────────────────────────────
+// Section 7 — Environment Variables
+// ─────────────────────────────────────────────────────
+const envDefaults = [
+  {
+    name: 'Workday RAAS',
+    vars: 'WORKDAY_BASE_URL=https://&lt;host&gt;.myworkday.com/ccx/service/customreport2\nWORKDAY_TENANT=&lt;your-tenant&gt;\nWORKDAY_ISU=&lt;your-isu&gt;\nWORKDAY_REPORT=&lt;Your_Report_Name&gt;\nWORKDAY_USERNAME=&lt;your-username&gt;\nWORKDAY_PASSWORD=<your-password>',
+  },
+  {
+    name: 'LLM',
+    vars: 'ANTHROPIC_API_KEY=sk-ant-...',
+  },
+  {
+    name: 'Slack',
+    vars: 'SLACK_BOT_TOKEN=xoxb-...\nSLACK_APP_TOKEN=xapp-...\nSLACK_SIGNING_SECRET=...',
+  },
+  {
+    name: 'Server',
+    vars: 'API_PORT=8081\nAPI_HOST=0.0.0.0',
+  },
+];
+
+function addEnvGroup(defaults) {
+  envGroupCount++;
+  const idx = envGroupCount;
+  const d = defaults || {};
+  const container = document.getElementById('envGroupList');
+  const card = document.createElement('div');
+  card.className = 'item-card';
+  card.id = 'envGroup-' + idx;
+  card.innerHTML = `
+    <div class="item-card-header">
+      <span>Group #${idx}</span>
+    </div>
+    <div class="item-card-body">
+      <div class="field">
+        <label>Group Name</label>
+        <input type="text" class="env-group-name" placeholder="Database" value="${escHtml(d.name||'')}" oninput="generate()">
+      </div>
+      <div class="field">
+        <label>Variables (one KEY=value per line)</label>
+        <textarea class="env-vars" rows="3" placeholder="DATABASE_URL=postgresql://...&#10;REDIS_URL=redis://localhost:6379/0" oninput="generate()">${escHtml(d.vars||'')}</textarea>
+      </div>
+    </div>`;
+  const delBtn = makeDeleteBtn(() => { card.remove(); generate(); });
+  card.querySelector('.item-card-header').appendChild(delBtn);
+  container.appendChild(card);
+  generate();
+}
+
+function getEnvGroups() {
+  const cards = document.querySelectorAll('#envGroupList .item-card');
+  return Array.from(cards).map(c => ({
+    name: c.querySelector('.env-group-name').value.trim(),
+    vars: c.querySelector('.env-vars').value.trim(),
+  }));
+}
+
+// ─────────────────────────────────────────────────────
+// Section 8 — Anti-Patterns
+// ─────────────────────────────────────────────────────
+const antiDefaults = [
+  {
+    what:    'Pass page_size or page param to RAAS endpoint',
+    cons:    'Workday returns HTTP 500 — no records returned, bot silently fails',
+    correct: 'Call with ?format=json only — all ~1,665 records come in one response',
+  },
+  {
+    what:    'Answer headcount questions without calling a tool',
+    cons:    'Claude may hallucinate headcount from training data — completely wrong numbers with no error signal',
+    correct: 'Enforce tool_choice: {"type": "any"} in Haiku dispatch turn to force a live tool call every time',
+  },
+  {
+    what:    'Filter Worker_Type with wrong casing (e.g. "employee" or "EMPLOYEE")',
+    cons:    'Filter silently returns 0 results — wrong answer delivered with full confidence',
+    correct: 'Use exact values: "Employee" or "Contingent Worker" (case-sensitive string match)',
+  },
+];
+
+function addAntiPattern(defaults) {
+  antiPatternCount++;
+  const idx = antiPatternCount;
+  const d = defaults || {};
+  const container = document.getElementById('antiPatternList');
+  const card = document.createElement('div');
+  card.className = 'item-card';
+  card.id = 'anti-' + idx;
+  card.innerHTML = `
+    <div class="item-card-header">
+      <span>Anti-Pattern #${idx}</span>
+    </div>
+    <div class="item-card-body">
+      <div class="field">
+        <label>What NOT to do</label>
+        <input type="text" class="anti-what" placeholder="Call get_all_users_paginated(page_size=1000)" value="${escHtml(d.what||'')}" oninput="generate()">
+      </div>
+      <div class="field">
+        <label>Consequence</label>
+        <input type="text" class="anti-cons" placeholder="79.2% of users silently dropped" value="${escHtml(d.cons||'')}" oninput="generate()">
+      </div>
+      <div class="field">
+        <label>Correct Approach</label>
+        <input type="text" class="anti-correct" placeholder="Always use page_size=200 and paginate" value="${escHtml(d.correct||'')}" oninput="generate()">
+      </div>
+    </div>`;
+  const delBtn = makeDeleteBtn(() => { card.remove(); generate(); });
+  card.querySelector('.item-card-header').appendChild(delBtn);
+  container.appendChild(card);
+  generate();
+}
+
+function getAntiPatterns() {
+  const cards = document.querySelectorAll('#antiPatternList .item-card');
+  return Array.from(cards).map(c => ({
+    what:    c.querySelector('.anti-what').value.trim(),
+    cons:    c.querySelector('.anti-cons').value.trim(),
+    correct: c.querySelector('.anti-correct').value.trim(),
+  }));
+}
+
+// ─────────────────────────────────────────────────────
+// Markdown Table Builder
+// ─────────────────────────────────────────────────────
+function mdTable(headers, rows) {
+  // Calculate column widths
+  const colWidths = headers.map((h, i) => {
+    const maxDataLen = rows.reduce((m, r) => Math.max(m, (r[i] || '').length), 0);
+    return Math.max(h.length, maxDataLen, 3);
+  });
+
+  const headerLine = '| ' + headers.map((h, i) => pad(h, colWidths[i])).join(' | ') + ' |';
+  const sepLine    = '| ' + colWidths.map(w => '-'.repeat(w)).join(' | ') + ' |';
+  const dataLines  = rows.map(r =>
+    '| ' + r.map((cell, i) => pad(cell || '', colWidths[i])).join(' | ') + ' |'
+  );
+
+  return [headerLine, sepLine, ...dataLines].join('\n');
+}
+
+// ─────────────────────────────────────────────────────
+// Markdown Generator
+// ─────────────────────────────────────────────────────
+function generate() {
+  const systemName = val('systemName') || 'Your System Name';
+  const systemDesc = val('systemDesc') || '';
+  const glance     = val('systemGlance') || '';
+  const techStack  = val('techStack') || '';
+  const version    = val('version') || '1.0.0';
+  const author     = val('author') || 'Your Team';
+  const docDate    = val('docDate') || new Date().toISOString().slice(0, 10);
+
+  const lines = [];
+
+  // ── Header ──
+  lines.push(`# Building ${systemName}: A Multi-Agent Playbook`);
+  lines.push('');
+  lines.push(`**Version:** ${version} | **Updated:** ${docDate} | **Team:** ${author}`);
+  lines.push('');
+
+  // ── System at a Glance ──
+  lines.push('## System at a Glance');
+  lines.push('');
+  if (systemDesc) {
+    lines.push(`**${systemDesc}**`);
+    lines.push('');
+  }
+  if (glance) {
+    lines.push(glance);
+    lines.push('');
+  }
+  if (techStack) {
+    lines.push(`**Tech stack:** ${techStack}`);
+    lines.push('');
+  }
+
+  // Data Flow
+  const dataFlow = val('dataFlow');
+  if (dataFlow) {
+    lines.push('**Data flow:**');
+    lines.push('```');
+    dataFlow.split('\n').forEach(l => lines.push(l));
+    lines.push('```');
+    lines.push('');
+  }
+
+  lines.push('---');
+  lines.push('');
+
+  // ── External APIs / Data Sources ──
+  const externalApis = getExternalApis();
+  if (externalApis.length) {
+    lines.push('## External APIs / Data Sources');
+    lines.push('');
+    externalApis.forEach(api => {
+      if (api.name) lines.push(`### ${api.name}`);
+      if (api.url) {
+        lines.push('```');
+        lines.push(api.url);
+        lines.push('```');
+        lines.push('');
+      }
+      if (api.auth) lines.push(`**Auth:** ${api.auth}`);
+      lines.push('');
+      if (api.fields) {
+        lines.push('**Key response fields:** ' + api.fields);
+        lines.push('');
+      }
+      if (api.notes) {
+        lines.push(`**Notes:** ${api.notes}`);
+        lines.push('');
+      }
+    });
+    lines.push('---');
+    lines.push('');
+  }
+
+  // ── Agent Roster ──
+  const agents = getRosterAgents();
+  lines.push('## Agent Roster');
+  lines.push('');
+
+  if (agents.length) {
+    const rows = agents.map(a => [
+      a.id,
+      a.name ? a.name + ' Agent' : '',
+      a.phase !== undefined ? String(a.phase) : '',
+      a.role,
+      a.parallel ? 'Yes' : '—',
+    ]);
+    lines.push(mdTable(['ID', 'Agent', 'Phase', 'Role', 'Parallel'], rows));
+  } else {
+    lines.push('_No agents defined yet._');
+  }
+  lines.push('');
+  lines.push('---');
+  lines.push('');
+
+  // ── Dependency Graph ──
+  const phases = getPhases();
+  lines.push('## Dependency Graph');
+  lines.push('');
+  lines.push('```');
+  if (phases.length) {
+    phases.forEach((p, i) => {
+      const agentIds = (p.agents || '').split(',').map(s => s.trim()).filter(Boolean);
+      const ids = agentIds.map(id => `[${id}]`).join(' ');
+      const parallelNote = p.parallel ? '← run in parallel' : '← sequential';
+      const desc = p.desc ? `  (${p.desc})` : '';
+      const arrow = i < phases.length - 1 ? '\n          ↓' : '';
+      lines.push(`Phase ${p.num || i}:  ${ids.padEnd(28)} ${parallelNote}${desc}${arrow}`);
+    });
+  } else {
+    lines.push('Phase 0:  [A] [B]                    ← run first, in parallel');
+    lines.push('              ↓');
+    lines.push('Phase 1:  [C] [D] [E]                ← parallel after Phase 0');
+  }
+  lines.push('```');
+  lines.push('');
+  lines.push('---');
+  lines.push('');
+
+  // ── Agent Definitions ──
+  const defs = getAgentDefs();
+  lines.push('## Agent Definitions');
+  lines.push('');
+
+  if (defs.length) {
+    defs.forEach(d => {
+      const label = d.id ? `Agent ${d.id}` : 'Agent';
+      const nameStr = d.name || '';
+      const heading = nameStr ? `### ${label} — ${nameStr}` : `### ${label}`;
+      lines.push(heading);
+      lines.push('');
+      if (d.goal) {
+        lines.push(`**Goal:** ${d.goal}`);
+        lines.push('');
+      }
+      if (d.inputs) {
+        lines.push(`**Inputs:** ${d.inputs}`);
+        lines.push('');
+      }
+      if (d.produces) {
+        lines.push(`**Produces:** ${d.produces}`);
+        lines.push('');
+      }
+      if (d.prompt) {
+        lines.push('**Prompt (key excerpt):**');
+        d.prompt.split('\n').forEach(l => lines.push(`> ${l}`));
+        lines.push('');
+      }
+      if (d.verify) {
+        lines.push('**Verification gate:**');
+        lines.push('```bash');
+        lines.push(d.verify);
+        lines.push('```');
+        lines.push('');
+      }
+      lines.push('---');
+      lines.push('');
+    });
+  } else {
+    lines.push('_No agent definitions added yet._');
+    lines.push('');
+    lines.push('---');
+    lines.push('');
+  }
+
+  // ── Registered Tools ──
+  const regTools = getRegisteredTools();
+  const toolNote = val('toolRegistryNote');
+  if (regTools.length) {
+    lines.push('## Registered Tools');
+    lines.push('');
+    if (toolNote) {
+      lines.push(toolNote);
+      lines.push('');
+    }
+    const rows = regTools.map(t => [`\`${t.name}\``, t.desc]);
+    lines.push(mdTable(['Tool', 'Description'], rows));
+    lines.push('');
+    lines.push('---');
+    lines.push('');
+  }
+
+  // ── Critical Rules ──
+  const rules = getRules();
+  lines.push('## Critical Rules');
+  lines.push('');
+  if (rules.length) {
+    const rows = rules.map(r => [String(r.num), r.title, r.detail, r.impact]);
+    lines.push(mdTable(['#', 'Rule', 'Detail', 'Impact'], rows));
+  } else {
+    lines.push('_No rules defined yet._');
+  }
+  lines.push('');
+  lines.push('---');
+  lines.push('');
+
+  // ── Environment Variables ──
+  const envGroups = getEnvGroups();
+  lines.push('## Environment Variables');
+  lines.push('');
+  if (envGroups.length) {
+    envGroups.forEach(g => {
+      if (g.name) lines.push(`### ${g.name}`);
+      if (g.vars) {
+        lines.push('```bash');
+        g.vars.split('\n').forEach(l => lines.push(l));
+        lines.push('```');
+      }
+      lines.push('');
+    });
+  } else {
+    lines.push('_No environment variable groups defined yet._');
+    lines.push('');
+  }
+  lines.push('---');
+  lines.push('');
+
+  // ── Starting Order ──
+  const startOrder = val('startingOrder');
+  lines.push('## Starting Order');
+  lines.push('');
+  lines.push('```bash');
+  if (startOrder) {
+    startOrder.split('\n').forEach(l => lines.push(l));
+  } else {
+    lines.push('# 1. Add your startup commands here');
+  }
+  lines.push('```');
+  lines.push('');
+  lines.push('---');
+  lines.push('');
+
+  // ── Anti-Patterns ──
+  const antis = getAntiPatterns();
+  lines.push('## Anti-Patterns');
+  lines.push('');
+  if (antis.length) {
+    const rows = antis.map(a => [a.what, a.cons, a.correct]);
+    lines.push(mdTable(['What NOT to do', 'Consequence', 'Correct Approach'], rows));
+  } else {
+    lines.push('_No anti-patterns defined yet._');
+  }
+  lines.push('');
+  lines.push('---');
+  lines.push('');
+
+  // ── Verified Smoke Tests ──
+  const smokeTests = getSmokeTests();
+  lines.push('## Verified Smoke Tests');
+  lines.push('');
+  if (smokeTests.length) {
+    const hasToolCol = smokeTests.some(t => t.tool);
+    if (hasToolCol) {
+      const rows = smokeTests.map(t => [t.query, t.tool, t.result]);
+      lines.push(mdTable(['Query / Action', 'Tool Dispatched', 'Expected Result'], rows));
+    } else {
+      const rows = smokeTests.map(t => [t.query, t.result]);
+      lines.push(mdTable(['Query / Action', 'Expected Result'], rows));
+    }
+  } else {
+    lines.push('_No smoke tests defined yet._');
+  }
+  lines.push('');
+  lines.push('---');
+  lines.push('');
+
+  // ── File Structure ──
+  const fileStructure = val('fileStructure');
+  lines.push('## File Structure');
+  lines.push('');
+  lines.push('```');
+  if (fileStructure) {
+    fileStructure.split('\n').forEach(l => lines.push(l));
+  } else {
+    lines.push('project-root/');
+    lines.push('├── agents/');
+    lines.push('├── api/');
+    lines.push('├── utils/');
+    lines.push('└── bot.py');
+  }
+  lines.push('```');
+  lines.push('');
+  lines.push('---');
+  lines.push('');
+
+  // ── LLM Pipeline ──
+  const dispatchModel  = val('llmDispatchModel')  || 'claude-haiku-4-5';
+  const synthesisModel = val('llmSynthesisModel') || 'claude-opus-4-6';
+  const thinkingMode   = document.getElementById('llmThinking')   ? document.getElementById('llmThinking').value   : 'adaptive';
+  const streamingMode  = document.getElementById('llmStreaming')  ? document.getElementById('llmStreaming').value  : 'yes';
+  const compactionMode = document.getElementById('llmCompaction') ? document.getElementById('llmCompaction').value : 'enabled';
+
+  lines.push('## LLM Pipeline');
+  lines.push('');
+  lines.push('**Two-turn pattern — both bots:**');
+  lines.push('');
+  const thinkingStr  = thinkingMode === 'adaptive' ? '`thinking: {"type": "adaptive"}`' : 'off';
+  const streamingStr = streamingMode === 'yes' ? 'streaming — `.stream()` + `.get_final_message()`' : 'non-streaming';
+  lines.push(mdTable(
+    ['Turn', 'Model', 'Role', 'Config'],
+    [
+      ['1 — Dispatch',   '`' + dispatchModel  + '`', 'Pick the right tool',      '`tool_choice: {"type": "any"}` — forces a tool call, prevents hallucination'],
+      ['2 — Synthesis',  '`' + synthesisModel + '`', 'Read result, write answer', thinkingStr + ', ' + streamingStr],
+    ]
+  ));
+  lines.push('');
+  lines.push('### Compaction');
+  lines.push('');
+  if (compactionMode === 'enabled') {
+    lines.push('Enabled via `betas=["compact-2026-01-12"]` (Opus 4.6 only). Automatically summarises history when approaching 150K tokens.');
+    lines.push('');
+  } else {
+    lines.push('Disabled. Enable with `betas=["compact-2026-01-12"]` when conversations may exceed 200K tokens.');
+    lines.push('');
+  }
+  lines.push('> **CRITICAL — never lose the compaction block:**');
+  lines.push('> Always append `response.content` (the full array) to `messages` — never `response.content[0].text`.');
+  lines.push('> The compaction block lives inside `response.content` and is silently discarded if you extract only the text.');
+  lines.push('> The API uses it to reconstruct summarized history on the next request.');
+  lines.push('');
+  lines.push('```python');
+  lines.push('# ✅ CORRECT — preserves compaction block');
+  lines.push('messages.append({"role": "assistant", "content": response.content})');
+  lines.push('');
+  lines.push('# ❌ WRONG — silently drops compaction state; history lost on next turn');
+  lines.push('messages.append({"role": "assistant", "content": response.content[0].text})');
+  lines.push('');
+  lines.push('# Extract text for display separately (does not affect messages array)');
+  lines.push('answer = next((b.text for b in response.content if b.type == "text"), "")');
+  lines.push('```');
+  lines.push('');
+  lines.push('---');
+  lines.push('');
+
+  // ── Production Standards ──
+  const chk = id => { const el = document.getElementById(id); return el ? el.checked : true; };
+  const prodRetry      = chk('prodRetry');
+  const prodCircuit    = chk('prodCircuit');
+  const prodErrors     = chk('prodErrors');
+  const prodBulk       = chk('prodBulk');
+  const prodValidation = chk('prodValidation');
+  const prodCache      = chk('prodCache');
+  const prodLogging    = chk('prodLogging');
+  const prodAsync      = chk('prodAsync');
+  const prodSecurity   = chk('prodSecurity');
+  const prodObs        = chk('prodObs');
+
+  const prodRetryLib      = document.getElementById('prodRetryLib')    ? document.getElementById('prodRetryLib').value    : 'tenacity';
+  const prodRetryAttempts = val('prodRetryAttempts') || '3';
+  const prodRetryOn       = val('prodRetryOn')       || 'requests.Timeout, requests.ConnectionError';
+  const prodCbThreshold   = val('prodCbThreshold')   || '5';
+  const prodCbWindow      = val('prodCbWindow')       || '60';
+  const prodLogFormat     = document.getElementById('prodLogFormat')   ? document.getElementById('prodLogFormat').value   : 'json';
+  const prodLogFields     = val('prodLogFields')     || 'request_id, user_id, tool_name, duration_ms, error_code';
+  const prodBulkMethod    = document.getElementById('prodBulkMethod')  ? document.getElementById('prodBulkMethod').value  : 'bulk_insert_mappings';
+  const prodAntiPatterns  = val('prodAntiPatterns');
+
+  const anyProd = prodRetry || prodCircuit || prodErrors || prodBulk || prodValidation || prodCache || prodLogging || prodAsync || prodSecurity || prodObs;
+  if (anyProd) {
+    lines.push('## Production Standards');
+    lines.push('');
+    lines.push('> Rules in this section are non-negotiable during every Claude Code session. Each rule is specific, tied to a mechanism, and paired with its anti-pattern. Generic advice ("handle errors") is not a rule — the concrete version below is.');
+    lines.push('');
+
+    if (prodRetry) {
+      const retryLibLabels = { tenacity: 'tenacity', stamina: 'stamina', backoff: 'backoff', custom: 'custom' };
+      lines.push('### Retry & Resilience');
+      lines.push('');
+      lines.push('**Rule:** Every outbound HTTP call and every external-API call must be wrapped with retry logic — ' + prodRetryAttempts + ' attempts, exponential backoff, jitter. No bare `requests.post()` or `httpx.post()` without a retry wrapper.');
+      lines.push('');
+      lines.push('**Why:** A single transient network blip turns into a user-visible error without retry. The failure is invisible in logs and blamed on the service.');
+      lines.push('');
+      lines.push('**How:** Use `' + prodRetryLib + '`.');
+      lines.push('');
+      const retryExceptions = prodRetryOn.split(',').map(s => s.trim()).filter(Boolean);
+      lines.push('```python');
+      if (prodRetryLib === 'tenacity') {
+        lines.push('from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type');
+        lines.push('');
+        lines.push('@retry(');
+        lines.push('    stop=stop_after_attempt(' + prodRetryAttempts + '),');
+        lines.push('    wait=wait_exponential(multiplier=1, min=1, max=10),');
+        lines.push('    retry=retry_if_exception_type((' + retryExceptions.join(', ') + ')),');
+        lines.push('    reraise=True,');
+        lines.push(')');
+        lines.push('def call_external_api(...):');
+        lines.push('    return requests.post(...)');
+      } else if (prodRetryLib === 'backoff') {
+        lines.push('import backoff');
+        lines.push('');
+        lines.push('@backoff.on_exception(backoff.expo, (' + retryExceptions.join(', ') + '), max_tries=' + prodRetryAttempts + ')');
+        lines.push('def call_external_api(...):');
+        lines.push('    return requests.post(...)');
+      } else {
+        lines.push('# Custom exponential backoff');
+        lines.push('import time, random');
+        lines.push('def call_external_api(...):');
+        lines.push('    for attempt in range(' + prodRetryAttempts + '):');
+        lines.push('        try:');
+        lines.push('            return requests.post(...)');
+        lines.push('        except (' + retryExceptions.join(', ') + ') as e:');
+        lines.push('            if attempt == ' + (parseInt(prodRetryAttempts) - 1) + ': raise');
+        lines.push('            time.sleep((2 ** attempt) + random.uniform(0, 1))');
+      }
+      lines.push('```');
+      lines.push('');
+      lines.push('| ✅ Correct | ❌ Wrong |');
+      lines.push('|---|---|');
+      lines.push('| `@retry(stop=stop_after_attempt(' + prodRetryAttempts + '), ...)` on every HTTP call | Bare `requests.post(url, timeout=60)` — one failure = one user error |');
+      lines.push('');
+    }
+
+    if (prodCircuit) {
+      lines.push('### Circuit Breaker');
+      lines.push('');
+      lines.push('**Rule:** Any dependency that has failed ' + prodCbThreshold + ' times within ' + prodCbWindow + 's must trip a circuit breaker. Subsequent calls must fast-fail immediately with a `ServiceUnavailableError` instead of waiting for timeout.');
+      lines.push('');
+      lines.push('**Why:** Without a circuit breaker, a slow dependency causes thread/process exhaustion — every caller waits for the full timeout before failing. This turns a downstream outage into a complete application outage.');
+      lines.push('');
+      lines.push('**How:** Use `pybreaker` or implement a simple state-machine breaker.');
+      lines.push('');
+      lines.push('```python');
+      lines.push('import pybreaker');
+      lines.push('');
+      lines.push('mcp_breaker = pybreaker.CircuitBreaker(');
+      lines.push('    fail_max=' + prodCbThreshold + ',');
+      lines.push('    reset_timeout=' + prodCbWindow + ',');
+      lines.push(')');
+      lines.push('');
+      lines.push('@mcp_breaker');
+      lines.push('def call_mcp_tool(tool_name, arguments):');
+      lines.push('    return requests.post(MCP_URL, ...)');
+      lines.push('');
+      lines.push('# In event handler — return friendly message when open');
+      lines.push('try:');
+      lines.push('    result = call_mcp_tool(name, args)');
+      lines.push('except pybreaker.CircuitBreakerError:');
+      lines.push('    return "⚠️ Compliance system temporarily unavailable. Try again in ' + prodCbWindow + 's."');
+      lines.push('```');
+      lines.push('');
+      lines.push('| ✅ Correct | ❌ Wrong |');
+      lines.push('|---|---|');
+      lines.push('| Fast-fail after ' + prodCbThreshold + ' failures, friendly message | Waiting full 60s timeout on every call while service is down |');
+      lines.push('');
+    }
+
+    if (prodErrors) {
+      lines.push('### Error Handling');
+      lines.push('');
+      lines.push('**Rule:** Never catch bare `Exception`. Always catch the most specific exception type available. Each exception type maps to a different recovery action.');
+      lines.push('');
+      lines.push('**Why:** Bare `except Exception` makes `ConnectionError` (retry) indistinguishable from `ValueError` (bug) indistinguishable from `KeyboardInterrupt` (exit). All become "an error occurred."');
+      lines.push('');
+      lines.push('```python');
+      lines.push('# ✅ CORRECT — specific handlers with distinct recovery actions');
+      lines.push('try:');
+      lines.push('    result = call_external_api(...)');
+      lines.push('except (requests.Timeout, requests.ConnectionError) as e:');
+      lines.push('    # Transient — already retried by @retry; escalate to circuit breaker');
+      lines.push('    raise ServiceUnavailableError(f"Dependency timeout: {type(e).__name__}") from e');
+      lines.push('except requests.HTTPError as e:');
+      lines.push('    if e.response.status_code == 429:');
+      lines.push('        raise RateLimitError("Rate limited — back off") from e');
+      lines.push('    raise  # 4xx client errors are bugs — re-raise');
+      lines.push('except ValueError as e:');
+      lines.push('    # Input validation failure — log as WARNING, return 400');
+      lines.push('    logger.warning("Invalid input", extra={"error": str(e)})');
+      lines.push('    return {"error": "invalid_input", "message": str(e)}, 400');
+      lines.push('');
+      lines.push('# ❌ WRONG — masks every failure class');
+      lines.push('try:');
+      lines.push('    result = call_external_api(...)');
+      lines.push('except Exception as e:');
+      lines.push('    logger.error(f"Error: {e}")');
+      lines.push('    return f"Error: {str(e)}"  # exposes internal detail to caller');
+      lines.push('```');
+      lines.push('');
+      lines.push('**Anti-pattern:** Never return the raw `str(e)` to the caller — map exceptions to error codes. Internal exception messages often contain file paths, credentials, or schema details.');
+      lines.push('');
+    }
+
+    if (prodBulk) {
+      const bulkMethodLabels = {
+        bulk_insert_mappings: 'SQLAlchemy `bulk_insert_mappings()` / `bulk_update_mappings()`',
+        execute_many: 'psycopg2 `cursor.executemany()`',
+        copy_from: 'psycopg2 `copy_from()` / `copy_expert()` (fastest — COPY protocol)',
+        orm_batch: 'SQLAlchemy `session.add_all()` + single `session.commit()`',
+      };
+      lines.push('### Bulk Operations');
+      lines.push('');
+      lines.push('**Rule:** Never call a write method inside a `for` loop. Use ' + (bulkMethodLabels[prodBulkMethod] || prodBulkMethod) + '. A loop with N iterations must produce ≤ 2 database round-trips regardless of N.');
+      lines.push('');
+      lines.push('**Why:** Individual commits inside a loop produce N INSERTs + N COMMITs. At 1,000 records this is 2,000 round-trips (≈10s). With bulk operations it is ≤5 round-trips (≈50ms).');
+      lines.push('');
+      lines.push('```python');
+      if (prodBulkMethod === 'bulk_insert_mappings') {
+        lines.push('# ✅ CORRECT — 1 round-trip regardless of N');
+        lines.push('session.bulk_insert_mappings(Violation, [');
+        lines.push('    {"user_id": v["user_id"], "rule_id": v["rule_id"], ...}');
+        lines.push('    for v in violations_data');
+        lines.push('])');
+        lines.push('session.commit()  # single commit');
+        lines.push('');
+        lines.push('# ❌ WRONG — N INSERTs + N COMMITs');
+        lines.push('for v in violations_data:');
+        lines.push('    session.add(Violation(**v))');
+        lines.push('    session.commit()  # never commit inside a loop');
+      } else {
+        lines.push('# ✅ CORRECT');
+        lines.push('session.add_all([Violation(**v) for v in violations_data])');
+        lines.push('session.commit()  # single commit outside the loop');
+      }
+      lines.push('```');
+      lines.push('');
+    }
+
+    if (prodValidation) {
+      lines.push('### Input Validation');
+      lines.push('');
+      lines.push('**Rule:** Validate all inputs at system boundaries — tool handlers, API endpoints, Slack event payloads. Never validate inside repository or service methods (those are internal; trust them). Use Pydantic models at every boundary.');
+      lines.push('');
+      lines.push('**Why:** Validation inside repositories mixes concerns and runs too late — by then the value has traversed the call stack. Boundary validation fails fast with a clear error before any work is done.');
+      lines.push('');
+      lines.push('```python');
+      lines.push('# ✅ CORRECT — validate at the handler boundary');
+      lines.push('from pydantic import BaseModel, field_validator');
+      lines.push('');
+      lines.push('class ListUsersInput(BaseModel):');
+      lines.push('    system_name: str');
+      lines.push('    limit: int = 100');
+      lines.push('');
+      lines.push('    @field_validator("system_name")');
+      lines.push('    def system_must_exist(cls, v):');
+      lines.push('        if v not in ALLOWED_SYSTEMS:');
+      lines.push('            raise ValueError(f"Unknown system: {v}. Allowed: {ALLOWED_SYSTEMS}")');
+      lines.push('        return v');
+      lines.push('');
+      lines.push('    @field_validator("limit")');
+      lines.push('    def limit_in_range(cls, v):');
+      lines.push('        if not 1 <= v <= 500:');
+      lines.push('            raise ValueError("limit must be 1–500")');
+      lines.push('        return v');
+      lines.push('');
+      lines.push('async def list_all_users_handler(system_name="netsuite", limit=100):');
+      lines.push('    inp = ListUsersInput(system_name=system_name, limit=limit)  # raises immediately if invalid');
+      lines.push('    # ... rest of handler');
+      lines.push('```');
+      lines.push('');
+    }
+
+    if (prodCache) {
+      lines.push('### Cache Invalidation');
+      lines.push('');
+      lines.push('**Rule:** Every write method that mutates a cached resource must call its cache invalidation function *before* returning. TTL expiry is not a substitute for invalidation on write.');
+      lines.push('');
+      lines.push('**Why:** TTL-only invalidation means users see stale data for up to TTL duration after a write. For compliance data (violations, user roles) stale reads are a correctness bug, not just a performance concern.');
+      lines.push('');
+      lines.push('```python');
+      lines.push('# ✅ CORRECT — invalidate on write');
+      lines.push('def create_violation(self, violation_data):');
+      lines.push('    violation = Violation(**violation_data)');
+      lines.push('    self.session.add(violation)');
+      lines.push('    self.session.commit()');
+      lines.push('    cache_service.invalidate_user(violation_data["user_id"])  # ← bust cache immediately');
+      lines.push('    return violation');
+      lines.push('');
+      lines.push('# ❌ WRONG — user sees old violation count until TTL expires (up to 1h)');
+      lines.push('def create_violation(self, violation_data):');
+      lines.push('    violation = Violation(**violation_data)');
+      lines.push('    self.session.add(violation)');
+      lines.push('    self.session.commit()');
+      lines.push('    return violation  # cache not busted');
+      lines.push('```');
+      lines.push('');
+    }
+
+    if (prodLogging) {
+      const logLib = prodLogFormat === 'json' ? 'structlog / python-json-logger' : 'logging.basicConfig';
+      lines.push('### Structured Logging');
+      lines.push('');
+      lines.push('**Rule:** Every log statement must be ' + (prodLogFormat === 'json' ? 'JSON-formatted' : 'consistently formatted') + ' and include these fields: `' + prodLogFields + '`. Never use f-strings to build log messages — use keyword arguments so fields are machine-parseable.');
+      lines.push('');
+      lines.push('**Why:** Plain-text logs cannot be filtered, aggregated, or alerted on. A log entry without `request_id` cannot be correlated with a LangSmith trace. A log entry without `error_code` cannot be used to build an alert rule.');
+      lines.push('');
+      lines.push('```python');
+      if (prodLogFormat === 'json') {
+        lines.push('import structlog');
+        lines.push('log = structlog.get_logger()');
+        lines.push('');
+        lines.push('# ✅ CORRECT — structured, filterable, machine-readable');
+        lines.push('log.error("tool_call_failed",');
+        const fieldList = prodLogFields.split(',').map(f => f.trim()).filter(Boolean);
+        fieldList.slice(0, 4).forEach(f => lines.push('    ' + f.replace(/-/g,'_') + '="...",'));
+        lines.push(')');
+        lines.push('');
+        lines.push('# ❌ WRONG — unstructured, unsearchable');
+        lines.push('logger.error(f"Tool call failed for {user_id}: {error}")');
+      } else {
+        lines.push('import logging');
+        lines.push('logger = logging.getLogger(__name__)');
+        lines.push('');
+        lines.push('# ✅ CORRECT — extra dict makes fields indexable');
+        lines.push('logger.error("tool_call_failed", extra={');
+        lines.push('    "request_id": request_id,');
+        lines.push('    "user_id": user_id,');
+        lines.push('    "error_code": "MCP_TIMEOUT",');
+        lines.push('})');
+        lines.push('');
+        lines.push('# ❌ WRONG');
+        lines.push('logger.error(f"Tool call failed for {user_id}: {error}")');
+      }
+      lines.push('```');
+      lines.push('');
+    }
+
+    if (prodAsync) {
+      lines.push('### Async / Blocking Calls');
+      lines.push('');
+      lines.push('**Rule:** Never make a blocking HTTP call or database query directly in a Slack event handler, FastAPI endpoint, or any other async context. Offload to a thread pool executor or a task queue.');
+      lines.push('');
+      lines.push('**Why:** Async event loops are single-threaded. One blocking call (e.g. 60s HTTP timeout) freezes all other events queued behind it. Ten concurrent users each waiting 60s = all 10 users frozen.');
+      lines.push('');
+      lines.push('```python');
+      lines.push('import asyncio');
+      lines.push('from concurrent.futures import ThreadPoolExecutor');
+      lines.push('');
+      lines.push('_executor = ThreadPoolExecutor(max_workers=10)');
+      lines.push('');
+      lines.push('# ✅ CORRECT — blocking call runs in thread pool, event loop stays free');
+      lines.push('async def handle_slack_event(event, say):');
+      lines.push('    loop = asyncio.get_event_loop()');
+      lines.push('    result = await loop.run_in_executor(_executor, process_with_claude, event["text"])');
+      lines.push('    say(result)');
+      lines.push('');
+      lines.push('# ❌ WRONG — blocks the entire event loop for all users');
+      lines.push('def handle_slack_event(event, say):');
+      lines.push('    result = process_with_claude(event["text"])  # 60s blocking call');
+      lines.push('    say(result)');
+      lines.push('```');
+      lines.push('');
+    }
+
+    if (prodSecurity) {
+      lines.push('### Security');
+      lines.push('');
+      lines.push('**Rules (all non-negotiable):**');
+      lines.push('');
+      lines.push('- **Parameterized queries only.** Never build SQL with f-strings or `.format()`. Use SQLAlchemy `text()` with a `params` dict or ORM filters.');
+      lines.push('- **Secrets in environment variables only.** Never hardcode API keys, passwords, or tokens in source files. `.env` is gitignored — verify before every commit.');
+      lines.push('- **Rate limit every public endpoint.** Use `slowapi` or equivalent. No endpoint should accept unbounded request rates.');
+      lines.push('- **Validate `sensitivity` before returning chunks.** Every retrieval result must pass `sensitivity ∈ caller_clearance_levels` before reaching the LLM.');
+      lines.push('- **Sanitize filenames with `os.path.basename()`.** Any filename received from an external source must be sanitized before writing to disk.');
+      lines.push('');
+      lines.push('```python');
+      lines.push('# ✅ CORRECT — parameterized');
+      lines.push('stmt = text("SELECT * FROM users WHERE email = :email AND status = :status")');
+      lines.push('result = session.execute(stmt, {"email": email, "status": "ACTIVE"})');
+      lines.push('');
+      lines.push('# ❌ WRONG — SQL injection risk');
+      lines.push('result = session.execute(f"SELECT * FROM users WHERE email = \'{email}\'")');
+      lines.push('```');
+      lines.push('');
+    }
+
+    if (prodObs) {
+      lines.push('### Observability');
+      lines.push('');
+      lines.push('**Rule:** Every service must expose a `/health` endpoint that returns its own status AND the connectivity status of every dependency. Every tool call must emit a trace span. No silent failures — every caught exception must produce a log entry with `error_code`.');
+      lines.push('');
+      lines.push('**Minimum observability contract per service:**');
+      lines.push('');
+      lines.push('| Signal | Requirement | Anti-pattern |');
+      lines.push('|--------|-------------|--------------|');
+      lines.push('| Health | `GET /health` → `{status, dependencies: {db, redis, upstream}}` | No health endpoint |');
+      lines.push('| Traces | Every tool call wrapped with `@traceable` or OpenTelemetry span | Logs only |');
+      lines.push('| Metrics | Request count, error rate, p95 latency per tool | No metrics endpoint |');
+      lines.push('| Logs | Structured JSON, includes `request_id`, `error_code` | Plain f-string logs |');
+      lines.push('');
+      lines.push('```python');
+      lines.push('# ✅ CORRECT — health check includes all dependencies');
+      lines.push('@app.get("/health")');
+      lines.push('async def health():');
+      lines.push('    return {');
+      lines.push('        "status": "ok",');
+      lines.push('        "dependencies": {');
+      lines.push('            "postgres": check_db(),');
+      lines.push('            "redis":    check_redis(),');
+      lines.push('            "upstream": check_upstream_api(),');
+      lines.push('        }');
+      lines.push('    }');
+      lines.push('```');
+      lines.push('');
+    }
+
+    if (prodAntiPatterns) {
+      lines.push('### Project-Specific Anti-Patterns');
+      lines.push('');
+      lines.push('These are patterns specific to this codebase that have caused bugs or outages. Do not repeat them.');
+      lines.push('');
+      prodAntiPatterns.split('\n').filter(l => l.trim()).forEach(l => lines.push('- ' + l.trim()));
+      lines.push('');
+    }
+
+    lines.push('---');
+    lines.push('');
+  }
+
+  // ── Data Lineage ──
+  const dbtProject     = val('dbtProject');
+  const lineageBackend = document.getElementById('lineageBackend') ? document.getElementById('lineageBackend').value : 'marquez';
+  const lineageNs      = val('lineageNamespace');
+  const lineageUrl     = val('lineageUrl');
+  const lineageTags    = val('lineageTags');
+  const lineageDbtFresh  = document.getElementById('lineageDbtFreshness')   ? document.getElementById('lineageDbtFreshness').checked   : true;
+  const lineageSchema    = document.getElementById('lineageSchemaContracts') ? document.getElementById('lineageSchemaContracts').checked : false;
+  const lineageCol       = document.getElementById('lineageColumnLevel')     ? document.getElementById('lineageColumnLevel').checked     : false;
+  const lineageJobs      = document.getElementById('lineageJobRuns')         ? document.getElementById('lineageJobRuns').checked         : true;
+
+  lines.push('## Data Lineage');
+  lines.push('');
+  lines.push('Know where every input to your LLM came from. Every retrieved chunk must carry its originating table, column, and dbt transformation step so responses can be fully audited and stale data detected at retrieval time.');
+  lines.push('');
+  const lineageBackendLabels = { marquez: 'Marquez (open-source)', datahub: 'DataHub', atlas: 'Apache Atlas', custom: 'Custom HTTP', none: 'Log-only (no backend)' };
+  const lineageCfgRows = [];
+  if (dbtProject)    lineageCfgRows.push(['dbt project',          '`' + dbtProject + '`']);
+  lineageCfgRows.push(['OpenLineage backend', lineageBackendLabels[lineageBackend] || lineageBackend]);
+  if (lineageNs)     lineageCfgRows.push(['Namespace',            '`' + lineageNs + '`']);
+  if (lineageUrl && lineageBackend !== 'none') lineageCfgRows.push(['Endpoint', '`' + lineageUrl + '`']);
+  if (lineageTags)   lineageCfgRows.push(['LLM input tags per chunk', '`' + lineageTags + '`']);
+  lines.push(mdTable(['Setting', 'Value'], lineageCfgRows));
+  lines.push('');
+  const lineageFlags = [];
+  if (lineageDbtFresh) lineageFlags.push('`dbt source freshness` checks — fail the pipeline if any source is stale');
+  if (lineageSchema)   lineageFlags.push('`dbt schema contracts` — column types and descriptions enforced at build time');
+  if (lineageCol)      lineageFlags.push('Column-level lineage — trace exactly which columns feed each LLM prompt');
+  if (lineageJobs)     lineageFlags.push('OpenLineage `RunEvent` emitted on every pipeline start / complete / fail');
+  if (lineageFlags.length > 0) {
+    lines.push('**Enabled:**');
+    lines.push('');
+    lineageFlags.forEach(f => lines.push('- ' + f));
+    lines.push('');
+  }
+  lines.push('> **Rule:** Never pass a chunk to the LLM without attaching its lineage metadata.');
+  lines.push('> A chunk without `source` or `ingested_at` is unauditable — treat it as untrusted and exclude it at retrieval time.');
+  lines.push('');
+  lines.push('---');
+  lines.push('');
+
+  // ── Chunking Strategy ──
+  const chunkStrategy  = document.getElementById('chunkStrategy')  ? document.getElementById('chunkStrategy').value  : 'recursive';
+  const chunkSize      = val('chunkSize')   || '512';
+  const chunkOverlap   = val('chunkOverlap') || '64';
+  const chunkEmbModel  = val('chunkEmbModel');
+  const chunkDocTypes  = val('chunkDocTypes');
+  const chunkRetrieval = document.getElementById('chunkRetrieval') ? document.getElementById('chunkRetrieval').value : 'cosine';
+
+  const chunkStrategyLabels = {
+    recursive: 'Recursive character (LangChain default) — splits on paragraph → sentence → word boundaries',
+    markdown:  'Markdown-aware — uses header hierarchy (H1 > H2 > H3) as primary split boundary',
+    semantic:  'Semantic — computes embedding similarity between adjacent sentences; splits where similarity drops',
+    sentence:  'Sentence-level (NLTK / spaCy) — linguistically-aware; best for dense analytical prose',
+    fixed:     'Fixed-size — simple and fast; use only when document structure is irrelevant',
+    agentic:   'Agentic / LLM-based — Claude identifies logical sections; highest quality, highest cost',
+  };
+  const chunkRetrievalLabels = {
+    cosine:  'Cosine similarity with ANN index (IVFFLAT for pgvector, HNSW for high recall)',
+    hybrid:  'Hybrid — cosine + BM25 sparse retrieval combined with Reciprocal Rank Fusion (RRF)',
+    mmr:     'Maximum Marginal Relevance (MMR) — penalises near-duplicate chunks to maximise diversity',
+    rerank:  'Two-stage — ANN first pass (top-50) → cross-encoder reranker selects final top-k',
+  };
+
+  lines.push('## Chunking Strategy');
+  lines.push('');
+  lines.push('> **Rule:** Chunking strategy affects retrieval precision more than model quality. A wrong chunk size returns irrelevant context; even the best LLM cannot recover from bad retrieval.');
+  lines.push('');
+  const chunkOverlapPct = Math.round((parseInt(chunkOverlap) || 64) / (parseInt(chunkSize) || 512) * 100);
+  const chunkTableRows = [
+    ['Strategy',      chunkStrategyLabels[chunkStrategy] || chunkStrategy],
+    ['Chunk size',    chunkSize + ' tokens'],
+    ['Overlap',       chunkOverlap + ' tokens (' + chunkOverlapPct + '% of chunk)'],
+    ['Retrieval',     chunkRetrievalLabels[chunkRetrieval] || chunkRetrieval],
+  ];
+  if (chunkEmbModel) chunkTableRows.splice(3, 0, ['Embedding model', '`' + chunkEmbModel + '`']);
+  lines.push(mdTable(['Parameter', 'Value'], chunkTableRows));
+  lines.push('');
+  if (chunkDocTypes) {
+    lines.push('**Per-document-type overrides:**');
+    lines.push('');
+    chunkDocTypes.split('\n').filter(l => l.trim()).forEach(l => lines.push('- ' + l.trim()));
+    lines.push('');
+  }
+  lines.push('**Rules:**');
+  lines.push('');
+  lines.push('- Never split mid-sentence — use sentence-aware splitters or set overlap ≥ 10% of chunk size');
+  lines.push('- Structured documents (JSON, tables) — serialize to human-readable text first or store whole');
+  lines.push('- Re-chunk whenever the embedding model changes — vectors are model-specific and non-transferable');
+  lines.push('- Test retrieval precision with at least 20 representative queries before going live');
+  lines.push('- Store `chunk_index` and `doc_id` so you can reconstruct the parent document on demand');
+  lines.push('');
+  lines.push('---');
+  lines.push('');
+
+  // ── Retrieval Pipeline ──
+  const retrievalVS      = document.getElementById('retrievalVectorStore') ? document.getElementById('retrievalVectorStore').value : 'pgvector';
+  const retrievalHybrid  = document.getElementById('retrievalHybrid')      ? document.getElementById('retrievalHybrid').value      : 'none';
+  const retrievalRerank  = document.getElementById('retrievalRerank')      ? document.getElementById('retrievalRerank').value      : 'none';
+  const retrievalTopK    = val('retrievalTopK')   || '50';
+  const retrievalFinalK  = val('retrievalFinalK') || '5';
+
+  const vsLabels = {
+    pgvector:   'pgvector (PostgreSQL extension)',
+    pinecone:   'Pinecone (managed, serverless)',
+    weaviate:   'Weaviate (open-source, native hybrid)',
+    qdrant:     'Qdrant (open-source, payload filtering)',
+    chroma:     'Chroma (lightweight, local-first)',
+    opensearch: 'OpenSearch (kNN + full-text)',
+  };
+  const hybridLabels = {
+    none:     'Dense only (cosine / dot-product ANN)',
+    rrf:      'Dense + BM25 → Reciprocal Rank Fusion (RRF)',
+    weighted: 'Dense + BM25 → weighted linear combination',
+    native:   'Native hybrid (built into vector store)',
+  };
+  const rerankLabels = {
+    none:         'None — top-k from retrieval sent directly to LLM',
+    cohere:       'Cohere Rerank API (`rerank-english-v3.0`)',
+    'cross-encoder': 'Local cross-encoder (ms-marco-MiniLM / BAAI/bge-reranker)',
+    llm:          'LLM-as-reranker (Claude scores each candidate for relevance)',
+  };
+
+  const vsNotes = {
+    pgvector:   'Runs inside your existing Postgres instance — no new infra. Use `IVFFLAT` for recall up to ~1M vectors, `HNSW` beyond that. Payload filtering applies before ANN (not post-filter).',
+    pinecone:   'Fully managed; zero ops overhead. Hybrid search requires Pinecone sparse-dense index. Best for teams that want production SLAs without operating a vector DB.',
+    weaviate:   'Open-source with native BM25+vector hybrid and GraphQL API. Runs on-prem or cloud. Built-in cross-encoder reranking module available.',
+    qdrant:     'Open-source; strong payload filtering that runs before the ANN scan (not post-filter). Good for compliance use cases where access-control metadata must gate every result.',
+    chroma:     'Lightweight Python-native store; ideal for development and prototyping. Not recommended for production workloads >1M vectors.',
+    opensearch: 'Combines kNN vector search with full-text BM25 in a single index. Strong choice if you already run an OpenSearch / Elasticsearch cluster.',
+  };
+
+  lines.push('## Retrieval Pipeline');
+  lines.push('');
+  lines.push(mdTable(
+    ['Component', 'Choice', 'Notes'],
+    [
+      ['Vector store',   vsLabels[retrievalVS]       || retrievalVS,      vsNotes[retrievalVS] || ''],
+      ['Hybrid search',  hybridLabels[retrievalHybrid] || retrievalHybrid, retrievalHybrid === 'none' ? 'Add BM25 if keyword precision matters (product codes, IDs, proper nouns)' : 'RRF is model-free and robust; weighted requires calibrating α per domain'],
+      ['Re-ranking',     rerankLabels[retrievalRerank] || retrievalRerank,  retrievalRerank === 'none' ? 'Consider adding reranking if top-k recall is high but precision is low' : 'Re-rank the top-' + retrievalTopK + ' candidates; pass only top-' + retrievalFinalK + ' to the LLM'],
+    ]
+  ));
+  lines.push('');
+  lines.push('**Retrieval parameters:**');
+  lines.push('');
+  lines.push('| Parameter | Value | Rationale |');
+  lines.push('|-----------|-------|-----------|');
+  lines.push('| First-pass top-k | ' + retrievalTopK + ' | Wide net for recall; filtered before LLM sees anything |');
+  lines.push('| Final top-k | ' + retrievalFinalK + ' | Sent to LLM context window; ' + (retrievalRerank !== 'none' ? 'reranker selects the most relevant ' + retrievalFinalK : 'direct from ANN ranking') + ' |');
+  lines.push('| Metadata pre-filter | Applied before ANN | Never skip — post-filtering silently reduces effective k |');
+  lines.push('');
+  lines.push('**Rules:**');
+  lines.push('');
+  lines.push('- Always apply metadata filters (sensitivity, freshness) *before* the ANN scan, not after — post-filtering silently reduces your effective k and degrades recall unpredictably');
+  if (retrievalHybrid !== 'none') {
+    lines.push('- Hybrid search: tune the dense/sparse weight ratio (α) per document type; prose benefits from higher α (dense), IDs/codes benefit from lower α (sparse)');
+  }
+  if (retrievalRerank !== 'none') {
+    lines.push('- Re-ranking adds latency; cache reranked results by query hash when the underlying data is stable');
+    lines.push('- Monitor reranker score distributions — a flat distribution means the ranker adds no signal for that query type');
+  }
+  lines.push('- Evaluate with NDCG@5 or MRR against a golden query set before and after any retrieval change');
+  lines.push('- Log every retrieval (query, top-k chunk IDs, scores, final k) — this is your primary debugging surface for RAG hallucinations');
+  lines.push('');
+  lines.push('---');
+  lines.push('');
+
+  // ── Chunk Metadata Schema ──
+  const metaSource      = val('metaSource')      || 'source';
+  const metaSourceDesc  = val('metaSourceDesc');
+  const metaTimestamp   = val('metaTimestamp')   || 'ingested_at';
+  const metaTTL         = val('metaTTL')         || '24';
+  const metaOwner       = val('metaOwner')       || 'owner';
+  const metaOwnerType   = document.getElementById('metaOwnerType') ? document.getElementById('metaOwnerType').value : 'team';
+  const metaSensitivity = val('metaSensitivity') || 'sensitivity';
+  const metaLevels      = val('metaSensitivityLevels') || 'public, internal, confidential, restricted';
+  const metaExtra       = val('metaExtra');
+  const metaOwnerLabels = { team: 'Team name (e.g. `finance`, `security`)', email: 'Email address', system: 'Source system name', user_id: 'User ID' };
+  const metaHighestSensitivity = metaLevels.split(',').slice(-1)[0].trim() || 'restricted';
+  const metaSystemName  = val('systemName') || 'your-system';
+
+  lines.push('## Chunk Metadata Schema');
+  lines.push('');
+  lines.push('Every chunk stored in the vector store must carry these four minimum fields. Missing any one makes the chunk unauditable, unfilterable, or unprotectable.');
+  lines.push('');
+  lines.push('### Required Fields');
+  lines.push('');
+  lines.push(mdTable(
+    ['Field', 'Category', 'Type / Values', 'Purpose'],
+    [
+      ['`' + metaSource + '`',      'Source',      (metaSourceDesc || 'System or dataset this chunk originated from'),   'Enables source-filtered retrieval and response attribution'],
+      ['`' + metaTimestamp + '`',   'Timestamp',   'ISO-8601 UTC — when the source data was snapshotted',               'Freshness gate: exclude chunks older than ' + metaTTL + 'h'],
+      ['`' + metaOwner + '`',       'Owner',       metaOwnerLabels[metaOwnerType] || metaOwnerType,                      'Access control and data stewardship accountability'],
+      ['`' + metaSensitivity + '`', 'Sensitivity', 'Enum: ' + metaLevels,                                               'Gate retrieval by caller clearance; never return `' + metaHighestSensitivity + '` to unauthenticated callers'],
+    ]
+  ));
+  lines.push('');
+  if (metaExtra) {
+    lines.push('### Recommended Additional Fields');
+    lines.push('');
+    metaExtra.split('\n').filter(l => l.trim()).forEach(l => {
+      const parts = l.split('—').map(s => s.trim());
+      lines.push('- **`' + parts[0] + '`** — ' + (parts[1] || ''));
+    });
+    lines.push('');
+  }
+  lines.push('### Rules');
+  lines.push('');
+  lines.push('- `' + metaSource + '` must be a stable logical identifier — not a file path (paths change on rename)');
+  lines.push('- `' + metaTimestamp + '` must reflect when the *source data* was snapshotted, not when the embedding was created');
+  lines.push('- `' + metaSensitivity + '` must be set at ingest time; default to `' + metaHighestSensitivity + '` if classification is unknown');
+  lines.push('- Exclude any chunk at retrieval time where `' + metaTimestamp + '` is older than ' + metaTTL + 'h — stale context causes hallucinated "current state" answers');
+  lines.push('- Store metadata in the same vector store record as the embedding (not in a separate lookup table) to avoid join latency at query time');
+  lines.push('');
+  lines.push('```python');
+  lines.push('# Minimum valid chunk record');
+  lines.push('chunk = {');
+  lines.push('    "content":          "...",');
+  lines.push('    "embedding":        [...],   # model: ' + (chunkEmbModel || '<embedding-model>'));
+  lines.push('    "' + metaSource      + '":         "' + metaSystemName + ':table_name",');
+  lines.push('    "' + metaTimestamp   + '":    "2026-03-09T00:00:00Z",  # source snapshot time, not embed time');
+  lines.push('    "' + metaOwner       + '":          "' + (metaOwnerType === 'team' ? 'finance' : metaOwnerType === 'email' ? 'owner@example.com' : metaSystemName) + '",');
+  lines.push('    "' + metaSensitivity + '": "internal",');
+  lines.push('}');
+  lines.push('');
+  lines.push('# Retrieval — apply metadata filters before ranking');
+  lines.push('results = vector_store.similarity_search(');
+  lines.push('    query_embedding,');
+  lines.push('    filter={');
+  lines.push('        "' + metaSensitivity + '": {"$in": caller_clearance_levels},');
+  lines.push('        "' + metaTimestamp   + '": {"$gte": (datetime.utcnow() - timedelta(hours=' + metaTTL + ')).isoformat()},');
+  lines.push('    },');
+  lines.push('    k=10,');
+  lines.push(')');
+  lines.push('```');
+  lines.push('');
+  lines.push('---');
+  lines.push('');
+
+  // ── Version History ──
+  lines.push('## Version History');
+  lines.push('');
+  lines.push(mdTable(
+    ['Version', 'Date', 'Author', 'Change'],
+    [[version, docDate, author, 'Initial version']]
+  ));
+  lines.push('');
+
+  document.getElementById('outputArea').value = lines.join('\n');
+}
+
+// ─────────────────────────────────────────────────────
+// Copy / Download
+// ─────────────────────────────────────────────────────
+function copyOutput() {
+  const ta = document.getElementById('outputArea');
+  ta.select();
+  ta.setSelectionRange(0, 99999);
+  try {
+    navigator.clipboard.writeText(ta.value).catch(() => document.execCommand('copy'));
+  } catch(e) {
+    document.execCommand('copy');
+  }
+  const fb = document.getElementById('copyFeedback');
+  fb.classList.add('show');
+  setTimeout(() => fb.classList.remove('show'), 2000);
+}
+
+function downloadFile() {
+  const content = document.getElementById('outputArea').value;
+  const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'CLAUDE_MULTI_AGENT.md';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ─────────────────────────────────────────────────────
+// Init — seed all sections with defaults
+// ─────────────────────────────────────────────────────
+function init() {
+  // Pre-fill Section 1
+  document.getElementById('systemName').value   = 'Workday People Analytics Agent';
+  document.getElementById('systemDesc').value   = 'Answers headcount and geography queries via Slack using live Workday RAAS data';
+  document.getElementById('systemGlance').value = 'Calls the Workday RAAS API to answer people-analytics queries (headcount, geography breakdowns, employee vs contingent worker splits) via a Slack bot. Claude Haiku dispatches tool calls on the first turn; Claude Opus synthesizes the final answer with adaptive thinking on the second turn.';
+  document.getElementById('techStack').value    = 'Python 3.9, FastAPI, Slack Bolt (Socket Mode), Claude Haiku 4.5 + Claude Opus 4.6, httpx';
+  document.getElementById('version').value      = '1.0.0';
+  document.getElementById('author').value       = 'Your Name';
+  document.getElementById('docDate').value      = new Date().toISOString().slice(0, 10);
+
+  // Pre-fill Section 2
+  document.getElementById('dataFlow').value = [
+    'Slack DM / Channel Mention  →  Slack Bot (Socket Mode)',
+    'Slack Bot                   →  Claude Haiku 4.5 (tool-dispatch turn)',
+    'Claude Haiku                →  API Tool Call (POST /tools/call)',
+    'FastAPI :8081               →  Workday RAAS (basic auth, single HTTP request)',
+    'Tool Result                 →  Claude Opus 4.6 (synthesis turn, adaptive thinking)',
+    'Claude Opus                 →  Slack Response (≤ 2000 chars)',
+  ].join('\n');
+
+  // Section 3 — Roster
+  rosterDefaults.forEach(d => addRosterAgent(d));
+
+  // Section 4 — Phases
+  phaseDefaults.forEach(d => addPhase(d));
+
+  // Section 5 — Agent Definitions
+  agentDefDefaults.forEach(d => addAgentDef(d));
+
+  // Section 6 — Rules
+  ruleDefaults.forEach(d => addRule(d));
+
+  // Section 7 — Env vars
+  envDefaults.forEach(d => addEnvGroup(d));
+
+  // Section 8 — Anti-patterns
+  antiDefaults.forEach(d => addAntiPattern(d));
+
+  // Section 9 — Starting order
+  document.getElementById('startingOrder').value = [
+    '# 0. Validate environment',
+    'python3 agents/environment_setup.py',
+    '',
+    '# 1. Start API server (background)',
+    'python3 -m uvicorn api.server:app --host 0.0.0.0 --port 8081 > /tmp/api.log 2>&1 &',
+    '',
+    '# 2. Verify health',
+    'curl -s http://localhost:8081/health   # → {"status":"ok"}',
+    '',
+    '# 3. Start Slack bot (foreground)',
+    'python3 bot.py',
+    '',
+    '# Or all at once:',
+    './start.sh',
+  ].join('\n');
+
+  // Section 10 — External APIs
+  externalApiDefaults.forEach(d => addExternalApi(d));
+
+  // Section 11 — Registered Tools
+  document.getElementById('toolRegistryNote').value = 'Every tool must be @register\'d in utils/tool_router.py or Claude will never see it.';
+  registeredToolDefaults.forEach(d => addRegisteredTool(d));
+
+  // Section 12 — Smoke tests
+  smokeTestDefaults.forEach(d => addSmokeTest(d));
+
+  // Section 11 — File structure
+  document.getElementById('fileStructure').value = [
+    'workday-agent/',
+    '├── agents/',
+    '│   ├── data_collector.py      # Agent A — Workday RAAS tools',
+    '│   └── environment_setup.py   # Agent B — env validation',
+    '├── api/',
+    '│   └── server.py              # Agent C — FastAPI :8081',
+    '├── mcp/',
+    '│   └── mcp_server.py          # JSON-RPC STDIO bridge (optional)',
+    '├── utils/',
+    '│   └── tool_router.py         # Tool registry (must register all tools here)',
+    '├── bot.py                     # Slack bot + two-turn Claude pipeline',
+    '├── start.sh                   # Ordered startup script',
+    '├── requirements.txt',
+    '├── .env                       # Local credentials (gitignored)',
+    '├── .env.example               # Template for new developers',
+    '└── .gitignore',
+  ].join('\n');
+
+  generate();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

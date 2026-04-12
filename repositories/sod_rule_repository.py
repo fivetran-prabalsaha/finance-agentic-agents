@@ -5,10 +5,10 @@ Handles all database operations for SODRule model
 """
 
 import logging
-from typing import List, Optional, Dict, Any
 from datetime import datetime
+from typing import Any
+
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
 
 from models.database import SODRule, ViolationSeverity
 
@@ -27,7 +27,7 @@ class SODRuleRepository:
         """
         self.session = session
 
-    def create_rule(self, rule_data: Dict[str, Any]) -> SODRule:
+    def create_rule(self, rule_data: dict[str, Any]) -> SODRule:
         """
         Create a new SOD rule
 
@@ -54,7 +54,7 @@ class SODRuleRepository:
         logger.info(f"Created SOD rule: {rule.rule_name}")
         return rule
 
-    def get_rule_by_id(self, rule_id: str) -> Optional[SODRule]:
+    def get_rule_by_id(self, rule_id: str) -> SODRule | None:
         """
         Get rule by rule_id (string identifier like "SOD-FIN-001")
 
@@ -66,7 +66,7 @@ class SODRuleRepository:
         """
         return self.session.query(SODRule).filter(SODRule.rule_id == rule_id).first()
 
-    def get_rule_by_uuid(self, uuid: str) -> Optional[SODRule]:
+    def get_rule_by_uuid(self, uuid: str) -> SODRule | None:
         """
         Get rule by UUID (database ID)
 
@@ -78,7 +78,7 @@ class SODRuleRepository:
         """
         return self.session.query(SODRule).filter(SODRule.id == uuid).first()
 
-    def get_all_rules(self, active_only: bool = True) -> List[SODRule]:
+    def get_all_rules(self, active_only: bool = True) -> list[SODRule]:
         """
         Get all SOD rules
 
@@ -91,11 +91,11 @@ class SODRuleRepository:
         query = self.session.query(SODRule)
 
         if active_only:
-            query = query.filter(SODRule.is_active == True)
+            query = query.filter(SODRule.is_active)
 
         return query.order_by(SODRule.rule_id).all()
 
-    def upsert_rule(self, rule_data: Dict[str, Any]) -> SODRule:
+    def upsert_rule(self, rule_data: dict[str, Any]) -> SODRule:
         """
         Create or update an SOD rule
 
@@ -126,7 +126,7 @@ class SODRuleRepository:
             # Create new rule
             return self.create_rule(rule_data)
 
-    def bulk_upsert_rules(self, rules_data: List[Dict[str, Any]]) -> int:
+    def bulk_upsert_rules(self, rules_data: list[dict[str, Any]]) -> int:
         """
         Bulk upsert SOD rules
 
@@ -148,7 +148,7 @@ class SODRuleRepository:
         logger.info(f"Bulk upserted {count}/{len(rules_data)} SOD rules")
         return count
 
-    def get_rules_by_category(self, category: str) -> List[SODRule]:
+    def get_rules_by_category(self, category: str) -> list[SODRule]:
         """
         Get all rules in a specific category
 
@@ -161,12 +161,12 @@ class SODRuleRepository:
         return (
             self.session.query(SODRule)
             .filter(SODRule.category == category)
-            .filter(SODRule.is_active == True)
+            .filter(SODRule.is_active)
             .order_by(SODRule.rule_id)
             .all()
         )
 
-    def get_rules_by_severity(self, severity: ViolationSeverity) -> List[SODRule]:
+    def get_rules_by_severity(self, severity: ViolationSeverity) -> list[SODRule]:
         """
         Get all rules with specific severity
 
@@ -179,12 +179,12 @@ class SODRuleRepository:
         return (
             self.session.query(SODRule)
             .filter(SODRule.severity == severity)
-            .filter(SODRule.is_active == True)
+            .filter(SODRule.is_active)
             .order_by(SODRule.rule_id)
             .all()
         )
 
-    def deactivate_rule(self, rule_id: str) -> Optional[SODRule]:
+    def deactivate_rule(self, rule_id: str) -> SODRule | None:
         """
         Deactivate a rule
 
@@ -209,7 +209,7 @@ class SODRuleRepository:
         logger.info(f"Deactivated SOD rule: {rule_id}")
         return rule
 
-    def activate_rule(self, rule_id: str) -> Optional[SODRule]:
+    def activate_rule(self, rule_id: str) -> SODRule | None:
         """
         Activate a rule
 

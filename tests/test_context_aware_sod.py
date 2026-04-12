@@ -13,12 +13,13 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 os.environ['DATABASE_URL'] = 'postgresql://compliance_user:compliance_pass@localhost:5432/compliance_db'
 
-from models.database_config import DatabaseConfig
-from repositories.user_repository import UserRepository
-from repositories.role_repository import RoleRepository
-from repositories.violation_repository import ViolationRepository
-from repositories.sod_rule_repository import SODRuleRepository
 from agents.analyzer import create_analyzer
+from models.database_config import DatabaseConfig
+from repositories.role_repository import RoleRepository
+from repositories.sod_rule_repository import SODRuleRepository
+from repositories.user_repository import UserRepository
+from repositories.violation_repository import ViolationRepository
+
 
 def main():
     print("="*80)
@@ -42,11 +43,11 @@ def main():
         sod_rule_repo=sod_rule_repo
     )
 
-    print(f"\n✅ Analyzer initialized")
+    print("\n✅ Analyzer initialized")
     print(f"   SOD Rules: {len(analyzer.sod_rules)}")
 
     # Get Prabal Saha
-    print(f"\n📊 Fetching user: Prabal Saha")
+    print("\n📊 Fetching user: Prabal Saha")
     prabal = user_repo.get_user_by_email('prabal.saha@fivetran.com')
 
     if not prabal:
@@ -65,18 +66,18 @@ def main():
     print(f"   Roles ({len(role_names)}): {', '.join(role_names)}")
 
     # Test 1: Check if user is identified as IT/Systems
-    print(f"\n🔍 Test 1: Is user identified as IT/Systems?")
+    print("\n🔍 Test 1: Is user identified as IT/Systems?")
     is_it_user = analyzer._is_it_systems_user(prabal)
     print(f"   Result: {is_it_user}")
 
     if is_it_user:
-        print(f"   ✅ PASS: User correctly identified as IT/Systems")
+        print("   ✅ PASS: User correctly identified as IT/Systems")
     else:
-        print(f"   ❌ FAIL: User should be identified as IT/Systems")
+        print("   ❌ FAIL: User should be identified as IT/Systems")
         print(f"   Reason: job_function='{prabal.job_function}', department='{prabal.department}'")
 
     # Test 2: Count financial rules
-    print(f"\n🔍 Test 2: How many financial rules exist?")
+    print("\n🔍 Test 2: How many financial rules exist?")
     financial_rules = [r for r in analyzer.sod_rules if analyzer._is_financial_rule(r)]
     print(f"   Total SOD Rules: {len(analyzer.sod_rules)}")
     print(f"   Financial Rules: {len(financial_rules)}")
@@ -86,22 +87,22 @@ def main():
 
     violations = analyzer._analyze_user(prabal, scan_id=None)
 
-    print(f"\n📊 Analysis Results:")
+    print("\n📊 Analysis Results:")
     print(f"   Violations Detected: {len(violations)}")
 
     if violations:
-        print(f"\n🚨 Violations Found:")
+        print("\n🚨 Violations Found:")
         for i, v in enumerate(violations[:5], 1):
             print(f"\n   {i}. {v['title']}")
             print(f"      Rule Type: {v.get('rule_type', 'Unknown')}")
             print(f"      Severity: {v['severity']}")
             print(f"      Risk: {v['risk_score']}/100")
     else:
-        print(f"\n✅ No violations detected")
-        print(f"   💡 IT/Systems user correctly exempted from financial SOD rules")
+        print("\n✅ No violations detected")
+        print("   💡 IT/Systems user correctly exempted from financial SOD rules")
 
     # Test 4: Check a non-IT user for comparison
-    print(f"\n🔍 Test 4: Comparing with Robin Turner (Finance user)...")
+    print("\n🔍 Test 4: Comparing with Robin Turner (Finance user)...")
     robin = user_repo.get_user_by_email('robin.turner@fivetran.com')
 
     if robin:
@@ -116,44 +117,44 @@ def main():
         print(f"   Violations: {len(robin_violations)}")
 
         if robin_violations:
-            print(f"   🚨 Robin Turner correctly flagged with violations")
+            print("   🚨 Robin Turner correctly flagged with violations")
         else:
-            print(f"   ⚠️  Robin Turner has no violations (unexpected)")
+            print("   ⚠️  Robin Turner has no violations (unexpected)")
 
     # Summary
-    print(f"\n" + "="*80)
-    print(f"  TEST SUMMARY")
-    print(f"="*80)
+    print("\n" + "="*80)
+    print("  TEST SUMMARY")
+    print("="*80)
 
     tests_passed = 0
     tests_total = 3
 
     if is_it_user:
         tests_passed += 1
-        print(f"✅ Test 1: IT/Systems user identification - PASS")
+        print("✅ Test 1: IT/Systems user identification - PASS")
     else:
-        print(f"❌ Test 1: IT/Systems user identification - FAIL")
+        print("❌ Test 1: IT/Systems user identification - FAIL")
 
     if financial_rules:
         tests_passed += 1
         print(f"✅ Test 2: Financial rules loaded - PASS ({len(financial_rules)} rules)")
     else:
-        print(f"❌ Test 2: Financial rules loaded - FAIL")
+        print("❌ Test 2: Financial rules loaded - FAIL")
 
     if len(violations) == 0 and is_it_user:
         tests_passed += 1
-        print(f"✅ Test 3: Context-aware exemption - PASS (no violations for IT user)")
+        print("✅ Test 3: Context-aware exemption - PASS (no violations for IT user)")
     elif len(violations) > 0 and is_it_user:
         print(f"❌ Test 3: Context-aware exemption - FAIL (IT user still has {len(violations)} violations)")
     else:
-        print(f"⚠️  Test 3: Context-aware exemption - INCONCLUSIVE")
+        print("⚠️  Test 3: Context-aware exemption - INCONCLUSIVE")
 
     print(f"\n📊 Tests Passed: {tests_passed}/{tests_total}")
 
     if tests_passed == tests_total:
-        print(f"🎉 ALL TESTS PASSED - Context-aware SOD analysis is working!")
+        print("🎉 ALL TESTS PASSED - Context-aware SOD analysis is working!")
     else:
-        print(f"⚠️  SOME TESTS FAILED - Review the output above")
+        print("⚠️  SOME TESTS FAILED - Review the output above")
 
     session.close()
     print("\n" + "="*80)

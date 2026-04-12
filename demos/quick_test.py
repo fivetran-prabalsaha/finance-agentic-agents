@@ -6,6 +6,7 @@ Run this to verify the agent is working correctly
 
 import os
 import sys
+
 from dotenv import load_dotenv
 
 # Add parent directory to path

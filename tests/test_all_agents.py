@@ -19,18 +19,19 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 os.environ['DATABASE_URL'] = 'postgresql://compliance_user:compliance_pass@localhost:5432/compliance_db'
 
-from models.database_config import DatabaseConfig
-from repositories.user_repository import UserRepository
-from repositories.role_repository import RoleRepository
-from repositories.violation_repository import ViolationRepository
-from repositories.sod_rule_repository import SODRuleRepository
-from services.netsuite_client import NetSuiteClient
-from agents.data_collector import DataCollectionAgent
 from agents.analyzer import create_analyzer
-from agents.risk_assessor import create_risk_assessor
+from agents.data_collector import DataCollectionAgent
 from agents.knowledge_base import create_knowledge_base
 from agents.notifier import create_notifier
 from agents.orchestrator import create_orchestrator
+from agents.risk_assessor import create_risk_assessor
+from models.database_config import DatabaseConfig
+from repositories.role_repository import RoleRepository
+from repositories.sod_rule_repository import SODRuleRepository
+from repositories.user_repository import UserRepository
+from repositories.violation_repository import ViolationRepository
+from services.netsuite_client import NetSuiteClient
+
 
 def print_header(title):
     print("\n" + "="*80)
@@ -55,7 +56,7 @@ def test_data_collector():
     try:
         # Test initialization
         netsuite_client = NetSuiteClient()
-        agent = DataCollectionAgent(netsuite_client=netsuite_client)
+        DataCollectionAgent(netsuite_client=netsuite_client)
         test_results['initialization'] = True
         print("✅ Agent initialized")
 
@@ -76,7 +77,7 @@ def test_data_collector():
             required_fields = ['user_id', 'email', 'name', 'roles']
             if all(field in user for field in required_fields):
                 test_results['data_quality'] = True
-                print(f"✅ All required fields present")
+                print("✅ All required fields present")
 
             # Test job function field
             if 'job_function' in user:
@@ -126,7 +127,7 @@ def test_analyzer():
             sod_rule_repo=sod_rule_repo
         )
         test_results['initialization'] = True
-        print(f"✅ Agent initialized")
+        print("✅ Agent initialized")
 
         # Test rules loaded
         if len(analyzer.sod_rules) > 0:
@@ -140,7 +141,7 @@ def test_analyzer():
         if result['success']:
             test_results['analysis_execution'] = True
             stats = result['stats']
-            print(f"✅ Analysis completed")
+            print("✅ Analysis completed")
             print(f"   Users analyzed: {stats['users_analyzed']}")
             print(f"   Violations: {stats['violations_detected']}")
 
@@ -151,7 +152,7 @@ def test_analyzer():
             is_it_user = analyzer._is_it_systems_user(prabal)
             if is_it_user and prabal.job_function == 'IT/SYSTEMS_ENGINEERING':
                 test_results['context_aware'] = True
-                print(f"✅ Context-aware logic working")
+                print("✅ Context-aware logic working")
                 print(f"   Job Function: {prabal.job_function}")
                 print(f"   Is IT User: {is_it_user}")
 
@@ -217,7 +218,7 @@ def test_risk_assessor():
 
         if org_result['success']:
             test_results['org_risk_assessment'] = True
-            print(f"✅ Organization risk assessed")
+            print("✅ Organization risk assessed")
             print(f"   Risk Level: {org_result['organization_risk_level']}")
             print(f"   Risk Score: {org_result['organization_risk_score']}/100")
 
@@ -225,7 +226,7 @@ def test_risk_assessor():
         if 'risk_distribution' in org_result:
             test_results['risk_distribution'] = True
             dist = org_result['risk_distribution']
-            print(f"✅ Risk distribution calculated")
+            print("✅ Risk distribution calculated")
             print(f"   Critical: {dist.get('CRITICAL', 0)} users")
             print(f"   High: {dist.get('HIGH', 0)} users")
             print(f"   Medium: {dist.get('MEDIUM', 0)} users")

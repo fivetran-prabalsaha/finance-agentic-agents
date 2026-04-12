@@ -7,8 +7,8 @@ Quick test to verify the new send_compliance_report() method works.
 
 import os
 import sys
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -16,10 +16,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 # Set database URL
 os.environ['DATABASE_URL'] = 'postgresql://compliance_user:compliance_pass@localhost:5432/compliance_db'
 
-from models.database_config import DatabaseConfig
-from repositories.violation_repository import ViolationRepository
-from repositories.user_repository import UserRepository
 from agents.notifier import create_notifier
+from models.database_config import DatabaseConfig
+from repositories.user_repository import UserRepository
+from repositories.violation_repository import ViolationRepository
 
 
 def main():

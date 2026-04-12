@@ -342,7 +342,8 @@ define(['N/search', 'N/query', 'N/runtime', 'N/log'], function(search, query, ru
                     summary: search.Summary.GROUP
                 });
 
-                if (roleId && roleName) {
+                // FILTER: Only include roles that start with "Fivetran -"
+                if (roleId && roleName && roleName.indexOf('Fivetran -') === 0) {
                     roles.push({
                         role_id: roleId,
                         role_name: roleName,

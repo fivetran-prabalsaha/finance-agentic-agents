@@ -11,12 +11,13 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 os.environ['DATABASE_URL'] = 'postgresql://compliance_user:compliance_pass@localhost:5432/compliance_db'
 
-from models.database_config import DatabaseConfig
-from repositories.user_repository import UserRepository
-from repositories.role_repository import RoleRepository
-from repositories.violation_repository import ViolationRepository
-from repositories.sod_rule_repository import SODRuleRepository
 from agents.analyzer import create_analyzer
+from models.database_config import DatabaseConfig
+from repositories.role_repository import RoleRepository
+from repositories.sod_rule_repository import SODRuleRepository
+from repositories.user_repository import UserRepository
+from repositories.violation_repository import ViolationRepository
+
 
 def main():
     print("="*80)
@@ -40,7 +41,7 @@ def main():
         sod_rule_repo=sod_rule_repo
     )
 
-    print(f"\n✅ Analyzer initialized")
+    print("\n✅ Analyzer initialized")
     print(f"   SOD Rules: {len(analyzer.sod_rules)}")
 
     # Get users
@@ -53,13 +54,13 @@ def main():
         print(f"   • {user.name}: {len(role_names)} roles - {', '.join(role_names)}")
 
     # Run analysis
-    print(f"\n🔍 Running SOD analysis...")
+    print("\n🔍 Running SOD analysis...")
 
     result = analyzer.analyze_all_users()
 
     if result['success']:
         stats = result['stats']
-        print(f"\n✅ Analysis Complete!")
+        print("\n✅ Analysis Complete!")
         print(f"   Users Analyzed: {stats['users_analyzed']}")
         print(f"   Violations: {stats['violations_detected']}")
         print(f"   • Critical: {stats['critical_violations']}")
@@ -68,7 +69,7 @@ def main():
 
         # Show violations
         if result['violations']:
-            print(f"\n🚨 Violations Found:")
+            print("\n🚨 Violations Found:")
             for i, v in enumerate(result['violations'][:3], 1):
                 user = user_repo.get_user_by_id(v['user_id'])
                 print(f"\n   {i}. {user.name if user else 'Unknown'}")
@@ -76,7 +77,7 @@ def main():
                 print(f"      Severity: {v['severity']}")
                 print(f"      Risk: {v['risk_score']}/100")
         else:
-            print(f"\n✅ No violations detected")
+            print("\n✅ No violations detected")
 
     else:
         print(f"\n❌ Analysis failed: {result.get('error')}")

@@ -8,22 +8,21 @@ This script:
 4. Generates a detailed SOD conflict report
 """
 
-import os
-import sys
 import json
 import logging
+import sys
 from datetime import datetime
-from typing import Dict, Any, List, Optional
 from pathlib import Path
+from typing import Any
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from agents.data_collector import DataCollectionAgent
-from services.netsuite_client import NetSuiteClient
 from langchain_anthropic import ChatAnthropic
-from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
+from langchain_core.prompts import ChatPromptTemplate
+
+from services.netsuite_client import NetSuiteClient
 
 # Configure logging
 logging.basicConfig(
@@ -42,12 +41,12 @@ class SODReportGenerator:
 
         # Load SOD rules
         rules_path = Path(__file__).parent.parent / "database" / "seed_data" / "sod_rules.json"
-        with open(rules_path, 'r') as f:
+        with open(rules_path) as f:
             self.sod_rules = json.load(f)
 
         logger.info(f"Loaded {len(self.sod_rules)} SOD rules")
 
-    def fetch_users_by_name(self, search_value: str, fetch_permissions: bool = True) -> List[Dict[str, Any]]:
+    def fetch_users_by_name(self, search_value: str, fetch_permissions: bool = True) -> list[dict[str, Any]]:
         """
         Fetch all matching users from NetSuite by name or email using search RESTlet
 
@@ -81,7 +80,7 @@ class SODReportGenerator:
 
         if len(users) == 0:
             logger.warning(f"User '{search_value}' not found")
-            logger.info(f"Tip: Check the exact name or email in NetSuite")
+            logger.info("Tip: Check the exact name or email in NetSuite")
             return []
 
         elif len(users) == 1:
@@ -106,15 +105,15 @@ class SODReportGenerator:
                 logger.info(f"Fetching detailed permissions for {user.get('name')}...")
                 detailed_user = self.netsuite_client.get_user_by_email(user['email'])
                 if detailed_user:
-                    logger.info(f"✓ Fetched detailed permissions")
+                    logger.info("✓ Fetched detailed permissions")
                     # Replace the user in the list with the detailed version
                     users[idx] = detailed_user
                 else:
-                    logger.warning(f"Could not fetch detailed permissions, using search results")
+                    logger.warning("Could not fetch detailed permissions, using search results")
 
         return users
 
-    def analyze_user_violations(self, user: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def analyze_user_violations(self, user: dict[str, Any]) -> list[dict[str, Any]]:
         """
         Analyze a user against all SOD rules
 
@@ -155,11 +154,11 @@ class SODReportGenerator:
 
     def _check_rule_violation(
         self,
-        user: Dict[str, Any],
-        user_role_names: List[str],
+        user: dict[str, Any],
+        user_role_names: list[str],
         user_permissions: set,
-        rule: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
+        rule: dict[str, Any]
+    ) -> dict[str, Any] | None:
         """Check if user violates a specific SOD rule"""
         rule_violated = False
         conflicting_items = []
@@ -221,9 +220,9 @@ class SODReportGenerator:
 
     def _calculate_risk_score(
         self,
-        user: Dict[str, Any],
-        rule: Dict[str, Any],
-        conflicting_items: List[str]
+        user: dict[str, Any],
+        rule: dict[str, Any],
+        conflicting_items: list[str]
     ) -> float:
         """Calculate risk score (0-100)"""
         severity_scores = {
@@ -258,9 +257,9 @@ class SODReportGenerator:
 
     def generate_ai_analysis(
         self,
-        user: Dict[str, Any],
-        violations: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        user: dict[str, Any],
+        violations: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         """
         Use Claude Opus for deep AI analysis of user's violations
 
@@ -367,7 +366,7 @@ Provide comprehensive analysis in this JSON format:
         self,
         user1_name: str,
         user2_name: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate comprehensive SOD report for two users
 
@@ -473,9 +472,9 @@ Provide comprehensive analysis in this JSON format:
 
     def _print_user_report(
         self,
-        user: Dict[str, Any],
-        violations: List[Dict[str, Any]],
-        ai_analysis: Optional[Dict[str, Any]],
+        user: dict[str, Any],
+        violations: list[dict[str, Any]],
+        ai_analysis: dict[str, Any] | None,
         skip_header: bool = False
     ):
         """Print detailed report for one user"""
@@ -484,7 +483,7 @@ Provide comprehensive analysis in this JSON format:
             print(f" USER ANALYSIS: {user.get('name', 'Unknown')}")
             print("="*80)
 
-        print(f"\n📋 USER INFORMATION:")
+        print("\n📋 USER INFORMATION:")
         print(f"   Name: {user.get('name', 'N/A')}")
         print(f"   Email: {user.get('email', 'N/A')}")
         print(f"   Department: {user.get('department', 'N/A')}")
@@ -517,49 +516,49 @@ Provide comprehensive analysis in this JSON format:
                 print(f"   Conflicting Items: {', '.join(v['conflicting_items'])}")
                 print(f"   Remediation: {v['remediation_guidance']}")
         else:
-            print(f"\n✅ NO SOD VIOLATIONS DETECTED")
+            print("\n✅ NO SOD VIOLATIONS DETECTED")
 
         # AI Analysis
         if ai_analysis:
-            print(f"\n🤖 AI-POWERED RISK ASSESSMENT (Claude Opus 4.6):")
+            print("\n🤖 AI-POWERED RISK ASSESSMENT (Claude Opus 4.6):")
             print("-" * 80)
             print(f"\n   Risk Level: {ai_analysis.get('overall_risk_level', 'N/A')}")
             print(f"   Risk Score: {ai_analysis.get('risk_score', 0)}/100")
             print(f"   Remediation Priority: {ai_analysis.get('remediation_priority', 'N/A')}")
 
-            print(f"\n   Executive Summary:")
+            print("\n   Executive Summary:")
             print(f"   {ai_analysis.get('executive_summary', 'N/A')}")
 
-            print(f"\n   Primary Concerns:")
+            print("\n   Primary Concerns:")
             for concern in ai_analysis.get('primary_concerns', []):
                 print(f"   • {concern}")
 
-            print(f"\n   Role Combination Analysis:")
+            print("\n   Role Combination Analysis:")
             print(f"   {ai_analysis.get('role_combination_analysis', 'N/A')}")
 
-            print(f"\n   Business Impact Assessment:")
+            print("\n   Business Impact Assessment:")
             print(f"   {ai_analysis.get('business_impact_assessment', 'N/A')}")
 
             if ai_analysis.get('sox_compliance_issues'):
-                print(f"\n   SOX Compliance Issues:")
+                print("\n   SOX Compliance Issues:")
                 for issue in ai_analysis['sox_compliance_issues']:
                     print(f"   • {issue}")
 
-            print(f"\n   📋 DETAILED RECOMMENDATIONS:")
+            print("\n   📋 DETAILED RECOMMENDATIONS:")
             for i, rec in enumerate(ai_analysis.get('detailed_recommendations', []), 1):
                 print(f"\n   {i}. {rec.get('action', 'N/A')}")
                 print(f"      Rationale: {rec.get('rationale', 'N/A')}")
-                print(f"      Implementation Steps:")
+                print("      Implementation Steps:")
                 for step in rec.get('implementation_steps', []):
                     print(f"      - {step}")
 
             if ai_analysis.get('compensating_controls'):
-                print(f"\n   🛡️  COMPENSATING CONTROLS:")
+                print("\n   🛡️  COMPENSATING CONTROLS:")
                 for control in ai_analysis['compensating_controls']:
                     print(f"   • {control}")
 
             if ai_analysis.get('monitoring_recommendations'):
-                print(f"\n   👁️  MONITORING RECOMMENDATIONS:")
+                print("\n   👁️  MONITORING RECOMMENDATIONS:")
                 for mon in ai_analysis['monitoring_recommendations']:
                     print(f"   • {mon}")
 
@@ -569,10 +568,10 @@ Provide comprehensive analysis in this JSON format:
 
     def _print_comparison(
         self,
-        user1: Dict[str, Any],
-        user2: Dict[str, Any],
-        user1_violations: List[Dict[str, Any]],
-        user2_violations: List[Dict[str, Any]]
+        user1: dict[str, Any],
+        user2: dict[str, Any],
+        user1_violations: list[dict[str, Any]],
+        user2_violations: list[dict[str, Any]]
     ):
         """Print comparison between two users"""
         print("\n" + "="*80)
@@ -595,20 +594,20 @@ Provide comprehensive analysis in this JSON format:
         print(f"   Critical: {sum(1 for v in user2_violations if v['severity'] == 'CRITICAL')}")
         print(f"   High: {sum(1 for v in user2_violations if v['severity'] == 'HIGH')}")
 
-        print(f"\n📊 Comparison:")
+        print("\n📊 Comparison:")
         if user1_risk > 0 and user2_risk > 0:
             if user1_risk > user2_risk:
                 print(f"   ⚠️  {user1.get('name')} has {((user1_risk/user2_risk-1)*100):.1f}% higher risk than {user2.get('name')}")
             elif user2_risk > user1_risk:
                 print(f"   ⚠️  {user2.get('name')} has {((user2_risk/user1_risk-1)*100):.1f}% higher risk than {user1.get('name')}")
             else:
-                print(f"   ✓ Both users have equal risk levels")
+                print("   ✓ Both users have equal risk levels")
         elif user1_risk > 0 and user2_risk == 0:
             print(f"   ⚠️  {user1.get('name')} has violations while {user2.get('name')} is compliant")
         elif user2_risk > 0 and user1_risk == 0:
             print(f"   ⚠️  {user2.get('name')} has violations while {user1.get('name')} is compliant")
         else:
-            print(f"   ✓ Both users are compliant (no violations)")
+            print("   ✓ Both users are compliant (no violations)")
 
         print("\n" + "="*80 + "\n")
 

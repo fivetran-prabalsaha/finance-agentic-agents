@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SKILL.md Generator</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy:   #1a1f36;
+    --accent: #5865f2;
+    --accent-dark: #4752c4;
+    --bg:     #f5f6fa;
+    --white:  #ffffff;
+    --border: #e1e4ed;
+    --text:   #2d3151;
+    --muted:  #6b7280;
+    --danger: #ef4444;
+    --success:#10b981;
+    --panel-shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 8px rgba(0,0,0,.04);
+    --radius: 8px;
+  }
+
+  html, body {
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    font-size: 14px;
+    color: var(--text);
+    background: var(--bg);
+    overflow: hidden;
+  }
+
+  /* ─── Header ─────────────────────────────────────────── */
+  .app-header {
+    background: var(--navy);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    height: 52px;
+    flex-shrink: 0;
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(0,0,0,.25);
+  }
+  .app-header h1 {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: .01em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .app-header h1 .badge {
+    font-size: 10px;
+    font-weight: 700;
+    background: var(--accent);
+    color: #fff;
+    padding: 2px 6px;
+    border-radius: 4px;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+  }
+  .header-actions { display: flex; gap: 8px; }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: background .15s, transform .1s, box-shadow .15s;
+    line-height: 1;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent-dark); }
+  .btn-ghost {
+    background: rgba(255,255,255,.12);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,.2);
+  }
+  .btn-ghost:hover { background: rgba(255,255,255,.2); }
+  .btn-sm { padding: 4px 10px; font-size: 12px; }
+  .btn-danger { background: #fee2e2; color: var(--danger); border: 1px solid #fca5a5; }
+  .btn-danger:hover { background: #fecaca; }
+  .btn-add {
+    background: #eff0fe;
+    color: var(--accent);
+    border: 1px dashed #a5b4fc;
+    font-size: 12px;
+    padding: 5px 12px;
+  }
+  .btn-add:hover { background: #e0e2fd; border-style: solid; }
+  .btn-add:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  /* ─── Layout ──────────────────────────────────────────── */
+  .app-body {
+    display: flex;
+    height: calc(100vh - 52px);
+    overflow: hidden;
+  }
+
+  /* ─── Left Panel ──────────────────────────────────────── */
+  .form-panel {
+    width: 55%;
+    flex-shrink: 0;
+    overflow-y: auto;
+    padding: 20px;
+    border-right: 1px solid var(--border);
+    background: var(--bg);
+  }
+
+  /* ─── Right Panel ─────────────────────────────────────── */
+  .output-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--white);
+  }
+  .output-header {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    background: #fafbfc;
+  }
+  .output-panel textarea {
+    flex: 1;
+    width: 100%;
+    border: none;
+    outline: none;
+    resize: none;
+    padding: 16px;
+    font-family: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", Menlo, Consolas, monospace;
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: #2d3748;
+    background: var(--white);
+    tab-size: 2;
+  }
+
+  /* ─── Accordion ───────────────────────────────────────── */
+  .accordion {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 12px;
+    box-shadow: var(--panel-shadow);
+    overflow: hidden;
+  }
+  .accordion-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 13px 16px;
+    cursor: pointer;
+    user-select: none;
+    border-bottom: 1px solid transparent;
+    transition: background .15s;
+  }
+  .accordion-header:hover { background: #fafbfc; }
+  .accordion.open .accordion-header { border-bottom-color: var(--border); }
+  .accordion-title {
+    font-weight: 600;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .accordion-chevron {
+    color: var(--muted);
+    font-size: 11px;
+    transition: transform .2s;
+  }
+  .accordion.open .accordion-chevron { transform: rotate(180deg); }
+  .accordion-body {
+    display: none;
+    padding: 16px;
+  }
+  .accordion.open .accordion-body { display: block; }
+
+  /* ─── Form Fields ─────────────────────────────────────── */
+  .field { margin-bottom: 14px; }
+  .field:last-child { margin-bottom: 0; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .field-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 5px;
+    letter-spacing: .01em;
+  }
+  label .required { color: var(--danger); margin-left: 2px; }
+  .helper {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+    line-height: 1.45;
+  }
+  input[type="text"],
+  input[type="date"],
+  textarea,
+  select {
+    width: 100%;
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text);
+    background: var(--white);
+    transition: border-color .15s, box-shadow .15s;
+    outline: none;
+  }
+  input[type="text"]:focus,
+  input[type="date"]:focus,
+  textarea:focus,
+  select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(88,101,242,.1);
+  }
+  textarea { resize: vertical; }
+
+  /* ─── Dynamic Items ───────────────────────────────────── */
+  .dynamic-item {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 10px;
+    background: #fafbfc;
+    position: relative;
+  }
+  .dynamic-item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .item-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: var(--muted);
+  }
+
+  /* ─── Troubleshooting table ───────────────────────────── */
+  .ts-row .field-row { grid-template-columns: 1fr 1fr 1fr; }
+
+  /* ─── Checkbox ────────────────────────────────────────── */
+  .checkbox-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    margin-bottom: 10px;
+  }
+  .checkbox-field input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--accent);
+  }
+  .checkbox-field span {
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .infra-fields { display: none; }
+  .infra-fields.visible { display: block; }
+
+  /* ─── Copy feedback ───────────────────────────────────── */
+  .copy-toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--navy);
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    box-shadow: 0 4px 12px rgba(0,0,0,.2);
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity .25s, transform .25s;
+    pointer-events: none;
+    z-index: 999;
+  }
+  .copy-toast.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* ─── Scrollbar ───────────────────────────────────────── */
+  .form-panel::-webkit-scrollbar { width: 6px; }
+  .form-panel::-webkit-scrollbar-track { background: transparent; }
+  .form-panel::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+  .output-panel textarea::-webkit-scrollbar { width: 6px; }
+  .output-panel textarea::-webkit-scrollbar-track { background: transparent; }
+  .output-panel textarea::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="app-header">
+  <h1>
+    <span class="badge">SKILL.md</span>
+    Generator
+  </h1>
+  <div class="header-actions">
+    <button class="btn btn-ghost" onclick="copyOutput()">&#x2398; Copy</button>
+    <button class="btn btn-primary" onclick="downloadOutput()">&#x2B73; Download SKILL.md</button>
+  </div>
+</header>
+
+<div class="app-body">
+
+  <!-- ── Left: Form Panel ─────────────────────────────── -->
+  <div class="form-panel" id="formPanel">
+
+    <!-- Section 1: Skill Identity -->
+    <div class="accordion open" id="sec1">
+      <div class="accordion-header" onclick="toggleAccordion('sec1')">
+        <span class="accordion-title"><span class="section-num">1</span> Skill Identity</span>
+        <span class="accordion-chevron">&#9660;</span>
+      </div>
+      <div class="accordion-body">
+        <div class="field-row">
+          <div class="field">
+            <label>Skill slug <span class="required">*</span></label>
+            <input type="text" id="slug" placeholder="my-skill" oninput="generate()">
+            <p class="helper">kebab-case — must match the directory name under ~/.claude/skills/</p>
+          </div>
+          <div class="field">
+            <label>Display title <span class="required">*</span></label>
+            <input type="text" id="title" placeholder="My Skill" oninput="generate()">
+          </div>
+        </div>
+        <div class="field">
+          <label>Description <span class="required">*</span></label>
+          <textarea id="desc" rows="4" placeholder="Answers questions about [your domain] using [your tools]. Use when a user asks about [trigger topic]. Does NOT handle [out-of-scope topic]; that is handled separately." oninput="generate()"></textarea>
+          <p class="helper">Start with trigger condition. State what it does AND what it does NOT do. This is the most important field — Claude uses it to decide whether to activate this skill.</p>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Tool/API server name <span style="font-weight:400;color:#8892b0">(optional)</span></label>
+            <input type="text" id="mcpServer" placeholder="my-api-server" oninput="generate()">
+          </div>
+          <div class="field">
+            <label>Author</label>
+            <input type="text" id="author" placeholder="Prabal Saha" oninput="generate()">
+          </div>
+        </div>
+        <div class="field-row-3">
+          <div class="field">
+            <label>Version</label>
+            <input type="text" id="version" value="1.0.0" oninput="generate()">
+          </div>
+          <div class="field">
+            <label>Date</label>
+            <input type="date" id="date" oninput="generate()">
+          </div>
+          <div class="field">
+            <label>Compatibility</label>
+            <input type="text" id="compat" placeholder="Claude Code, Claude.ai" oninput="generate()">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 2: Non-Negotiable Rules -->
+    <div class="accordion open" id="sec2">
+      <div class="accordion-header" onclick="toggleAccordion('sec2')">
+        <span class="accordion-title"><span class="section-num">2</span> Non-Negotiable Rules</span>
+        <span class="accordion-chevron">&#9660;</span>
+      </div>
+      <div class="accordion-body">
+        <p class="helper" style="margin-bottom:12px;">Hard constraints. Max 5 rules. Each must cite a specific failure mode.</p>
+        <div id="rulesContainer"></div>
+        <button class="btn btn-add" id="addRuleBtn" onclick="addRule()">+ Add Rule</button>
+      </div>
+    </div>
+
+    <!-- Section 3: Trigger Phrases -->
+    <div class="accordion open" id="sec3">
+      <div class="accordion-header" onclick="toggleAccordion('sec3')">
+        <span class="accordion-title"><span class="section-num">3</span> Trigger Phrases</span>
+        <span class="accordion-chevron">&#9660;</span>
+      </div>
+      <div class="accordion-body">
+        <p class="helper" style="margin-bottom:12px;">Phrases that activate this skill. Be specific — avoid single words like "access" or "role".</p>
+        <div id="triggersContainer"></div>
+        <button class="btn btn-add" onclick="addTrigger()">+ Add Trigger Phrase</button>
+      </div>
+    </div>
+
+    <!-- Section 4: Workflows -->
+    <div class="accordion open" id="sec4">
+      <div class="accordion-header" onclick="toggleAccordion('sec4')">
+        <span class="accordion-title"><span class="section-num">4</span> Workflows</span>
+        <span class="accordion-chevron">&#9660;</span>
+      </div>
+      <div class="accordion-body">
+        <div id="workflowsContainer"></div>
+        <button class="btn btn-add" onclick="addWorkflow()">+ Add Workflow</button>
+      </div>
+    </div>
+
+    <!-- Section 5: Examples -->
+    <div class="accordion open" id="sec5">
+      <div class="accordion-header" onclick="toggleAccordion('sec5')">
+        <span class="accordion-title"><span class="section-num">5</span> Examples</span>
+        <span class="accordion-chevron">&#9660;</span>
+      </div>
+      <div class="accordion-body">
+        <div id="examplesContainer"></div>
+        <button class="btn btn-add" onclick="addExample()">+ Add Example</button>
+      </div>
+    </div>
+
+    <!-- Section 6: Troubleshooting -->
+    <div class="accordion open" id="sec6">
+      <div class="accordion-header" onclick="toggleAccordion('sec6')">
+        <span class="accordion-title"><span class="section-num">6</span> Troubleshooting</span>
+        <span class="accordion-chevron">&#9660;</span>
+      </div>
+      <div class="accordion-body">
+        <p class="helper" style="margin-bottom:12px;">Every Fix must be a runnable command or specific action — never "contact support".</p>
+        <div id="tsContainer"></div>
+        <button class="btn btn-add" onclick="addTsRow()">+ Add Row</button>
+      </div>
+    </div>
+
+    <!-- Section 7: Infrastructure Notes -->
+    <div class="accordion" id="sec7">
+      <div class="accordion-header" onclick="toggleAccordion('sec7')">
+        <span class="accordion-title"><span class="section-num">7</span> Infrastructure Notes <span style="font-weight:400;color:var(--muted);font-size:12px;">(Optional)</span></span>
+        <span class="accordion-chevron">&#9660;</span>
+      </div>
+      <div class="accordion-body">
+        <label class="checkbox-field">
+          <input type="checkbox" id="infraCheck" onchange="toggleInfra()">
+          <span>This skill uses caching / memory infrastructure</span>
+        </label>
+        <div class="infra-fields" id="infraFields">
+          <div class="field">
+            <label>Cache TTL notes</label>
+            <textarea id="redisTTL" rows="3" placeholder="get_data=1h, get_stats=30min. Cache key: tool:{tool_name}:{md5(arguments)}. Write operations excluded." oninput="generate()"></textarea>
+          </div>
+          <div class="field">
+            <label>Conversation summaries</label>
+            <textarea id="convSummaries" rows="3" placeholder="After each exchange, Haiku writes a 2-3 sentence summary to conversation_summaries Postgres table. On the next query, the 3 most recent summaries are injected (~150 tokens vs ~2K raw). Feature flag: USE_CONV_SUMMARIES=false to disable." oninput="generate()"></textarea>
+          </div>
+          <div class="field">
+            <label>Correction/feedback embeddings</label>
+            <textarea id="corrEmbed" rows="3" placeholder="User corrections stored as embeddings. Semantically similar past corrections injected as few-shot context into future queries. Feature flag: USE_CORRECTION_CONTEXT=false to disable." oninput="generate()"></textarea>
+          </div>
+          <div class="field">
+            <label>Feature flags (one per line: FLAG_NAME=default)</label>
+            <textarea id="featureFlags" rows="3" placeholder="USE_API_CACHE=true&#10;USE_CONV_SUMMARIES=true&#10;USE_CORRECTION_CONTEXT=true&#10;USE_FEEDBACK=true" oninput="generate()"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 8: Voice and Tone -->
+    <div class="accordion open" id="sec8">
+      <div class="accordion-header" onclick="toggleAccordion('sec8')">
+        <span class="accordion-title"><span class="section-num">8</span> Voice and Tone</span>
+        <span class="accordion-chevron">&#9660;</span>
+      </div>
+      <div class="accordion-body">
+        <div class="field">
+          <label>Response style</label>
+          <input type="text" id="voiceStyle" placeholder="Senior McKinsey partner. Lead with conclusion. Direct recommendations. No hedging." oninput="generate()">
+        </div>
+        <div class="field">
+          <label>Max response length</label>
+          <input type="text" id="voiceLength" placeholder="HARD LIMIT: 1,800 characters. If longer, use file upload." oninput="generate()">
+        </div>
+        <div class="field">
+          <label>Identity rule</label>
+          <input type="text" id="voiceIdentity" placeholder="NEVER say '[skill name] agent'. You are [company]'s assistant. This skill is one capability, not your identity." oninput="generate()">
+        </div>
+        <div class="field">
+          <label>Vocabulary replacements (one per line: old → new)</label>
+          <textarea id="voiceVocab" rows="4" placeholder="avoid → prefer&#10;broken → not working as expected&#10;you can't → this isn't supported&#10;error → issue" oninput="generate()"></textarea>
+          <p class="helper">Format: <code>avoid term → use instead</code></p>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /form-panel -->
+
+  <!-- ── Right: Output Panel ───────────────────────────── -->
+  <div class="output-panel">
+    <div class="output-header">
+      <span>Live Preview</span>
+      <span id="charCount" style="font-weight:400;font-size:11px;"></span>
+    </div>
+    <textarea id="outputArea" spellcheck="false" readonly></textarea>
+  </div>
+
+</div><!-- /app-body -->
+
+<div class="copy-toast" id="copyToast">Copied to clipboard!</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────
+// State counters
+// ─────────────────────────────────────────────────────────────────
+let ruleCount = 0;
+let triggerCount = 0;
+let workflowCount = 0;
+let exampleCount = 0;
+let tsCount = 0;
+
+// ─────────────────────────────────────────────────────────────────
+// Accordion toggle
+// ─────────────────────────────────────────────────────────────────
+function toggleAccordion(id) {
+  const el = document.getElementById(id);
+  el.classList.toggle('open');
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Initialize date
+// ─────────────────────────────────────────────────────────────────
+function initDate() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('date').value = today;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Rules
+// ─────────────────────────────────────────────────────────────────
+function addRule(statement = '', explanation = '') {
+  const maxRules = 5;
+  if (ruleCount >= maxRules) return;
+  ruleCount++;
+  const id = ruleCount;
+  const container = document.getElementById('rulesContainer');
+  const div = document.createElement('div');
+  div.className = 'dynamic-item';
+  div.id = `rule-${id}`;
+  div.innerHTML = `
+    <div class="dynamic-item-header">
+      <span class="item-label">Rule ${id}</span>
+      <button class="btn btn-danger btn-sm" onclick="removeItem('rule-${id}', 'rule')">Remove</button>
+    </div>
+    <div class="field">
+      <label>Rule statement (NEVER/ALWAYS imperative)</label>
+      <input type="text" class="rule-stmt" placeholder="NEVER answer questions from memory." oninput="generate()" value="${escHtml(statement)}">
+    </div>
+    <div class="field">
+      <label>Explanation (specific failure mode)</label>
+      <input type="text" class="rule-expl" placeholder="Every data point must come from a live tool call. Cached or training data may be stale for your specific system." oninput="generate()" value="${escHtml(explanation)}">
+    </div>
+  `;
+  container.appendChild(div);
+  updateRuleButton();
+  generate();
+}
+
+function updateRuleButton() {
+  const btn = document.getElementById('addRuleBtn');
+  const count = document.querySelectorAll('#rulesContainer .dynamic-item').length;
+  btn.disabled = count >= 5;
+  btn.textContent = count >= 5 ? '+ Add Rule (max 5 reached)' : '+ Add Rule';
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Triggers
+// ─────────────────────────────────────────────────────────────────
+function addTrigger(value = '') {
+  triggerCount++;
+  const id = triggerCount;
+  const container = document.getElementById('triggersContainer');
+  const div = document.createElement('div');
+  div.className = 'dynamic-item';
+  div.id = `trigger-${id}`;
+  div.innerHTML = `
+    <div style="display:flex;gap:8px;align-items:center;">
+      <input type="text" class="trigger-phrase" placeholder='e.g. "assign role" + a user email' oninput="generate()" value="${escHtml(value)}" style="flex:1;">
+      <button class="btn btn-danger btn-sm" onclick="removeItem('trigger-${id}', 'trigger')">Remove</button>
+    </div>
+  `;
+  container.appendChild(div);
+  generate();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Workflows
+// ─────────────────────────────────────────────────────────────────
+function addWorkflow(name = '', triggers = '', steps = '', keyRule = '') {
+  workflowCount++;
+  const id = workflowCount;
+  const container = document.getElementById('workflowsContainer');
+  const div = document.createElement('div');
+  div.className = 'dynamic-item';
+  div.id = `workflow-${id}`;
+  const stepsPlaceholder = `1. Call initialize_session — load context\n2. Call get_data(identifier=<id>) — fetch the relevant records\n3. Call analyze(data_id=<id>, query=<query>) — run the analysis\n4. If results require follow-up: call get_details(id=<id>) for each\n5. Respond with the verdict or summary first, then supporting details`;
+  div.innerHTML = `
+    <div class="dynamic-item-header">
+      <span class="item-label">Workflow ${id}</span>
+      <button class="btn btn-danger btn-sm" onclick="removeItem('workflow-${id}', 'workflow')">Remove</button>
+    </div>
+    <div class="field">
+      <label>Workflow name</label>
+      <input type="text" class="wf-name" placeholder="Data Lookup" oninput="generate()" value="${escHtml(name)}">
+    </div>
+    <div class="field">
+      <label>Trigger phrases for this workflow (comma-separated)</label>
+      <textarea class="wf-triggers" rows="2" placeholder='"look up", "find", "get status of", "what is", "show me"' oninput="generate()">${escHtml(triggers)}</textarea>
+    </div>
+    <div class="field">
+      <label>Steps (numbered — one action per line)</label>
+      <textarea class="wf-steps" rows="5" placeholder="${stepsPlaceholder}" oninput="generate()">${escHtml(steps)}</textarea>
+    </div>
+    <div class="field">
+      <label>Key rule (single most important constraint)</label>
+      <input type="text" class="wf-keyrule" placeholder="Always call initialize_session first. Without it, subsequent tool calls run without required context and may return incomplete results." oninput="generate()" value="${escHtml(keyRule)}">
+    </div>
+  `;
+  container.appendChild(div);
+  generate();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Examples
+// ─────────────────────────────────────────────────────────────────
+function addExample(title = '', userInput = '', toolTrace = '', response = '') {
+  exampleCount++;
+  const id = exampleCount;
+  const container = document.getElementById('examplesContainer');
+  const div = document.createElement('div');
+  div.className = 'dynamic-item';
+  div.id = `example-${id}`;
+  const tracePlaceholder =
+`1. initialize_session()
+   → context loaded
+
+2. get_data(identifier="ticket-4421")
+   → id=t-4421
+   → status: In Progress
+   → assigned_to: Austin Chen
+   → created: 2026-01-15
+
+3. get_details(data_id="t-4421")
+   → priority: HIGH
+   → last_updated: 2026-02-20
+   → notes: Awaiting review from manager`;
+  div.innerHTML = `
+    <div class="dynamic-item-header">
+      <span class="item-label">Example ${id}</span>
+      <button class="btn btn-danger btn-sm" onclick="removeItem('example-${id}', 'example')">Remove</button>
+    </div>
+    <div class="field">
+      <label>Example title</label>
+      <input type="text" class="ex-title" placeholder="Data lookup — single record status" oninput="generate()" value="${escHtml(title)}">
+    </div>
+    <div class="field">
+      <label>User input / trigger</label>
+      <input type="text" class="ex-user" placeholder='What is the current status of request #1234?' oninput="generate()" value="${escHtml(userInput)}">
+    </div>
+    <div class="field">
+      <label>Tool call trace (numbered, with → results)</label>
+      <textarea class="ex-trace" rows="8" placeholder="${tracePlaceholder}" oninput="generate()">${escHtml(toolTrace)}</textarea>
+    </div>
+    <div class="field">
+      <label>Synthesized response</label>
+      <textarea class="ex-response" rows="3" placeholder='The request is currently In Progress, assigned to Austin Chen (HIGH priority). Last updated 2026-02-20 — awaiting manager review.' oninput="generate()">${escHtml(response)}</textarea>
+    </div>
+  `;
+  container.appendChild(div);
+  generate();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Troubleshooting rows
+// ─────────────────────────────────────────────────────────────────
+function addTsRow(error = '', cause = '', fix = '') {
+  tsCount++;
+  const id = tsCount;
+  const container = document.getElementById('tsContainer');
+  const div = document.createElement('div');
+  div.className = 'dynamic-item ts-row';
+  div.id = `ts-${id}`;
+
+  const defaults = [
+    {
+      error: '`Connection refused` / tool call times out',
+      cause: 'API server not running',
+      fix: 'Restart the API server and verify with: curl -s http://localhost:PORT/health'
+    },
+    {
+      error: '`"Record not found"` on data lookup',
+      cause: "Name doesn't match system record exactly, or user not provisioned",
+      fix: 'Try a different identifier format, or use search_items(query="partial name") to find the correct ID'
+    },
+    {
+      error: 'analyze_access_request returns "0 conflicts" when conflicts expected',
+      cause: 'include_existing_roles was omitted — call analyzed new role in isolation',
+      fix: 'Re-run with include_existing_roles=true explicitly set. Most common silent false-negative.'
+    },
+    {
+      error: '`"Insufficient approval authority"` on approve_exception',
+      cause: "Session user's role does not meet the severity threshold for this action",
+      fix: 'Call check_my_approval_authority to confirm your tier, then escalate to correct approver role (L4 for HIGH, L5 for CRITICAL)'
+    }
+  ];
+
+  if (!error && !cause && !fix && id <= defaults.length) {
+    const d = defaults[id - 1];
+    error = d.error;
+    cause = d.cause;
+    fix = d.fix;
+  }
+
+  div.innerHTML = `
+    <div class="dynamic-item-header">
+      <span class="item-label">Row ${id}</span>
+      <button class="btn btn-danger btn-sm" onclick="removeItem('ts-${id}', 'ts')">Remove</button>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Error / situation</label>
+        <input type="text" class="ts-error" placeholder="\`Connection refused\` / tool call times out" oninput="generate()" value="${escHtml(error)}">
+      </div>
+      <div class="field">
+        <label>Cause</label>
+        <input type="text" class="ts-cause" placeholder="API server not running" oninput="generate()" value="${escHtml(cause)}">
+      </div>
+      <div class="field">
+        <label>Fix (runnable command or specific action)</label>
+        <input type="text" class="ts-fix" placeholder="Restart the server: python3 -m server > /tmp/server.log 2>&1 &" oninput="generate()" value="${escHtml(fix)}">
+      </div>
+    </div>
+  `;
+  container.appendChild(div);
+  generate();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Remove items
+// ─────────────────────────────────────────────────────────────────
+function removeItem(domId, type) {
+  const el = document.getElementById(domId);
+  if (el) el.remove();
+  if (type === 'rule') updateRuleButton();
+  generate();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Infrastructure toggle
+// ─────────────────────────────────────────────────────────────────
+function toggleInfra() {
+  const checked = document.getElementById('infraCheck').checked;
+  document.getElementById('infraFields').classList.toggle('visible', checked);
+  generate();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// HTML escape helper
+// ─────────────────────────────────────────────────────────────────
+function escHtml(str) {
+  return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function v(id) {
+  return (document.getElementById(id)?.value || '').trim();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// MAIN GENERATE FUNCTION
+// ─────────────────────────────────────────────────────────────────
+function generate() {
+  const slug    = v('slug')    || 'skill-name';
+  const title   = v('title')   || 'Skill Title';
+  const desc    = v('desc')    || '';
+  const mcp     = v('mcpServer');
+  const author  = v('author')  || '{{Author}}';
+  const version = v('version') || '1.0.0';
+  const date    = v('date')    || new Date().toISOString().split('T')[0];
+  const compat  = v('compat')  || 'Claude Code, Claude.ai';
+
+  // ── Frontmatter ────────────────────────────────────────────────
+  let out = `---\nname: ${slug}\ndescription: "${desc.replace(/"/g, '\\"')}"\n\nmetadata:\n  author: ${author}\n  version: ${version}\n  updated: ${date}\n  compatibility: "${compat}"`;
+  if (mcp) out += `\n  mcp-server: ${mcp}`;
+  out += `\n---\n\n`;
+
+  // ── Title + What This Skill Does ───────────────────────────────
+  out += `# ${title}\n\n## What This Skill Does\n\n${desc || '{{Describe what this skill does, what it does NOT do, and what infrastructure it requires.}}'}\n\n---\n\n`;
+
+  // ── Non-Negotiable Rules ───────────────────────────────────────
+  const rules = document.querySelectorAll('#rulesContainer .dynamic-item');
+  if (rules.length > 0) {
+    out += `## Non-Negotiable Rules\n\nThese apply to every workflow. Violating them causes wrong answers or unexpected behavior.\n\n`;
+    rules.forEach(rule => {
+      const stmt = rule.querySelector('.rule-stmt')?.value?.trim() || '';
+      const expl = rule.querySelector('.rule-expl')?.value?.trim() || '';
+      if (stmt || expl) {
+        out += `**${stmt || '{{Rule statement}}'}** ${expl || '{{Explanation with specific failure mode.}}'}\n\n`;
+      }
+    });
+    out += `---\n\n`;
+  }
+
+  // ── Trigger Phrases ────────────────────────────────────────────
+  const triggers = document.querySelectorAll('#triggersContainer .trigger-phrase');
+  const triggerList = Array.from(triggers).map(t => t.value.trim()).filter(Boolean);
+  if (triggerList.length > 0) {
+    out += `## Trigger Phrases\n\nActivate this skill when the user's message contains any of:\n\n`;
+    triggerList.forEach(t => { out += `- "${t}"\n`; });
+    out += `\n---\n\n`;
+  }
+
+  // ── Workflows ──────────────────────────────────────────────────
+  const workflows = document.querySelectorAll('#workflowsContainer .dynamic-item');
+  workflows.forEach((wf, idx) => {
+    const n = idx + 1;
+    const name     = wf.querySelector('.wf-name')?.value?.trim()     || `Workflow ${n}`;
+    const wfTrigs  = wf.querySelector('.wf-triggers')?.value?.trim() || '';
+    const steps    = wf.querySelector('.wf-steps')?.value?.trim()    || '';
+    const keyRule  = wf.querySelector('.wf-keyrule')?.value?.trim()  || '';
+
+    out += `## Workflow ${n}: ${name}\n\n`;
+    if (wfTrigs) out += `**Trigger phrases:** ${wfTrigs}\n\n`;
+    if (steps)   out += `**Steps:**\n${steps}\n\n`;
+    if (keyRule) out += `**Key rule:** ${keyRule}\n\n`;
+    out += `---\n\n`;
+  });
+
+  // ── Examples ──────────────────────────────────────────────────
+  const examples = document.querySelectorAll('#examplesContainer .dynamic-item');
+  if (examples.length > 0) {
+    out += `## Examples\n\n`;
+    examples.forEach((ex, idx) => {
+      const n       = idx + 1;
+      const exTitle = ex.querySelector('.ex-title')?.value?.trim()    || `Example ${n}`;
+      const user    = ex.querySelector('.ex-user')?.value?.trim()     || '';
+      const trace   = ex.querySelector('.ex-trace')?.value?.trim()    || '';
+      const resp    = ex.querySelector('.ex-response')?.value?.trim() || '';
+
+      out += `### Example ${n}: ${exTitle}\n\n`;
+      if (user)  out += `**User:** "${user}"\n\n`;
+      if (trace) out += `\`\`\`\n${trace}\n\`\`\`\n\n`;
+      if (resp)  out += `**Response:** "${resp}"\n\n`;
+      out += `---\n\n`;
+    });
+  }
+
+  // ── Troubleshooting ────────────────────────────────────────────
+  const tsRows = document.querySelectorAll('#tsContainer .dynamic-item');
+  if (tsRows.length > 0) {
+    out += `## Troubleshooting\n\n| Error | Cause | Fix |\n|-------|-------|-----|\n`;
+    tsRows.forEach(row => {
+      const error = (row.querySelector('.ts-error')?.value || '').trim().replace(/\|/g, '&#124;');
+      const cause = (row.querySelector('.ts-cause')?.value || '').trim().replace(/\|/g, '&#124;');
+      const fix   = (row.querySelector('.ts-fix')?.value   || '').trim().replace(/\|/g, '&#124;');
+      if (error || cause || fix) {
+        out += `| ${error} | ${cause} | ${fix} |\n`;
+      }
+    });
+    out += `\n---\n\n`;
+  }
+
+  // ── Infrastructure Notes ───────────────────────────────────────
+  if (document.getElementById('infraCheck')?.checked) {
+    const redis   = v('redisTTL');
+    const conv    = v('convSummaries');
+    const corr    = v('corrEmbed');
+    const flags   = v('featureFlags');
+
+    out += `## Infrastructure and Memory Notes\n\n`;
+    if (redis)  out += `### Redis TTL Cache\n\n${redis}\n\n`;
+    if (conv)   out += `### Conversation Summaries\n\n${conv}\n\n`;
+    if (corr)   out += `### Correction Embeddings\n\n${corr}\n\n`;
+    if (flags) {
+      out += `### Feature Flags\n\n\`\`\`bash\n${flags}\n\`\`\`\n\n`;
+    }
+    out += `---\n\n`;
+  }
+
+  // ── Voice and Tone ─────────────────────────────────────────────
+  const style    = v('voiceStyle');
+  const length   = v('voiceLength');
+  const identity = v('voiceIdentity');
+  const vocab    = v('voiceVocab');
+
+  const hasVoice = style || length || identity || vocab;
+  if (hasVoice) {
+    out += `## Voice and Tone\n\n`;
+    if (style)    out += `**Style:** ${style}\n\n`;
+    if (length)   out += `**Response length:** ${length}\n\n`;
+    if (identity) out += `**Identity:** ${identity}\n\n`;
+
+    if (vocab) {
+      const vocabLines = vocab.split('\n').map(l => l.trim()).filter(Boolean);
+      if (vocabLines.length > 0) {
+        out += `**Vocabulary:**\n\n| Avoid | Use instead |\n|-------|-------------|\n`;
+        vocabLines.forEach(line => {
+          const parts = line.split(/→|->/).map(p => p.trim());
+          if (parts.length === 2) {
+            out += `| \`${parts[0]}\` | \`${parts[1]}\` |\n`;
+          } else {
+            out += `| ${line} | |\n`;
+          }
+        });
+        out += `\n`;
+      }
+    }
+    out += `---\n\n`;
+  }
+
+  // ── Version History ────────────────────────────────────────────
+  out += `## Version History\n\n| Version | Date | Author | Change |\n|---------|------|--------|--------|\n`;
+  out += `| ${version} | ${date} | ${author} | Initial version |\n\n`;
+
+  // ── Footer ─────────────────────────────────────────────────────
+  out += `---\n\n*Template maintained by Prabal Saha. Last reviewed: ${date}.*\n`;
+
+  // ── Output ─────────────────────────────────────────────────────
+  const area = document.getElementById('outputArea');
+  area.value = out;
+
+  const chars = out.length;
+  const lines = out.split('\n').length;
+  document.getElementById('charCount').textContent = `${lines} lines · ${chars.toLocaleString()} chars`;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Copy / Download
+// ─────────────────────────────────────────────────────────────────
+function copyOutput() {
+  const text = document.getElementById('outputArea').value;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(() => showToast('Copied to clipboard!'));
+  } else {
+    const area = document.getElementById('outputArea');
+    area.select();
+    document.execCommand('copy');
+    showToast('Copied!');
+  }
+}
+
+function downloadOutput() {
+  const text = document.getElementById('outputArea').value;
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'SKILL.md';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('copyToast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2200);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Bootstrap defaults
+// ─────────────────────────────────────────────────────────────────
+function init() {
+  initDate();
+
+  // Static fields
+  document.getElementById('slug').value    = 'workday-agent';
+  document.getElementById('title').value   = 'Workday People Analytics';
+  document.getElementById('desc').value    = 'Answers headcount and geography questions using live Workday RAAS data via a Slack bot. Use when a user asks about employee counts, country breakdowns, or employee vs contingent worker splits. Does NOT handle Workday record modifications, payroll queries, or data from systems other than Workday.';
+  document.getElementById('mcpServer').value = 'workday-api-server';
+  document.getElementById('author').value  = 'Your Name';
+  document.getElementById('version').value = '1.0.0';
+  document.getElementById('compat').value  = 'Claude Code, Slack Bot';
+
+  // Rules
+  addRule(
+    'NEVER pass page or page_size to RAAS.',
+    'Workday returns HTTP 500 for any paginated request — all ~1,665 records come in a single response with ?format=json only.'
+  );
+  addRule(
+    'ALWAYS use tool_choice: {"type": "any"} in the Haiku dispatch turn.',
+    'Without this, Claude may answer headcount questions from training data and return completely wrong numbers with no error signal.'
+  );
+
+  // Triggers
+  addTrigger('"how many employees in" + a country or location');
+  addTrigger('"headcount breakdown" or "headcount by country"');
+  addTrigger('"employees vs contingent workers"');
+  addTrigger('"list countries" or "which countries do we have employees in"');
+
+  // Workflows
+  addWorkflow(
+    'Headcount by Geography',
+    '"how many employees in", "headcount in", "people in"',
+    '1. Call get_headcount_by_geography(geography=<country>)\n   → returns integer count\n2. Respond: "There are {count} employees in {country}."\nNote: geography accepts full country name ("United States of America") or 3-letter prefix ("USA"). Filtering is client-side.',
+    'Always call a tool — never answer from training data. Workday headcount changes frequently.'
+  );
+  addWorkflow(
+    'Full Country Breakdown',
+    '"breakdown by country", "headcount all countries", "which countries", "list countries"',
+    '1. Call get_headcount_all_countries()\n   → returns sorted list of {country, count}\n2. Present as a table or sorted list, descending by count\n3. Include total at the end',
+    'Results are pre-sorted descending — present them in the order returned.'
+  );
+
+  // Examples
+  addExample(
+    'Headcount by geography',
+    'How many employees in India?',
+    '1. get_headcount_by_geography(geography="India")\n   → 313',
+    'There are 313 employees in India.'
+  );
+  addExample(
+    'Employees vs contingent workers',
+    'How many employees vs contingent workers do we have?',
+    '1. get_worker_information()\n   → 1,665 total records\n   → Worker_Type="Employee": 1,554\n   → Worker_Type="Contingent Worker": 111',
+    'Total workforce: 1,665. Breakdown: 1,554 employees (93.3%) and 111 contingent workers (6.7%).'
+  );
+
+  // Troubleshooting
+  addTsRow('RAAS returns HTTP 500', 'page or page_size param was passed in the request', 'Remove pagination params — call with ?format=json only. Never pass page_size to the RAAS endpoint.');
+  addTsRow('Tool not visible to Claude', 'Tool not registered in utils/tool_router.py', 'Add @register decorator to the tool function in tool_router.py and restart the API server.');
+  addTsRow('Filter returns 0 results', 'Worker_Type casing mismatch (e.g. "employee" instead of "Employee")', 'Use exact values: "Employee" or "Contingent Worker" — string match is case-sensitive.');
+  addTsRow('Port conflict on startup', 'Port 8080 is already in use by another local service', 'Set API_PORT=8081 in .env — port 8080 is reserved for the compliance-mcp-server.');
+
+  generate();
+}
+
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

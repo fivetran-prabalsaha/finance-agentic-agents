@@ -1,2612 +1,2332 @@
-# Technical Specification - SOD Compliance System
+# Technical Specification - SOD Compliance System v3.0
 
 ## Document Information
 
 | Property | Value |
 |----------|-------|
-| **Document Version** | 2.1.0 |
-| **Last Updated** | 2026-02-11 |
-| **Status** | ✅ Production Ready - All Components Operational + Context-Aware Analysis |
+| **Document Version** | 3.4.0 |
+| **Last Updated** | 2026-03-15 |
+| **Status** | ✅ Production Ready - LLM Agnostic + Okta + pgvector + Redis Cache + Agent Response Pattern + Semantic Tool Router + Eval Suite |
 | **Owner** | Prabal Saha |
 | **Project** | SOD Compliance & Risk Assessment System |
 
 ---
 
-## Current System Status (2026-02-11)
+## Table of Contents
 
-### ✅ **Production Ready Components**
+1. [System Overview](#system-overview)
+2. [Architecture Diagrams](#architecture-diagrams)
+3. [Data Flow](#data-flow)
+4. [Database Schema](#database-schema)
+5. [Business Logic](#business-logic)
+6. [Component Specifications](#component-specifications)
+7. [Integration Points](#integration-points)
+8. [Semantic Tool Router](#semantic-tool-router)
+9. [Evaluation Suite](#evaluation-suite)
+10. [Security & Encryption](#security--encryption)
+11. [Performance Metrics](#performance-metrics)
+12. [Deployment](#deployment)
 
-#### Multi-Agent Architecture
-- **All 6 Agents Operational**: Data Collection, SOD Analysis, Risk Assessment, Knowledge Base, AI Analysis, Notification
-- **Comprehensive Test Suite**: All 6 agents individually tested and passing (100% pass rate)
-- **LangGraph Orchestrator**: Installed and configured for workflow coordination
-- **Agent Framework**: LangChain + LangGraph multi-agent system with HuggingFace embeddings
+---
 
-#### NetSuite Integration
-- **Search RESTlet (3685)**: ✅ Operational - 2-second targeted user search
-- **Enhanced Data Fields**: Returns job_function, business_unit, supervisor, location, hire_date
-- **Automated Job Function Classification**: Server-side derivation from department/title/business unit
-- **Performance**: 55x faster than bulk methods (2 sec vs 110 sec)
-- **Data Transfer**: 99% reduction (2KB vs 1.2MB per search)
-- **OAuth 1.0a**: Fully authenticated and secure
+## System Overview
 
-#### Analysis Engine
-- **SOD Rules**: 18 compliance rules across 5 categories
-- **Context-Aware Analysis**: Job function-based exemptions (IT/Systems users exempt from financial rules)
-- **Violation Detection**: 100% functional with pattern matching + smart exemptions
-- **Risk Scoring**: Multi-factor algorithm (0-100 scale)
-- **AI Analysis**: Claude Opus 4-6 integration for executive summaries
-- **False Positive Reduction**: 67% reduction for IT/Systems users (12 → 4 violations)
+### Executive Summary
 
-#### Infrastructure
-- **Database**: PostgreSQL 16 + pgvector (Homebrew native)
-- **Cache**: Redis 8.4.1 running and configured
-- **Python**: 3.9+ with all dependencies installed
-- **Models**: All database enums and tables defined
+The SOD Compliance System is a **multi-agent AI system** that automates Segregation of Duties compliance monitoring across SOX compliant business systems. The system features:
 
-#### Reporting
-- **Individual Reports**: User-specific SOD analysis
-- **Composite Reports**: Full population analysis with:
-  - Executive summary
-  - Severity breakdown
-  - Top violators
-  - Department analysis
-  - Risk distribution
-  - Actionable recommendations
+- **LLM-Agnostic Architecture** - Switch between any LLM provider (Anthropic, OpenAI, Google, etc.)
+- **6 Specialized Agents** - Data collection, analysis, risk assessment, knowledge base, AI insights, notifications
+- **Context-Aware Analysis** - Job function-based exemptions reduce false positives by 67%
+- **Okta Integration** - User lifecycle reconciliation with automated deactivation workflow
+- **Real-time Monitoring** - Automated scans with configurable intervals
+- **Cost Optimization** - Automatic cost tracking across all LLM providers
 
-### 🎯 **Verified Metrics**
+### Key Capabilities
+
+✅ **185 users/sec** analysis throughput
+✅ **95% accuracy** with context-aware exemptions
+✅ **67% reduction** in IT staff false positives
+✅ **8 LLM providers** supported (Anthropic, OpenAI, Google, Cohere, Azure, Ollama, vLLM, HuggingFace)
+✅ **Vector search** with pgvector - semantic rule matching with 384-dim embeddings
+✅ **Redis caching** - 90% cost reduction, 10-500x faster repeated queries
+✅ **Encrypted API keys** with Fernet encryption
+✅ **Okta-NetSuite reconciliation** for user lifecycle management
+✅ **Human-in-the-loop** approval workflow for deactivations
+
+---
+
+## Architecture Diagrams
+
+### 1. High-Level System Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         COMPLIANCE SYSTEM                                │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                    ┌───────────────┼───────────────┐
+                    │               │               │
+                    ▼               ▼               ▼
+        ┌───────────────┐  ┌──────────────┐  ┌──────────────┐
+        │   NetSuite    │  │     Okta     │  │    Claude    │
+        │   (OAuth)     │  │   (API)      │  │  (via LLM)   │
+        │   RESTlet     │  │   Users      │  │  Abstraction │
+        └───────┬───────┘  └──────┬───────┘  └──────┬───────┘
+                │                  │                  │
+                │                  │                  │
+        ┌───────▼──────────────────▼──────────────────▼───────┐
+        │           INTEGRATION & ABSTRACTION LAYER            │
+        │  ┌────────────┐  ┌─────────────┐  ┌──────────────┐ │
+        │  │  NetSuite  │  │    Okta     │  │     LLM      │ │
+        │  │   Client   │  │   Client    │  │  Abstraction │ │
+        │  └────────────┘  └─────────────┘  └──────────────┘ │
+        └──────────────────────────┬───────────────────────────┘
+                                   │
+        ┌──────────────────────────▼───────────────────────────┐
+        │              MULTI-AGENT ORCHESTRATOR                 │
+        │                  (LangGraph)                          │
+        │  ┌─────────────────────────────────────────────────┐ │
+        │  │           Agent Workflow Engine                 │ │
+        │  └─────────────────────────────────────────────────┘ │
+        └──────────────────────────┬───────────────────────────┘
+                                   │
+        ┌──────────────────────────▼───────────────────────────┐
+        │                   AGENT LAYER                         │
+        │                                                       │
+        │  ┌──────────┐  ┌──────────┐  ┌────────────────┐    │
+        │  │   Data   │  │   SOD    │  │  Reconciliation│    │
+        │  │Collector │  │ Analyzer │  │     Agent      │    │
+        │  └──────────┘  └──────────┘  └────────────────┘    │
+        │                                                       │
+        │  ┌──────────┐  ┌──────────┐  ┌────────────────┐    │
+        │  │   Risk   │  │Knowledge │  │  Deactivation  │    │
+        │  │ Assessor │  │   Base   │  │     Agent      │    │
+        │  └──────────┘  └──────────┘  └────────────────┘    │
+        │                                                       │
+        │  ┌──────────┐  ┌──────────┐                        │
+        │  │   AI     │  │Notifier  │                        │
+        │  │ Analyst  │  │  Agent   │                        │
+        │  └──────────┘  └──────────┘                        │
+        └──────────────────────────┬───────────────────────────┘
+                                   │
+        ┌──────────────────────────▼───────────────────────────┐
+        │              DATA & REPOSITORY LAYER                  │
+        │                                                       │
+        │  ┌──────────┐  ┌──────────┐  ┌────────────────┐    │
+        │  │   User   │  │   Role   │  │   Violation    │    │
+        │  │   Repo   │  │   Repo   │  │      Repo      │    │
+        │  └──────────┘  └──────────┘  └────────────────┘    │
+        │                                                       │
+        │  ┌──────────┐  ┌──────────┐  ┌────────────────┐    │
+        │  │   Okta   │  │   Recon  │  │   Deactivation │    │
+        │  │   Repo   │  │   Repo   │  │   Approval     │    │
+        │  └──────────┘  └──────────┘  └────────────────┘    │
+        └──────────────────────────┬───────────────────────────┘
+                                   │
+        ┌──────────────────────────▼───────────────────────────┐
+        │               DATABASE LAYER                          │
+        │                                                       │
+        │  ┌─────────────────────────────────────────────┐    │
+        │  │         PostgreSQL 17 + pgvector 0.8.1       │    │
+        │  │                                              │    │
+        │  │  Core:    users, roles, user_roles           │    │
+        │  │  Rules:   sod_rules, violations              │    │
+        │  │  Vectors: embedding vector(384) in 3 tables  │    │
+        │  │  Okta:    okta_users, reconciliations        │    │
+        │  │  Workflow: deactivation_approvals, logs      │    │
+        │  │  Tracking: compliance_scans, agent_logs      │    │
+        │  └─────────────────────────────────────────────┘    │
+        │                                                       │
+        │  ┌─────────────────────────────────────────────┐    │
+        │  │         Redis 7 (Cache - ACTIVE)             │    │
+        │  │  • AI analysis caching (24h TTL)             │    │
+        │  │  • Violation results (1h TTL)                │    │
+        │  │  • Risk scores (1h TTL)                      │    │
+        │  │  • 90% cost reduction on repeated queries    │    │
+        │  └─────────────────────────────────────────────┘    │
+        └───────────────────────────────────────────────────────┘
+```
+
+### 2. LLM Abstraction Layer Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      APPLICATION LAYER                           │
+│  (Agents: Analyzer, Risk Assessor, Notifier, AI Analyst)        │
+└─────────────────────────────┬───────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                   LLM ABSTRACTION LAYER                          │
+│                                                                  │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │             Unified Interface (BaseLLMProvider)           │  │
+│  │                                                           │  │
+│  │  Methods:                                                 │  │
+│  │  • generate(messages) -> LLMResponse                      │  │
+│  │  • generate_stream(messages) -> Iterator                 │  │
+│  │  • count_tokens(text) -> int                             │  │
+│  │  • get_model_info() -> Dict                              │  │
+│  │  • test_connection() -> bool                             │  │
+│  │  • calculate_cost(input, output) -> float                │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                              │                                   │
+│              ┌───────────────┼──────────────┐                  │
+│              │               │              │                   │
+│  ┌───────────▼──┐  ┌────────▼──────┐  ┌───▼──────────┐       │
+│  │   Factory    │  │    Config     │  │  Encryption  │       │
+│  │   Pattern    │  │   Manager     │  │  (Fernet)    │       │
+│  └───────┬──────┘  └────────┬──────┘  └──────────────┘       │
+│          │                   │                                  │
+│          └──────────┬────────┘                                  │
+│                     │                                           │
+│  ┌──────────────────▼─────────────────────────────────────┐   │
+│  │              Provider Implementations                   │   │
+│  │                                                         │   │
+│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌───────┐ │   │
+│  │  │Anthropic │  │  OpenAI  │  │  Google  │  │Cohere │ │   │
+│  │  │  Claude  │  │   GPT    │  │  Gemini  │  │Command│ │   │
+│  │  └──────────┘  └──────────┘  └──────────┘  └───────┘ │   │
+│  │                                                         │   │
+│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐             │   │
+│  │  │  Azure   │  │  Ollama  │  │  vLLM    │             │   │
+│  │  │ OpenAI   │  │  Local   │  │  Local   │             │   │
+│  │  └──────────┘  └──────────┘  └──────────┘             │   │
+│  └─────────────────────────────────────────────────────────┘   │
+└─────────────────────────────┬───────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     EXTERNAL LLM APIS                            │
+│                                                                  │
+│  Claude API    OpenAI API    Gemini API    Cohere API          │
+│  (Anthropic)   (OpenAI)      (Google)      (Cohere)            │
+│                                                                  │
+│  Azure OpenAI  Ollama        vLLM Server                        │
+│  (Microsoft)   (localhost)   (localhost)                        │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 3. Data Flow Diagram - Complete System
+
+```
+┌──────────────┐
+│   NetSuite   │
+│    Users     │
+└──────┬───────┘
+       │
+       │ ① Fetch User Data
+       │    (RESTlet v5)
+       ▼
+┌──────────────────────┐        ┌──────────────┐
+│  Data Collection     │───────▶│  PostgreSQL  │
+│      Agent           │        │    Users     │
+│  • Search users      │        │    Roles     │
+│  • Extract roles     │        │  UserRoles   │
+│  • Job function      │        └──────────────┘
+└──────────────────────┘
+       │
+       │ ② User & Role Data
+       ▼
+┌──────────────────────┐        ┌──────────────┐
+│   SOD Analyzer       │───────▶│  PostgreSQL  │
+│      Agent           │        │  Violations  │
+│  • Load 18 rules     │        └──────────────┘
+│  • Check conflicts   │
+│  • Context-aware     │        ┌──────────────┐
+│  • Pattern match     │───────▶│     LLM      │
+└──────────────────────┘        │  (Claude)    │
+       │                         └──────────────┘
+       │ ③ Violations
+       ▼
+┌──────────────────────┐        ┌──────────────┐
+│   Risk Assessor      │───────▶│  PostgreSQL  │
+│      Agent           │        │   Updated    │
+│  • User risk score   │        │  Violations  │
+│  • Org risk level    │        │  + Scores    │
+│  • Risk distribution │        └──────────────┘
+└──────────────────────┘
+       │
+       │ ④ Risk Scores
+       ▼
+┌──────────────────────┐        ┌──────────────┐
+│  AI Analysis Agent   │───────▶│     LLM      │
+│  • Generate insights │        │  (Claude)    │
+│  • Explain risks     │        │  Abstraction │
+│  • Recommendations   │        └──────────────┘
+└──────────────────────┘
+       │
+       │ ⑤ AI Insights
+       ▼
+┌──────────────────────┐
+│   Knowledge Base     │
+│      Agent           │        ┌──────────────┐
+│  • Semantic search   │───────▶│  Embeddings  │
+│  • Rule lookup       │        │  (HuggingFace│
+│  • Similar cases     │        │   pgvector)  │
+└──────────────────────┘        └──────────────┘
+       │
+       │ ⑥ Knowledge + Context
+       ▼
+┌──────────────────────┐
+│   Notifier Agent     │
+│  • Format reports    │        ┌──────────────┐
+│  • User comparison   │───────▶│   SendGrid   │
+│  • Send alerts       │        │    Email     │
+│  • Track delivery    │        └──────────────┘
+└──────────────────────┘
+       │                         ┌──────────────┐
+       └────────────────────────▶│    Slack     │
+                                 │   Webhook    │
+                                 └──────────────┘
+```
+
+### 4. Okta-NetSuite Reconciliation Flow
+
+```
+┌──────────────┐                    ┌──────────────┐
+│     Okta     │                    │   NetSuite   │
+│    Users     │                    │    Users     │
+└──────┬───────┘                    └──────┬───────┘
+       │                                    │
+       │ ① Sync Okta Users                 │ ② Fetch NS Users
+       │    (status, dept, etc)            │    (active status)
+       ▼                                    ▼
+┌─────────────────────────────────────────────────────┐
+│         Enhanced Data Collection Agent              │
+│  • Fetch from Okta (get_users API)                  │
+│  • Fetch from NetSuite (RESTlet)                    │
+│  • Store both in separate tables                    │
+└──────────────────┬──────────────────────────────────┘
+                   │
+                   │ ③ Both datasets ready
+                   ▼
+┌─────────────────────────────────────────────────────┐
+│           Reconciliation Agent                      │
+│  • Compare by email (primary key)                   │
+│  • Identify status mismatches                       │
+│  • Detect orphaned users                            │
+│  • Calculate risk levels                            │
+│  • Flag actions needed                              │
+└──────────────────┬──────────────────────────────────┘
+                   │
+                   │ ④ Reconciliation records created
+                   ▼
+┌─────────────────────────────────────────────────────┐
+│              PostgreSQL Database                     │
+│  • okta_users table                                 │
+│  • user_reconciliations table                       │
+│    - MATCHED: Both active                           │
+│    - ORPHANED: Active in NS, deprovisioned in Okta  │
+│    - MISSING_IN_OKTA: Only in NS                    │
+│    - MISSING_IN_NETSUITE: Only in Okta              │
+└──────────────────┬──────────────────────────────────┘
+                   │
+                   │ ⑤ High-risk orphaned users identified
+                   ▼
+┌─────────────────────────────────────────────────────┐
+│           Deactivation Agent                        │
+│  • Create approval request                          │
+│  • Generate user list                               │
+│  • Send to approver                                 │
+│  • Wait for approval                                │
+└──────────────────┬──────────────────────────────────┘
+                   │
+                   │ ⑥ Approval request sent
+                   ▼
+┌─────────────────────────────────────────────────────┐
+│              Human Approver                         │
+│  • Review user list                                 │
+│  • Check justifications                             │
+│  • Approve or Reject                                │
+└──────────────────┬──────────────────────────────────┘
+                   │
+       ┌───────────┴───────────┐
+       │                       │
+       ▼ Approved              ▼ Rejected
+┌─────────────────┐     ┌────────────────┐
+│  Execute        │     │   Log & Alert  │
+│  Deactivation   │     │   No Action    │
+└────────┬────────┘     └────────────────┘
+         │
+         │ ⑦ Deactivate users
+         ▼
+┌─────────────────────────────────────────────────────┐
+│        NetSuite Deactivation Scripts                │
+│                                                      │
+│  If ≤10 users:                                       │
+│  ┌────────────────────────────────────────────┐    │
+│  │  RESTlet Script (Single/Small Batch)       │    │
+│  │  • Load employee record                    │    │
+│  │  • Set isinactive = true                   │    │
+│  │  • Add audit comment                       │    │
+│  │  • Save record                             │    │
+│  └────────────────────────────────────────────┘    │
+│                                                      │
+│  If >10 users:                                       │
+│  ┌────────────────────────────────────────────┐    │
+│  │  Map/Reduce Script (Bulk)                  │    │
+│  │  getInputData: Parse user IDs              │    │
+│  │  map: Deactivate each user                 │    │
+│  │  reduce: Aggregate results                 │    │
+│  │  summarize: Final report                   │    │
+│  └────────────────────────────────────────────┘    │
+└──────────────────┬──────────────────────────────────┘
+                   │
+                   │ ⑧ Results logged
+                   ▼
+┌─────────────────────────────────────────────────────┐
+│              PostgreSQL Database                     │
+│  • deactivation_approvals (request tracking)        │
+│  • deactivation_logs (audit trail)                  │
+│    - user, action, status, timestamp                │
+│    - NS status before/after                         │
+│    - Okta status at time                            │
+└─────────────────────────────────────────────────────┘
+```
+
+---
+
+## Database Schema
+
+### Core Tables (Existing)
+
+```sql
+┌─────────────────────────────────────────────────────────┐
+│                      users                              │
+├─────────────────────────────────────────────────────────┤
+│ id                UUID PRIMARY KEY                      │
+│ user_id           VARCHAR(255) UNIQUE (NS ID)          │
+│ internal_id       VARCHAR(50) UNIQUE (NS Internal)     │
+│ name              VARCHAR(255)                          │
+│ email             VARCHAR(255) UNIQUE                   │
+│ status            ENUM(ACTIVE, INACTIVE, SUSPENDED)     │
+│ department        VARCHAR(255)                          │
+│ subsidiary        VARCHAR(255)                          │
+│ employee_id       VARCHAR(100)                          │
+│ last_login        TIMESTAMP                             │
+│                                                          │
+│ -- Context Fields (for SOD analysis)                   │
+│ job_function      VARCHAR(100) [IT, FINANCE, OTHER]    │
+│ business_unit     VARCHAR(255)                          │
+│ title             VARCHAR(255)                          │
+│ supervisor        VARCHAR(255)                          │
+│ supervisor_id     VARCHAR(100)                          │
+│ location          VARCHAR(255)                          │
+│ hire_date         TIMESTAMP                             │
+│                                                          │
+│ synced_at         TIMESTAMP                             │
+│ created_at        TIMESTAMP                             │
+│ updated_at        TIMESTAMP                             │
+└─────────────────────────────────────────────────────────┘
+                     │
+                     │ 1:N
+                     ▼
+┌─────────────────────────────────────────────────────────┐
+│                   user_roles                            │
+├─────────────────────────────────────────────────────────┤
+│ id                UUID PRIMARY KEY                      │
+│ user_id           UUID FK → users(id)                   │
+│ role_id           UUID FK → roles(id)                   │
+│ assigned_at       TIMESTAMP                             │
+│ assigned_by       VARCHAR(255)                          │
+│ notes             TEXT                                  │
+└─────────────────────────────────────────────────────────┘
+                     │
+                     │ N:1
+                     ▼
+┌─────────────────────────────────────────────────────────┐
+│                     roles                               │
+├─────────────────────────────────────────────────────────┤
+│ id                UUID PRIMARY KEY                      │
+│ role_id           VARCHAR(100) UNIQUE                   │
+│ role_name         VARCHAR(255)                          │
+│ is_custom         BOOLEAN                               │
+│ description       TEXT                                  │
+│ permission_count  INTEGER                               │
+│ permissions       JSON                                  │
+│ embedding         vector(384) (pgvector)                │
+│ created_at        TIMESTAMP                             │
+│ updated_at        TIMESTAMP                             │
+└─────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────┐
+│                   sod_rules                             │
+├─────────────────────────────────────────────────────────┤
+│ id                UUID PRIMARY KEY                      │
+│ rule_id           VARCHAR(100) UNIQUE                   │
+│ rule_name         VARCHAR(255)                          │
+│ category          VARCHAR(100) [FINANCIAL, AP, AR, ...]│
+│ description       TEXT                                  │
+│ conflicting_perms JSON                                  │
+│ severity          ENUM(CRITICAL, HIGH, MEDIUM, LOW)     │
+│ is_active         BOOLEAN                               │
+│ embedding         vector(384) (pgvector)                │
+└─────────────────────────────────────────────────────────┘
+                     │
+                     │ 1:N
+                     ▼
+┌─────────────────────────────────────────────────────────┐
+│                  violations                             │
+├─────────────────────────────────────────────────────────┤
+│ id                UUID PRIMARY KEY                      │
+│ user_id           UUID FK → users(id)                   │
+│ rule_id           UUID FK → sod_rules(id)               │
+│ scan_id           UUID FK → compliance_scans(id)        │
+│ severity          ENUM(CRITICAL, HIGH, MEDIUM, LOW)     │
+│ status            ENUM(OPEN, IN_REVIEW, RESOLVED, ...)  │
+│ risk_score        FLOAT (0-100)                         │
+│ title             VARCHAR(500)                          │
+│ description       TEXT                                  │
+│ conflicting_roles JSON                                  │
+│ conflicting_perms JSON                                  │
+│ detected_at       TIMESTAMP                             │
+│ resolved_at       TIMESTAMP                             │
+│ resolved_by       VARCHAR(255)                          │
+│ resolution_notes  TEXT                                  │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Okta Integration Tables (New - Phase 1 Complete)
+
+```sql
+┌─────────────────────────────────────────────────────────┐
+│                   okta_users                            │
+├─────────────────────────────────────────────────────────┤
+│ id                UUID PRIMARY KEY                      │
+│ okta_id           VARCHAR(255) UNIQUE                   │
+│ email             VARCHAR(255) UNIQUE                   │
+│ first_name        VARCHAR(255)                          │
+│ last_name         VARCHAR(255)                          │
+│ status            ENUM(ACTIVE, SUSPENDED,               │
+│                       DEPROVISIONED, STAGED, ...)       │
+│ login             VARCHAR(255)                          │
+│ activated         TIMESTAMP                             │
+│ status_changed    TIMESTAMP                             │
+│ last_login        TIMESTAMP                             │
+│ last_updated      TIMESTAMP                             │
+│ password_changed  TIMESTAMP                             │
+│ department        VARCHAR(255)                          │
+│ title             VARCHAR(255)                          │
+│ employee_number   VARCHAR(100)                          │
+│ manager           VARCHAR(255)                          │
+│ manager_id        VARCHAR(255)                          │
+│ okta_groups       JSON                                  │
+│ synced_at         TIMESTAMP                             │
+│ created_at        TIMESTAMP                             │
+│ updated_at        TIMESTAMP                             │
+└─────────────────────────────────────────────────────────┘
+                     │
+                     │ 1:N
+                     ▼
+┌─────────────────────────────────────────────────────────┐
+│              user_reconciliations                       │
+├─────────────────────────────────────────────────────────┤
+│ id                UUID PRIMARY KEY                      │
+│ netsuite_user_id  UUID FK → users(id)                   │
+│ okta_user_id      UUID FK → okta_users(id)              │
+│ email             VARCHAR(255)                          │
+│ netsuite_status   VARCHAR(50)                           │
+│ okta_status       VARCHAR(50)                           │
+│ reconciliation_   ENUM(MATCHED, ORPHANED,               │
+│   status          MISSING_IN_OKTA,                      │
+│                   MISSING_IN_NETSUITE,                  │
+│                   STATUS_MISMATCH)                      │
+│ discrepancy_      TEXT                                  │
+│   reason                                                │
+│ risk_level        ENUM(HIGH, MEDIUM, LOW)               │
+│ requires_action   BOOLEAN                               │
+│ action_required   VARCHAR(100)                          │
+│ reconciled_at     TIMESTAMP                             │
+│ scan_id           UUID                                  │
+└─────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────┐
+│             deactivation_approvals                      │
+├─────────────────────────────────────────────────────────┤
+│ id                UUID PRIMARY KEY                      │
+│ request_id        VARCHAR(100) UNIQUE                   │
+│ user_ids          JSON (array of NS IDs)                │
+│ user_count        INTEGER                               │
+│ status            ENUM(PENDING, APPROVED,               │
+│                       REJECTED, EXPIRED)                │
+│ requested_by      VARCHAR(255)                          │
+│ requested_at      TIMESTAMP                             │
+│ approved_by       VARCHAR(255)                          │
+│ approved_at       TIMESTAMP                             │
+│ rejected_by       VARCHAR(255)                          │
+│ rejected_at       TIMESTAMP                             │
+│ rejection_reason  TEXT                                  │
+│ execution_status  ENUM(NOT_STARTED, IN_PROGRESS,        │
+│                       COMPLETED, FAILED, PARTIAL)       │
+│ execution_method  ENUM(RESTLET, MAPREDUCE, MANUAL)      │
+│ execution_        TIMESTAMP                             │
+│   started_at                                            │
+│ execution_        TIMESTAMP                             │
+│   completed_at                                          │
+│ users_deactivated INTEGER                               │
+│ users_failed      INTEGER                               │
+│ execution_errors  JSON                                  │
+│ expires_at        TIMESTAMP                             │
+│ approval_metadata JSON                                  │
+└─────────────────────────────────────────────────────────┘
+                     │
+                     │ 1:N
+                     ▼
+┌─────────────────────────────────────────────────────────┐
+│               deactivation_logs                         │
+├─────────────────────────────────────────────────────────┤
+│ id                UUID PRIMARY KEY                      │
+│ netsuite_user_id  UUID FK → users(id)                   │
+│ netsuite_         VARCHAR(100)                          │
+│   internal_id                                           │
+│ email             VARCHAR(255)                          │
+│ approval_         UUID FK → deactivation_approvals(id)  │
+│   request_id                                            │
+│ action            ENUM(DEACTIVATE, REACTIVATE)          │
+│ method            ENUM(RESTLET, MAPREDUCE, MANUAL)      │
+│ status            VARCHAR(50) [SUCCESS, FAILED, ...]    │
+│ error_message     TEXT                                  │
+│ performed_by      VARCHAR(255)                          │
+│ performed_at      TIMESTAMP                             │
+│ reason            TEXT                                  │
+│ okta_status_      VARCHAR(50)                           │
+│   at_time                                               │
+│ netsuite_status_  VARCHAR(50)                           │
+│   before                                                │
+│ netsuite_status_  VARCHAR(50)                           │
+│   after                                                 │
+│ log_metadata      JSON                                  │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Table Relationships
+
+```
+users ──┬── 1:N ──▶ user_roles ──┬── N:1 ──▶ roles
+        │                        │
+        ├── 1:N ──▶ violations ──┴── N:1 ──▶ sod_rules
+        │
+        ├── 1:N ──▶ user_reconciliations ──┬── N:1 ──▶ okta_users
+        │                                   │
+        └── 1:N ──▶ deactivation_logs ──────┴── N:1 ──▶ deactivation_approvals
+
+compliance_scans ── 1:N ──▶ violations
+                 ── 1:N ──▶ agent_logs
+```
+
+### Index Strategy
+
+**High Performance Indexes:**
+```sql
+-- Users
+CREATE INDEX idx_user_email ON users(email);
+CREATE INDEX idx_user_status ON users(status);
+CREATE INDEX idx_user_job_function ON users(job_function);
+CREATE INDEX idx_user_department ON users(department);
+
+-- Violations
+CREATE INDEX idx_violation_user_status ON violations(user_id, status);
+CREATE INDEX idx_violation_severity ON violations(severity);
+CREATE INDEX idx_violation_detected_at ON violations(detected_at);
+
+-- Reconciliations
+CREATE INDEX idx_recon_status ON user_reconciliations(reconciliation_status);
+CREATE INDEX idx_recon_requires_action ON user_reconciliations(requires_action);
+CREATE INDEX idx_recon_risk_level ON user_reconciliations(risk_level);
+CREATE INDEX idx_recon_email ON user_reconciliations(email);
+
+-- Okta Users
+CREATE INDEX idx_okta_email ON okta_users(email);
+CREATE INDEX idx_okta_status ON okta_users(status);
+CREATE INDEX idx_okta_synced ON okta_users(synced_at);
+
+-- Deactivation
+CREATE INDEX idx_approval_status ON deactivation_approvals(status);
+CREATE INDEX idx_approval_requested_at ON deactivation_approvals(requested_at);
+CREATE INDEX idx_deactivation_email ON deactivation_logs(email);
+CREATE INDEX idx_deactivation_performed_at ON deactivation_logs(performed_at);
+```
+
+---
+
+## Business Logic
+
+### 1. SOD Analysis Flowchart
+
+```
+                    START
+                      │
+                      ▼
+            ┌─────────────────────┐
+            │  Load User from DB  │
+            └─────────┬───────────┘
+                      │
+                      ▼
+            ┌─────────────────────┐
+            │  Get User's Roles   │
+            │  & Permissions      │
+            └─────────┬───────────┘
+                      │
+                      ▼
+            ┌─────────────────────┐
+            │  Load SOD Rules     │
+            │  (18 rules)         │
+            └─────────┬───────────┘
+                      │
+                      ▼
+         ┌────────────────────────────┐
+         │  For Each Rule:            │
+         │  Check if user's roles     │
+         │  contain conflicting perms │
+         └────────────┬───────────────┘
+                      │
+                      ▼
+              ┌───────────────┐
+              │  Conflict?    │
+              └───────┬───────┘
+                      │
+            ┌─────────┴──────────┐
+            │                    │
+           YES                  NO
+            │                    │
+            ▼                    ▼
+    ┌──────────────────┐   ┌──────────────┐
+    │ Check Context-   │   │  Continue to │
+    │ Aware Exemptions │   │  Next Rule   │
+    └────────┬─────────┘   └──────────────┘
+             │
+             ▼
+    ┌──────────────────┐
+    │ Is IT/Systems    │
+    │ User + Financial │
+    │ Rule?            │
+    └────────┬─────────┘
+             │
+    ┌────────┴─────────┐
+    │                  │
+   YES                NO
+    │                  │
+    ▼                  ▼
+┌─────────────┐  ┌──────────────┐
+│  EXEMPT     │  │   Create     │
+│  Skip this  │  │  Violation   │
+│  rule       │  │  Record      │
+└─────────────┘  └──────┬───────┘
+                        │
+                        ▼
+                 ┌──────────────┐
+                 │ Calculate    │
+                 │ Risk Score   │
+                 │ (0-100)      │
+                 └──────┬───────┘
+                        │
+                        ▼
+                 ┌──────────────┐
+                 │ Determine    │
+                 │ Severity     │
+                 │ Level        │
+                 └──────┬───────┘
+                        │
+                        ▼
+                 ┌──────────────┐
+                 │ Store in DB  │
+                 └──────┬───────┘
+                        │
+                        ▼
+                 ┌──────────────┐
+                 │ Create Audit │
+                 │ Log Entry    │
+                 └──────────────┘
+                        │
+                        ▼
+                      END
+```
+
+### 2. Risk Scoring Algorithm
+
+```
+Risk Score Calculation (0-100 scale):
+
+Base Score = Severity Weight
+  • CRITICAL: 100 points
+  • HIGH: 75 points
+  • MEDIUM: 50 points
+  • LOW: 25 points
+
+Modifiers:
+  +20: Has "Approve" permission conflict
+  +15: Has financial transaction access
+  +10: Multiple conflicting roles (>2)
+  +5:  Recently assigned role
+  +5:  Unreviewed violation
+
+  -10: Mitigating control documented
+  -5:  Low-risk department
+  -5:  Supervisor approval recorded
+
+Final Score = min(100, Base + Modifiers)
+
+Risk Level Mapping:
+  90-100: CRITICAL (Immediate action required)
+  70-89:  HIGH (Review within 24 hours)
+  40-69:  MEDIUM (Review within 1 week)
+  0-39:   LOW (Monitor)
+```
+
+### 3. Context-Aware Exemption Logic
+
+```
+┌─────────────────────────────────────────────────────┐
+│         Context-Aware Exemption Engine              │
+└─────────────────────────────────────────────────────┘
+
+INPUT: User, Violation Rule
+
+Step 1: Identify User Job Function
+  ├─ From user.job_function field
+  ├─ Derived from: department, title, business_unit
+  └─ Values: IT/SYSTEMS_ENGINEERING, FINANCE, SALES, OTHER
+
+Step 2: Identify Rule Category
+  ├─ From rule.category field
+  └─ Values: FINANCIAL, AP, AR, IT_ACCESS, PAYROLL, etc.
+
+Step 3: Apply Exemption Matrix
+
+┌────────────────────┬──────────────────────────────┐
+│  Job Function      │  Exempt From Rule Categories │
+├────────────────────┼──────────────────────────────┤
+│ IT/SYSTEMS_        │ • FINANCIAL                  │
+│ ENGINEERING        │ • AP (Accounts Payable)      │
+│                    │ • AR (Accounts Receivable)   │
+│                    │ • PAYROLL                    │
+│                    │ • ACCOUNTING                 │
+│                    │                              │
+│                    │ NOT Exempt: IT_ACCESS rules  │
+├────────────────────┼──────────────────────────────┤
+│ FINANCE            │ • IT_ACCESS                  │
+│                    │ • SYSTEM_ADMIN               │
+│                    │                              │
+│                    │ NOT Exempt: FINANCIAL rules  │
+├────────────────────┼──────────────────────────────┤
+│ OTHER              │ (No blanket exemptions)      │
+└────────────────────┴──────────────────────────────┘
+
+Step 4: Make Decision
+  IF (user.job_function, rule.category) IN exemption_matrix:
+    RETURN: EXEMPT (do not create violation)
+  ELSE:
+    RETURN: VIOLATION (create violation record)
+
+Example 1: IT User + Financial Rule
+  User: job_function = "IT/SYSTEMS_ENGINEERING"
+  Rule: category = "FINANCIAL" (AP Entry vs Approval)
+  Result: EXEMPT ✅ (IT users need admin access)
+
+Example 2: Finance User + Financial Rule
+  User: job_function = "FINANCE"
+  Rule: category = "FINANCIAL" (AP Entry vs Approval)
+  Result: VIOLATION ❌ (Finance users must follow SOD)
+
+Example 3: IT User + IT Access Rule
+  User: job_function = "IT/SYSTEMS_ENGINEERING"
+  Rule: category = "IT_ACCESS" (Admin vs Regular User)
+  Result: VIOLATION ❌ (Still applies to IT users)
+```
+
+### 4. Okta Reconciliation Decision Tree
+
+```
+                    START: Compare Users
+                            │
+                            ▼
+                ┌─────────────────────────┐
+                │ Does email exist in     │
+                │ both Okta and NetSuite? │
+                └────────┬────────────────┘
+                         │
+              ┌──────────┴──────────┐
+             YES                   NO
+              │                     │
+              ▼                     ▼
+    ┌────────────────┐    ┌─────────────────────┐
+    │ Status Match?  │    │ Exists in Okta only?│
+    └────────┬───────┘    └────────┬────────────┘
+             │                     │
+    ┌────────┴────────┐     ┌─────┴─────┐
+   YES               NO     YES          NO
+    │                 │      │            │
+    ▼                 ▼      ▼            ▼
+┌─────────┐   ┌──────────────┐  ┌──────────┐  ┌──────────┐
+│MATCHED  │   │ Okta Status? │  │MISSING_  │  │MISSING_  │
+│         │   └──────┬───────┘  │IN_       │  │IN_OKTA   │
+│Risk:LOW │          │          │NETSUITE  │  │          │
+└─────────┘   ┌──────┴──────┐  │          │  │Risk:HIGH │
+              │             │   │Risk:LOW  │  └──────────┘
+         DEPROVISIONED   ACTIVE │          │
+              │             │   └──────────┘
+              ▼             ▼
+    ┌─────────────────────────────────┐
+    │ NetSuite Status?                │
+    └─────────┬───────────────────────┘
+              │
+      ┌───────┴────────┐
+   ACTIVE          INACTIVE
+      │                 │
+      ▼                 ▼
+┌─────────────┐  ┌────────────────┐
+│  ORPHANED   │  │ STATUS_        │
+│             │  │ MISMATCH       │
+│ Risk: HIGH  │  │                │
+│ Action:     │  │ Risk: MEDIUM   │
+│ DEACTIVATE  │  │ Action:        │
+│             │  │ INVESTIGATE    │
+└─────────────┘  └────────────────┘
+```
+
+### 5. Deactivation Approval Workflow
+
+```
+                        START
+                          │
+                          ▼
+              ┌───────────────────────┐
+              │ Reconciliation Agent  │
+              │ identifies orphaned   │
+              │ users (HIGH risk)     │
+              └───────────┬───────────┘
+                          │
+                          ▼
+              ┌───────────────────────┐
+              │ Deactivation Agent    │
+              │ creates approval      │
+              │ request               │
+              └───────────┬───────────┘
+                          │
+                          ▼
+              ┌───────────────────────┐
+              │ Generate user list    │
+              │ with context:         │
+              │ • Name, email         │
+              │ • Okta status         │
+              │ • Last login          │
+              │ • Reason              │
+              └───────────┬───────────┘
+                          │
+                          ▼
+              ┌───────────────────────┐
+              │ Send to approver      │
+              │ • Email notification  │
+              │ • Slack alert         │
+              │ • Dashboard entry     │
+              └───────────┬───────────┘
+                          │
+                          ▼
+              ┌───────────────────────┐
+              │ Wait for approval     │
+              │ (max 48 hours)        │
+              └───────────┬───────────┘
+                          │
+          ┌───────────────┴────────────────┐
+          │                                │
+      APPROVED                         REJECTED
+          │                                │
+          ▼                                ▼
+┌─────────────────────┐        ┌──────────────────┐
+│ Check user count    │        │ Log rejection    │
+└─────────┬───────────┘        │ Send notification│
+          │                     │ Update status    │
+   ┌──────┴──────┐             └──────────────────┘
+   │             │                      │
+ ≤10           >10                      ▼
+   │             │                    END
+   ▼             ▼
+┌────────┐  ┌──────────┐
+│RESTlet │  │Map/Reduce│
+│Script  │  │ Script   │
+└────┬───┘  └────┬─────┘
+     │           │
+     └─────┬─────┘
+           │
+           ▼
+┌─────────────────────┐
+│ Execute deactivation│
+│ in NetSuite         │
+└─────────┬───────────┘
+          │
+          ▼
+┌─────────────────────┐
+│ For each user:      │
+│ • Load record       │
+│ • Set inactive=true │
+│ • Add audit comment │
+│ • Save record       │
+└─────────┬───────────┘
+          │
+          ▼
+┌─────────────────────┐
+│ Log results:        │
+│ • Success count     │
+│ • Failure count     │
+│ • Error details     │
+└─────────┬───────────┘
+          │
+          ▼
+┌─────────────────────┐
+│ Update approval     │
+│ record status       │
+└─────────┬───────────┘
+          │
+          ▼
+┌─────────────────────┐
+│ Send completion     │
+│ notification        │
+└─────────────────────┘
+          │
+          ▼
+        END
+```
+
+---
+
+## Component Specifications
+
+### 1. LLM Abstraction Layer
+
+**Purpose**: Provide provider-agnostic interface for all LLM operations
+
+**Components**:
+
+#### A. Base Provider (`services/llm/base.py`)
+```python
+class BaseLLMProvider(ABC):
+    @abstractmethod
+    def generate(messages, temperature, max_tokens) -> LLMResponse
+
+    @abstractmethod
+    def generate_stream(messages) -> Iterator[str]
+
+    @abstractmethod
+    def count_tokens(text: str) -> int
+
+    @abstractmethod
+    def get_model_info() -> Dict[str, Any]
+
+    @abstractmethod
+    def test_connection() -> bool
+
+    def calculate_cost(input_tokens, output_tokens) -> float
+```
+
+#### B. Provider Implementations
+- **AnthropicProvider**: Claude Opus 4.6, Sonnet 4.5, Haiku 4.5
+- **OpenAIProvider**: GPT-4o, GPT-4 Turbo, GPT-4o-mini
+- **GoogleProvider**: Gemini 1.5 Pro, Gemini 1.5 Flash
+- **CohereProvider**: Command R+, Command R
+- **AzureProvider**: Azure OpenAI (all models)
+- **LocalProvider**: Ollama, vLLM (local models)
+
+#### C. Factory Pattern (`services/llm/factory.py`)
+```python
+class LLMProviderFactory:
+    _providers = {
+        'anthropic': AnthropicProvider,
+        'openai': OpenAIProvider,
+        'google': GoogleProvider,
+        # ...
+    }
+
+    @classmethod
+    def create_provider(config: LLMConfig) -> BaseLLMProvider
+
+    @classmethod
+    def register_provider(name: str, provider_class: Type)
+```
+
+#### D. Config Manager (`services/llm/config_manager.py`)
+```python
+class LLMConfigManager:
+    def load_config() -> None
+    def save_config() -> None
+    def get_provider_config(provider_name) -> LLMConfig
+    def get_llm_provider(provider_name) -> BaseLLMProvider
+    def encrypt_api_key(key: str) -> str
+    def set_provider_config(**kwargs) -> None
+```
+
+#### E. Encryption (`services/llm/config_manager.py`)
+```python
+class ConfigEncryption:
+    def __init__(master_key: str)
+    def encrypt(plaintext: str) -> str
+    def decrypt(ciphertext: str) -> str
+    @staticmethod
+    def generate_key() -> str
+```
+
+**Configuration Format**:
+```yaml
+default_provider: anthropic
+
+providers:
+  anthropic:
+    model: claude-sonnet-4-5-20250929
+    api_key_env: ANTHROPIC_API_KEY
+    temperature: 0.0
+    max_tokens: 4096
+    timeout: 120
+    max_retries: 3
+```
+
+**Usage Example**:
+```python
+from services.llm import get_llm_from_config, LLMMessage
+
+# Load from config
+llm = get_llm_from_config()
+
+# Generate
+messages = [LLMMessage(role="user", content="Analyze this...")]
+response = llm.generate(messages)
+
+# Access results
+print(response.content)
+print(f"Cost: ${response.cost:.4f}")
+print(f"Tokens: {response.usage['total_tokens']}")
+```
+
+### 2. Okta Integration Layer
+
+**Components**:
+
+#### A. Okta Client (`services/okta_client.py`)
+```python
+class OktaClient:
+    def __init__(domain, api_token)
+    def get_users(status, limit) -> Dict
+    def get_user_by_email(email) -> Optional[Dict]
+    def get_user_by_id(user_id) -> Optional[Dict]
+    def get_active_users() -> Dict
+    def get_deprovisioned_users() -> Dict
+    def get_user_groups(user_id) -> Dict
+    def transform_user_data(okta_user) -> Dict
+    def fetch_all_users_with_groups() -> Dict
+    def test_connection() -> bool
+```
+
+#### B. Okta User Repository (`repositories/okta_user_repository.py`)
+```python
+class OktaUserRepository:
+    def create_user(user_data) -> OktaUser
+    def upsert_user(user_data) -> OktaUser
+    def bulk_upsert_users(users_data) -> Dict
+    def get_user_by_okta_id(okta_id) -> OktaUser
+    def get_user_by_email(email) -> OktaUser
+    def get_active_users() -> List[OktaUser]
+    def get_deprovisioned_users(days) -> List[OktaUser]
+    def get_user_count_by_status() -> Dict[str, int]
+```
+
+#### C. Reconciliation Repository (`repositories/user_reconciliation_repository.py`)
+```python
+class UserReconciliationRepository:
+    def create_reconciliation(recon_data) -> UserReconciliation
+    def get_orphaned_users(risk_level) -> List
+    def get_high_risk_discrepancies() -> List
+    def get_reconciliations_requiring_action() -> List
+    def get_reconciliation_summary(scan_id) -> Dict
+    def bulk_create_reconciliations(data) -> Dict
+```
+
+#### D. Deactivation Repositories
+```python
+class DeactivationApprovalRepository:
+    def create_approval_request(request_data) -> DeactivationApproval
+    def get_pending_approvals() -> List
+    def approve_request(request_id, approved_by) -> DeactivationApproval
+    def reject_request(request_id, rejected_by, reason) -> DeactivationApproval
+    def start_execution(request_id, method) -> DeactivationApproval
+    def complete_execution(request_id, stats) -> DeactivationApproval
+
+class DeactivationLogRepository:
+    def create_log(log_data) -> DeactivationLog
+    def get_logs_by_email(email) -> List
+    def get_logs_by_approval(approval_id) -> List
+    def get_failed_deactivations(hours) -> List
+    def get_deactivation_statistics(days) -> Dict
+    def get_audit_report(start_date, end_date) -> Dict
+```
+
+### 3. NetSuite Scripts
+
+#### A. User Deactivation RESTlet
+**File**: `netsuite_scripts/user_deactivation_restlet.js`
+**Type**: RESTlet (SuiteScript 2.1)
+**Purpose**: Single/small batch deactivation (≤10 users)
+
+**Endpoints**:
+- `POST /restlet` - Deactivate users
+- `GET /restlet?user_ids=1,2,3` - Get user status
+
+**Request Format**:
+```javascript
+{
+  "user_ids": ["123", "456"],
+  "dry_run": false,
+  "reason": "Terminated in Okta",
+  "requested_by": "admin@company.com"
+}
+```
+
+**Response Format**:
+```javascript
+{
+  "success": true,
+  "dry_run": false,
+  "total": 2,
+  "deactivated": 2,
+  "failed": 0,
+  "errors": [],
+  "details": [...]
+}
+```
+
+#### B. User Deactivation Map/Reduce
+**File**: `netsuite_scripts/user_deactivation_mapreduce.js`
+**Type**: Map/Reduce (SuiteScript 2.1)
+**Purpose**: Bulk deactivation (>10 users)
+
+**Script Parameters**:
+- `custscript_user_ids_to_deactivate` - Comma-separated IDs
+- `custscript_deactivation_reason` - Reason text
+- `custscript_requested_by` - Requestor email
+- `custscript_dry_run` - Preview mode
+
+**Stages**:
+1. **getInputData**: Parse user IDs from parameter
+2. **map**: Process each user (load, deactivate, save)
+3. **reduce**: Aggregate results by status
+4. **summarize**: Generate final report
+
+### 4. Agent Specifications
+
+#### Data Collection Agent
+- **Purpose**: Fetch user data from NetSuite and Okta
+- **Methods**:
+  - `fetch_users_from_netsuite(emails)`
+  - `fetch_users_from_okta(status)`
+  - `sync_users_to_database()`
+- **Performance**: 2 seconds per NetSuite user, 200 users/sec from Okta
+
+#### SOD Analyzer Agent
+- **Purpose**: Detect SOD violations with context-aware exemptions
+- **Methods**:
+  - `analyze_user(user_id)`
+  - `analyze_all_users()`
+  - `_check_rule_violation(user, roles, rule)`
+  - `_is_it_systems_user(user) -> bool`
+  - `_is_financial_rule(rule) -> bool`
+- **Performance**: 0.009 seconds per user, 185 users/sec
+- **Accuracy**: 95% with context-aware logic (67% false positive reduction)
+
+#### Risk Assessor Agent
+- **Purpose**: Calculate risk scores for users and organization
+- **Methods**:
+  - `calculate_user_risk_score(user_id)`
+  - `assess_organization_risk()`
+  - `get_high_risk_users(threshold)`
+- **Algorithm**: Multi-factor scoring (0-100 scale)
+
+#### Reconciliation Agent (New - Phase 2)
+- **Purpose**: Compare Okta and NetSuite user states
+- **Methods**:
+  - `reconcile_users()`
+  - `identify_orphaned_users()`
+  - `calculate_discrepancy_risk()`
+  - `generate_reconciliation_report()`
+- **Status**: Planned (Phase 2)
+
+#### Deactivation Agent (New - Phase 2)
+- **Purpose**: Manage user deactivation with approval workflow
+- **Methods**:
+  - `create_deactivation_request(user_ids)`
+  - `execute_deactivation(approval_id)`
+  - `_deactivate_via_restlet(user_ids)`
+  - `_deactivate_via_mapreduce(user_ids)`
+- **Status**: Planned (Phase 2)
+
+#### Knowledge Base Agent
+- **Purpose**: Semantic search over SOD rules and historical data
+- **Methods**:
+  - `search_similar_rules(query, top_k)` - Find similar rules via vector search
+  - `find_similar_violations(violation_id)` - Find related past violations
+  - `get_knowledge_base_stats()` - Get embedding statistics
+  - `initialize_rules_from_json()` - Generate embeddings for rules
+- **Technology**: HuggingFace embeddings (384-dim) + pgvector cosine similarity
+- **Performance**: <100ms for top-k vector search queries
+- **Status**: ✅ Fully operational with all 18 rules embedded
+
+#### Notifier Agent
+- **Purpose**: Multi-channel notifications with AI-powered insights
+- **Methods**:
+  - `send_violation_alert(violation_id)`
+  - `send_compliance_report(scan_summary)`
+  - `generate_user_comparison_table(user_emails)`
+  - `_generate_ai_analysis(user, violations, roles)` **← Uses LLM Abstraction**
+- **Channels**: Email (SendGrid), Slack, Console
+- **LLM Integration**: ✅ Migrated to LLM abstraction layer
+
+### 5. Vector Search Implementation (pgvector)
+
+**Architecture**:
+```
+┌──────────────────────────────────────────────────────┐
+│           Knowledge Base Agent (pgvector)            │
+├──────────────────────────────────────────────────────┤
+│                                                       │
+│  ┌────────────────────────────────────────────┐     │
+│  │        Embedding Service                   │     │
+│  │  • HuggingFace sentence-transformers       │     │
+│  │  • Model: all-MiniLM-L6-v2                 │     │
+│  │  • Dimension: 384                          │     │
+│  │  • Caching: Optional                       │     │
+│  └────────────────┬───────────────────────────┘     │
+│                   │                                  │
+│                   ▼                                  │
+│  ┌────────────────────────────────────────────┐     │
+│  │        Vector Search Service               │     │
+│  │  • Distance metric: Cosine similarity      │     │
+│  │  • Operator: <=> (pgvector)                │     │
+│  │  • SQL casting: CAST(:vector AS vector)    │     │
+│  │  • Min similarity threshold: 0.3           │     │
+│  └────────────────┬───────────────────────────┘     │
+│                   │                                  │
+│                   ▼                                  │
+│  ┌────────────────────────────────────────────┐     │
+│  │        PostgreSQL 17 + pgvector            │     │
+│  │                                            │     │
+│  │  sod_rules:                                │     │
+│  │    • embedding vector(384)                 │     │
+│  │    • 18 rules embedded                     │     │
+│  │                                            │     │
+│  │  roles:                                    │     │
+│  │    • embedding vector(384)                 │     │
+│  │                                            │     │
+│  │  violations:                               │     │
+│  │    • embedding vector(384)                 │     │
+│  └────────────────────────────────────────────┘     │
+└──────────────────────────────────────────────────────┘
+```
+
+**Implementation Details**:
+
+**Embedding Generation**:
+```python
+from services.embedding_service import EmbeddingService
+
+# Initialize
+embedding_service = EmbeddingService(
+    provider="huggingface",
+    dimension=384,
+    cache_embeddings=True
+)
+
+# Generate rule embedding
+rule_text = f"{rule_name} {description} {category}"
+embedding = embedding_service.embed_rule(rule_data)
+# Returns: numpy array of shape (384,)
+```
+
+**Vector Search Query**:
+```sql
+SELECT
+    *,
+    1 - (embedding <=> CAST(:query_vector AS vector)) AS similarity
+FROM sod_rules
+WHERE is_active = true
+  AND (1 - (embedding <=> CAST(:query_vector AS vector))) >= 0.3
+ORDER BY embedding <=> CAST(:query_vector AS vector)
+LIMIT 3
+```
+
+**Performance Characteristics**:
+- **Embedding generation**: 10-50ms per text
+- **Vector search**: <100ms for top-k=10 queries
+- **Storage overhead**: 1.5KB per 384-dim vector
+- **Similarity accuracy**: 85%+ for related SOD rules
+
+**Key Features**:
+1. ✅ Automatic embedding generation on rule creation
+2. ✅ Lazy loading - embeddings generated on first search if missing
+3. ✅ Cosine similarity for semantic matching
+4. ✅ Configurable similarity threshold (default: 0.3)
+5. ✅ Support for multiple tables (rules, roles, violations)
+6. ✅ Type-safe SQL casting for pgvector compatibility
+
+**Example Search Results**:
+```
+Query: "financial approval conflicts"
+
+Results:
+1. AP Entry vs. Approval Separation (Similarity: 0.55)
+   - Matches: "approve", "financial", "bills"
+
+2. Journal Entry Creation vs. Approval (Similarity: 0.55)
+   - Matches: "approve", "journal", "entries"
+
+3. Budget Creation vs. Budget Approval (Similarity: 0.50)
+   - Matches: "approve", "budgets"
+```
+
+**Migration Notes**:
+- PostgreSQL 16 → 17 required for pgvector 0.8.1 compatibility
+- Schema updates: `ALTER COLUMN embedding TYPE vector(384)`
+- Dimension change: 1536 → 384 for HuggingFace compatibility
+- SQL casting: Added `CAST(:param AS vector)` to avoid syntax errors
+
+---
+
+## Integration Points
+
+### 1. NetSuite Integration
+
+**Protocol**: OAuth 1.0a with Token-Based Authentication
+**Endpoint**: RESTlet hosted in NetSuite SuiteScripts
+**Data Transfer**: JSON over HTTPS
+
+**Search RESTlet (v5)**:
+- **Script ID**: 3685
+- **Performance**: 2 seconds per targeted search
+- **Returned Fields**: user_id, name, email, status, roles[], permissions[], job_function, business_unit, supervisor, location, hire_date
+
+**Deactivation RESTlet**:
+- **Purpose**: Deactivate single/small batch (≤10 users)
+- **Authentication**: Same OAuth 1.0a
+- **Governance**: 10 usage units per user
+
+**Map/Reduce Script**:
+- **Purpose**: Bulk deactivation (>10 users)
+- **Execution**: Asynchronous, scheduled
+- **Governance**: Parallel processing across multiple queues
+
+### 2. Okta Integration
+
+**Protocol**: REST API with SSWS Token
+**Base URL**: `https://{domain}.okta.com/api/v1`
+**Authentication**: `Authorization: SSWS {api_token}`
+
+**Endpoints Used**:
+- `GET /users` - List users with filters
+- `GET /users/{id}` - Get user by ID
+- `GET /users/{id}/groups` - Get user groups
+
+**Rate Limits**:
+- Standard: 1,000 requests/minute
+- Pagination: 200 users per page
+
+### 3. LLM Provider Integration
+
+**Supported Providers**:
+- **Anthropic**: Claude API (Messages API)
+- **OpenAI**: Chat Completions API
+- **Google**: Generative AI API
+- **Cohere**: Chat API
+- **Azure**: Azure OpenAI Service
+- **Local**: Ollama (localhost:11434), vLLM (OpenAI-compatible)
+
+**Common Interface**:
+```python
+response = llm.generate(
+    messages=[LLMMessage(role="user", content="...")],
+    temperature=0.0,
+    max_tokens=4096
+)
+```
+
+**Response Format**:
+```python
+LLMResponse(
+    content="...",
+    provider="anthropic",
+    model="claude-sonnet-4-5",
+    usage={'input_tokens': 100, 'output_tokens': 50},
+    cost=0.0005,
+    latency_ms=1234.56
+)
+```
+
+### 4. Database Integration
+
+**PostgreSQL 17**:
+- **Connection**: psycopg2 via SQLAlchemy ORM
+- **Pooling**: SQLAlchemy connection pool (size=5-20)
+- **Extensions**:
+  - pgvector 0.8.1 for vector embeddings
+  - uuid-ossp for UUID generation
+- **Vector Operations**:
+  - Cosine similarity search using `<=>` operator
+  - 384-dimension embeddings (HuggingFace MiniLM)
+  - Automatic type casting in SQL queries
+
+**Redis 7**:
+- **Purpose**: LLM response and analysis result caching
+- **Status**: ✅ Fully implemented and operational
+- **Use Cases**:
+  - AI analysis caching (primary)
+  - Violation detection results
+  - Risk score calculations
+  - User compliance summaries
+- **Connection**: redis-py client
+- **Performance**:
+  - Cache HIT: <10ms
+  - Cache MISS + LLM: 1-3 seconds
+  - Cost reduction: 50-90%
+  - Hit rate: 50-70% typical
+
+### 5. MCP (Model Context Protocol) Integration 🆕
+
+**Protocol**: JSON-RPC 2.0 over HTTP
+**Transport**: stdio (Claude Desktop), HTTP (Claude Web API)
+**Port**: 8080 (configurable via MCP_SERVER_PORT)
+**Authentication**: API Key in X-API-Key header
+
+**MCP Server** (`mcp/mcp_server.py`):
+- FastAPI + Uvicorn ASGI server
+- 20 registered MCP tools
+- Async tool execution
+- Health monitoring endpoint
+- Tool discovery via `/tools` endpoint
+- Request logging and error handling
+
+**Tool Categories**:
+1. **System Management (5 tools)**: list_systems, get_user_violations, remediate_violation, schedule_review, get_violation_stats
+2. **Data Synchronization (5 tools)**: start_collection_agent, stop_collection_agent, get_collection_agent_status, trigger_manual_sync, list_all_users
+3. **SOD Analysis (8 tools)**: analyze_access_request, query_sod_rules, get_compensating_controls, validate_job_role, check_permission_conflict, get_permission_categories, search_permissions, **analyze_role_permissions** 🔥
+4. **Knowledge Base (2 tools)**: query_knowledge_base, perform_access_review
+
+**NEW TOOL: analyze_role_permissions** 🔥
+
+**Purpose**: Internal role conflict analysis - identifies SOD violations within a single role
+
+**Pattern**: Agent Response with Attachments
+- Agent performs comprehensive analysis with database access
+- Agent generates detailed professional markdown report
+- Agent saves report to `output/role_analysis/{role_name}_{timestamp}.md`
+- Agent returns concise summary for LLM to present
+- User receives both: conversational response + detailed attachment
+- Benefits: No context window limits, shareable reports, audit trail
+
+**Parameters**:
+```json
+{
+  "role_name": "string (required)",
+  "include_remediation_plan": "boolean (optional, default: true)",
+  "output_format": "markdown|json|both (optional, default: markdown)"
+}
+```
+
+**Process**:
+1. Query database for role permissions with levels (View/Create/Edit/Full)
+2. Load permission mapping (341 NetSuite permissions)
+3. Categorize permissions (transaction_entry, transaction_payment, etc.)
+4. Apply 5×5 conflict matrices per SOD rule
+5. Detect conflicts using category pairs + level severity
+6. Group conflicts by severity (CRITICAL, HIGH, MEDIUM)
+7. Generate comprehensive markdown report with:
+   - Executive summary with risk assessment
+   - All conflicts with permission pairs and levels
+   - Permission breakdown by category
+   - Three remediation options (split role, reduce permissions, add controls)
+   - Level modification recommendations table
+   - Testing plan and audit compliance
+8. Save report to filesystem
+9. Return formatted summary
+
+**Response Format**:
+```
+Internal Role Conflict Analysis: {role_name}
+
+📊 EXECUTIVE SUMMARY
+• Total Permissions: {count}
+• Internal Conflicts Found: {count}
+• Risk Assessment: 🔴 CRITICAL / 🟠 HIGH / 🟡 MEDIUM
+
+🔥 TOP 5 CRITICAL CONFLICTS
+1. 🔴 CRIT - {permission1} + {permission2}
+   Conflict: {category1} ({level1}) ↔ {category2} ({level2})
+   Inherent Risk: {score}/100
+...
+
+💾 DETAILED REPORT SAVED
+File: output/role_analysis/{role_name}_{timestamp}.md
+
+🎯 RECOMMENDED NEXT STEPS
+1. Review detailed report for complete analysis
+2. Consider role split or permission reduction
+3. Implement compensating controls if role must remain as-is
+```
+
+**Example Usage** (Claude Desktop):
+```
+User: "Analyze the Fivetran - Cash Accountant role for conflicts"
+
+Claude calls: analyze_role_permissions({
+  "role_name": "Fivetran - Cash Accountant",
+  "include_remediation_plan": true
+})
+
+Response:
+- Summary with 181 conflicts found
+- Top 5 critical conflicts shown inline
+- File path to full 50-page detailed report
+- Recommended next steps
+```
+
+**Performance**:
+- Analysis time: ~2 seconds for 160 permissions
+- Report generation: ~500ms
+- File write: <100ms
+- Total latency: <3 seconds
+
+**Use Cases**:
+- Pre-deployment role design review
+- Existing role audit and cleanup
+- Regulatory compliance assessments (SOX, PCI-DSS)
+- Risk reduction initiatives
+- Role consolidation projects
+
+**Report Format** (Markdown):
+- Executive Summary (risk level, conflict counts)
+- Detailed Conflict Analysis (all conflicts by severity)
+- Permission Breakdown (grouped by category with counts)
+- Remediation Recommendations (3 options with cost/timeline)
+- Level Modification Table (specific downgrades)
+- Testing Plan (validation steps)
+- Audit Compliance (regulatory alignment)
+
+**Integration**:
+- MCP tool handler: `mcp/mcp_tools.py::analyze_role_permissions_handler()`
+- Database queries: PostgreSQL via SQLAlchemy
+- File output: `output/role_analysis/` directory
+- Report naming: `{role_name}_{YYYYMMDD}_{HHMMSS}.md`
+
+---
+
+## Semantic Tool Router
+
+**Added**: Mar 2026 | **File**: `utils/semantic_router.py`
+
+Replaces the regex router as the primary tool-selection mechanism for the Slack bot dispatch turn. Uses dense vector similarity rather than keyword pattern matching so that novel query phrasings continue to surface the correct tools.
+
+### Architecture
+
+```
+User Query (string)
+       │
+       ▼
+┌─────────────────────────────────────────────────────┐
+│              SemanticToolRouter                      │
+│                                                      │
+│  At startup (_build_index):                          │
+│  ┌──────────────────────────────────────────────┐   │
+│  │  TOOL_EXEMPLARS dict                         │   │
+│  │  tool_name → description + 3–5 sample queries│   │
+│  │  (query-to-query similarity > query-to-desc) │   │
+│  └──────────────────┬───────────────────────────┘   │
+│                     │                                │
+│                     ▼                                │
+│  ┌──────────────────────────────────────────────┐   │
+│  │  SentenceTransformer.encode(all tool texts)  │   │
+│  │  → float32 numpy array, unit-normalised      │   │
+│  │  shape: n_tools × 384                        │   │
+│  │  ~200ms one-time cost at startup             │   │
+│  └──────────────────────────────────────────────┘   │
+│                                                      │
+│  Per query (select):                                 │
+│  ┌──────────────────────────────────────────────┐   │
+│  │  encode(query)  →  vector [384]              │   │
+│  │  dot_product(query_vec, tool_matrix)         │   │
+│  │  = cosine similarity (vectors are normalised)│   │
+│  │  argsort(desc) → top-k tool names           │   │
+│  │  append always_include tools at end          │   │
+│  └──────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────┘
+       │
+       ▼
+  Top-k tool names (default k=8)
+```
+
+### Model
+
+| Property | Value |
+|----------|-------|
+| Model ID | `sentence-transformers/all-MiniLM-L6-v2` |
+| Embedding dimension | 384 |
+| Inference | Local — no API key, no network call |
+| Normalisation | Unit-normalised float32 (enables dot product as cosine sim) |
+
+### Key Design Decisions
+
+**TOOL_EXEMPLARS rather than raw descriptions**: Each entry in `TOOL_EXEMPLARS` concatenates the tool's description with 3–5 representative example queries. Because the encoder was trained on sentence pairs, query-to-query similarity is measurably higher than query-to-description similarity, which directly improves recall on novel phrasings.
+
+**always_include list**: Tools that must always appear in the Haiku dispatch context (e.g., `list_systems`) are appended after the top-k results rather than inserted at position 0. This preserves the semantic ranking of the primary tools and avoids pushing relevant results off the end of the shortlist.
+
+**Singleton via `get_router()`**: The index is built once at process start. `update_tools(tools)` rebuilds the index after a `/tools/refresh` call so the gateway and router stay in sync without a restart.
+
+**Fallback**: If `sentence-transformers` is unavailable at import time, `semantic_select_tools()` transparently falls back to the keyword router (`select_tools_for_intent` in `utils/tool_router.py`). No calling-code change is required.
+
+### Class Interface
+
+```python
+class SemanticToolRouter:
+    def __init__(self, tools: list[dict], always_include: list[str] = None)
+    def _build_index(self) -> None
+        # Encodes all tool texts; stores unit-normalised float32 matrix
+    def select(self, query: str, k: int = 8) -> list[str]
+        # Returns top-k tool names + always_include appended at end
+    def update_tools(self, tools: list[dict]) -> None
+        # Rebuilds index; called after /tools/refresh
+
+# Module-level helpers (drop-in replacements for select_tools_for_intent)
+def get_router() -> SemanticToolRouter          # singleton accessor
+def semantic_select_tools(query, tools, k=8, always_include=None) -> list[str]
+    # Falls back to keyword router if model unavailable
+```
+
+### Performance Characteristics
+
+| Operation | Latency | Notes |
+|-----------|---------|-------|
+| Index build (37 tools) | ~200ms | One-time at startup, MPS-accelerated on Apple Silicon |
+| Per-query select | ~2ms | Single encode + matrix multiply |
+| Token savings vs full schema | ~8K tokens/request | Same as keyword router — only top-k schemas sent to Haiku |
+
+---
+
+## Evaluation Suite
+
+**Added**: Mar 2026 | **Directory**: `eval/`
+
+Systematic offline evaluation of tool-selection routers, integrated with LangSmith for experiment tracking and side-by-side comparison.
+
+### File Inventory
+
+| File | Purpose |
+|------|---------|
+| `eval/golden_set.py` | Dataset definitions + `push_to_langsmith()` |
+| `eval/evaluators.py` | Five metric evaluators (LangSmith 0.4.x signature) |
+| `eval/run_eval.py` | CLI runner — selects router, suite, and live/stub mode |
+| `eval/__init__.py` | Package marker |
+
+### Datasets (`eval/golden_set.py`)
+
+Two datasets are defined and pushed to LangSmith:
+
+**`compliance-tool-selection-v1`** — 32 queries for router evaluation.
+Each example contains:
+- `input`: natural-language query string
+- `expected_tool`: single primary correct tool name
+- `relevant_tools`: dict mapping tool names to graded relevance scores (0 = irrelevant, 1 = acceptable, 2 = ideal) used for NDCG
+
+**`compliance-answer-quality-v1`** — 10 queries for end-to-end faithfulness evaluation.
+Each example contains:
+- `input`: query string
+- `expected_facts`: list of strings that must appear in the final Opus answer
+
+### Evaluators (`eval/evaluators.py`)
+
+All evaluators follow the LangSmith 0.4.x function signature:
+
+```python
+fn(outputs: dict, reference_outputs: dict) -> dict
+# Returns: {"key": metric_name, "score": float}
+```
+
+| Evaluator | Factory / Name | Description |
+|-----------|---------------|-------------|
+| `hit_rate_at_k(k)` | Factory, returns evaluator fn | Binary: 1.0 if `expected_tool` appears in the top-k returned tools, else 0.0 |
+| `mrr_evaluator` | Direct fn | 1 / rank of the first relevant tool (reciprocal rank). 0.0 if not found in results. |
+| `ndcg_at_k(k)` | Factory, returns evaluator fn | Normalised Discounted Cumulative Gain using graded `relevant_tools` scores. Rewards placing highly-relevant tools at lower rank positions. |
+| `precision_at_k(k)` | Factory, returns evaluator fn | Fraction of the top-k returned tools that have a graded relevance score > 0 |
+| `faithfulness_evaluator` | Direct fn | LLM-as-judge (Claude Haiku 4.5): does the answer contain the facts listed in `expected_facts`? Returns float 0.0–1.0. |
+
+### CLI Runner (`eval/run_eval.py`)
+
+```bash
+# Evaluate keyword router on tool-selection dataset
+python -m eval.run_eval --router=keyword
+
+# Evaluate semantic router
+python -m eval.run_eval --router=semantic
+
+# Compare both back-to-back (two LangSmith experiments)
+python -m eval.run_eval --suite=compare
+
+# Answer quality (faithfulness) — requires live MCP at :8080
+python -m eval.run_eval --suite=answer_quality --live
+
+# Use live tool schemas instead of stubs
+python -m eval.run_eval --router=semantic --live
+```
+
+**`--router`**: `keyword` | `semantic` — selects the router under test.
+**`--suite`**: `compare` runs both routers back-to-back; `answer_quality` runs faithfulness eval.
+**`--live`**: fetches tool schemas from the running MCP server at `:8080` instead of embedded stubs.
+
+### LangSmith Integration
+
+```python
+from langsmith import evaluate
+
+evaluate(
+    target,                          # callable: input → outputs dict
+    data=dataset_name,               # "compliance-tool-selection-v1"
+    evaluators=[hit_rate_at_k(10), mrr_evaluator, ndcg_at_k(10)],
+    experiment_prefix="semantic-router-v1"
+)
+```
+
+Results appear in **smith.langchain.com → project `compliance-agent` → Datasets → Experiments**. Each run is a separate named experiment, enabling side-by-side metric comparison across router versions.
+
+Required environment variable: `LANGSMITH_API_KEY` (add to `compliance-agent/.env`).
+
+### Metric Results (Mar 2026 Benchmark)
+
+Evaluated on `compliance-tool-selection-v1` (32 queries):
+
+| Metric | Baseline (regex) | Fixed regex | Semantic |
+|--------|-----------------|-------------|----------|
+| hit_rate_at_10 | 0.72 | 0.78 | **1.00** |
+| hit_rate_at_5 | 0.56 | 0.72 | **0.97** |
+| mrr | 0.18 | 0.41 | **0.91** |
+| ndcg_at_10 | 0.37 | 0.60 | **0.89** |
+| precision_at_5 | 0.24 | 0.33 | **0.39** |
+
+**Key observations**:
+- The semantic router achieves perfect hit_rate_at_10 (1.00) — the correct tool appears in the top 10 for every query in the golden set.
+- MRR improvement from 0.18 → 0.91 indicates the correct tool is now consistently ranked first or second rather than being buried in the shortlist.
+- The regex fixes (plural/singular patterns, added `remediation` and `role_analysis` patterns) provided a meaningful intermediate improvement, confirming the baseline gap was partly a pattern maintenance problem. The semantic router eliminates that maintenance burden entirely.
+- precision_at_5 remains modest (0.39) because the 37-tool corpus contains many thematically related tools; the top 5 will always include some borderline relevance. This is expected and acceptable — Haiku's dispatch turn handles the final selection.
+
+---
+
+## Security & Encryption
+
+### 1. API Key Encryption
+
+**Algorithm**: Fernet (symmetric encryption)
+**Key Derivation**: PBKDF2 with SHA256
+**Key Storage**: Environment variable `MASTER_ENCRYPTION_KEY`
+
+**Encryption Process**:
+```python
+from cryptography.fernet import Fernet
+
+# Generate key (one time)
+key = Fernet.generate_key()  # Store in MASTER_ENCRYPTION_KEY
+
+# Encrypt API key
+cipher = Fernet(key)
+encrypted = cipher.encrypt(b"sk-ant-api03-...")
+
+# Store encrypted key in config
+```
+
+**Decryption Process**:
+```python
+# At runtime
+cipher = Fernet(os.getenv('MASTER_ENCRYPTION_KEY'))
+api_key = cipher.decrypt(encrypted_key).decode()
+
+# Use decrypted key
+llm = create_llm(provider="anthropic", api_key=api_key)
+```
+
+### 2. Configuration Security
+
+**Best Practices**:
+1. ✅ Use environment variables for API keys
+2. ✅ Encrypt keys in config files
+3. ✅ Store master key in vault (AWS Secrets Manager, HashiCorp Vault)
+4. ✅ Rotate keys quarterly
+5. ✅ Separate keys by environment (dev/staging/prod)
+6. ✅ Never commit `.env` or config with real keys to git
+
+**Config File Security**:
+```yaml
+# Option 1: Environment variable (recommended)
+api_key_env: ANTHROPIC_API_KEY
+
+# Option 2: Encrypted key (for config files)
+api_key: gAAAAABk...encrypted...
+encrypted: true
+
+# Option 3: Direct (NEVER for production!)
+# api_key: sk-ant-...  ← DON'T DO THIS
+```
+
+### 3. Database Security
+
+**Connection Security**:
+- SSL/TLS encryption for all connections
+- Password authentication
+- Connection pooling with timeout
+
+**Data Security**:
+- Sensitive fields encrypted at rest (future)
+- API keys never stored in database
+- Audit trail for all changes
+
+**Access Control**:
+- Principle of least privilege
+- Separate read/write credentials
+- Database user per environment
+
+### 4. NetSuite Security
+
+**OAuth 1.0a**:
+- Consumer key + consumer secret
+- Token ID + token secret
+- Signature method: HMAC-SHA256
+- Nonce + timestamp for replay protection
+
+**RESTlet Security**:
+- HTTPS only
+- Token-based authentication
+- Script deployment restrictions
+- Audit logging enabled
+
+### 5. Okta Security
+
+**SSWS Token**:
+- Long-lived API token
+- Scoped permissions
+- Rotated quarterly
+- Stored encrypted
+
+**API Security**:
+- HTTPS only
+- Rate limiting enforced
+- IP whitelisting (optional)
+- Audit logs enabled
+
+---
+
+## Performance Metrics
+
+### Current Performance (Verified 2026-02-09)
 
 | Metric | Value | Status |
 |--------|-------|--------|
-| **Active Users in NetSuite** | 1,933 | ✅ Verified |
-| **Agents Operational** | 6/6 (100%) | ✅ All Working |
-| **User Search Speed** | 2 seconds | ✅ 55x Faster |
-| **Individual Analysis** | 0.001 sec/user | ✅ Optimized |
-| **Full Population Scan** | 3-64 min | ⚡ Scalable |
-| **SOD Rules Evaluated** | 18 rules | ✅ Complete |
-| **Detection Accuracy** | 100% | ✅ Validated |
-| **AI Risk Scoring** | 88/100 (sample) | ✅ Claude Opus 4-6 |
+| **NetSuite User Search** | 2 sec/user | ✅ 55x faster |
+| **SOD Analysis** | 0.009 sec/user | ✅ Optimized |
+| **Throughput** | 185 users/sec | ✅ Production-ready |
+| **Full Population Scan** | 10.5 sec (24 users) | ✅ Scales linearly |
+| **Database Queries** | <10ms average | ✅ Indexed |
+| **LLM Response** | 1-3 sec | ✅ Normal |
+| **Cost per User Analysis** | $0.0005 | ✅ Cost-effective |
 
-### 📊 **Test Results (2026-02-11)**
+### Performance Targets
 
-**Comprehensive Agent Testing:**
-- ✅ **Data Collector**: Initialization, user search, data quality, role loading (4/4 tests passed)
-- ✅ **SOD Analyzer**: Rule loading, analysis execution, context-aware logic, violation storage (5/5 tests passed)
-- ✅ **Risk Assessor**: User/org risk calculation, risk distribution (4/4 tests passed, UUID bug fixed)
-- ✅ **Knowledge Base**: Embeddings, semantic search, rule retrieval (4/4 tests passed)
-- ✅ **Notifier**: Comparison table generation, notification formatting (3/3 tests passed)
-- ✅ **Orchestrator**: Workflow definition, agent coordination (3/3 tests passed)
-- **Overall**: 6/6 agents operational (100% pass rate)
+| Component | Target | Current | Status |
+|-----------|--------|---------|--------|
+| User Search (NetSuite) | <5 sec | 2 sec | ✅ Exceeds |
+| SOD Analysis | <0.1 sec/user | 0.009 sec | ✅ Exceeds |
+| Risk Assessment | <1 sec/org | 0.5 sec | ✅ Exceeds |
+| AI Analysis | <5 sec | 1-3 sec | ✅ Meets |
+| Database Query | <100ms | <10ms | ✅ Exceeds |
+| Full Scan (1000 users) | <10 min | ~5.4 min | ✅ Exceeds |
 
-**Context-Aware SOD Analysis:**
-- User 1 (Prabal Saha - IT/Systems Engineer):
-  - **Before**: 12 violations, CRITICAL risk (94/100)
-  - **After**: 4 violations, HIGH risk (100/100) - 67% reduction
-  - ✅ All 8 financial false positives eliminated
-  - ✅ Only legitimate IT_ACCESS violations remain
-- User 2 (Robin Turner - Finance Controller):
-  - **Status**: 12 violations, CRITICAL risk (100/100) - correctly flagged
-  - ✅ Context-aware logic properly excludes Finance users from exemptions
+### Scalability
 
-**Performance:**
-- Analysis time: 4 seconds (2 users)
-- Job function classification: Automated from NetSuite data
-- Composite report: Generated successfully
-- User comparison table: 961 characters (2 users side-by-side)
-- All agents: 100% participation
-- Execution: End-to-end workflow validated
+**Linear Scaling**:
+- Analysis time = 0.009 × N users
+- 1,000 users = 9 seconds
+- 10,000 users = 90 seconds
+- 100,000 users = 15 minutes
 
----
+**Bottlenecks Identified**:
+1. NetSuite API rate limits (10 req/sec)
+2. LLM API latency (1-3 sec per call)
+3. Database write throughput (1000 writes/sec)
 
-## Table of Contents
-
-1. [Executive Summary](#1-executive-summary)
-2. [System Overview](#2-system-overview)
-3. [Multi-Agent Architecture](#3-multi-agent-architecture)
-4. [Technical Stack](#4-technical-stack)
-5. [Component Specifications](#5-component-specifications)
-6. [Database Design](#6-database-design)
-7. [API Specifications](#7-api-specifications)
-8. [Integration Points](#8-integration-points)
-9. [Workflow Engine](#9-workflow-engine)
-10. [Security & Compliance](#10-security--compliance)
-11. [Performance Requirements](#11-performance-requirements)
-12. [Deployment Architecture](#12-deployment-architecture)
-13. [Monitoring & Observability](#13-monitoring--observability)
-14. [Error Handling & Recovery](#14-error-handling--recovery)
-15. [Testing Strategy](#15-testing-strategy)
-16. [Production Deployment](#16-production-deployment)
+**Optimization Strategies**:
+1. ✅ Batch processing for NetSuite
+2. ✅ Caching for repeated queries
+3. ✅ Parallel agent execution
+4. ⏳ Connection pooling (planned)
+5. ⏳ Read replicas (planned)
 
 ---
 
-## 1. Executive Summary
+## Deployment
 
-### 1.1 Purpose
-The SOD Compliance System is an AI-powered, multi-agent platform that automatically detects, assesses, and reports Segregation of Duties (SOD) violations in NetSuite environments using LangChain/LangGraph orchestration and Claude Opus 4-6 for intelligent risk assessment.
+### System Requirements
 
-### 1.2 Objectives
-- **Automated Detection**: Identify SOD violations across 18 compliance rules (SOX + Internal)
-- **AI-Powered Risk Assessment**: Calculate risk scores (0-100) with Claude Opus 4-6 business impact analysis
-- **Real-Time Analysis**: 2-second targeted user search, sub-second violation detection
-- **Enterprise Reporting**: Full population analysis with composite reports
-- **Proactive Alerting**: Multi-channel notifications via email, Slack, dashboard
-- **Continuous Monitoring**: On-demand, scheduled, or trigger-based scans
+**Hardware**:
+- **CPU**: 4+ cores recommended
+- **RAM**: 8GB minimum, 16GB recommended
+- **Storage**: 50GB SSD minimum
+- **Network**: 100 Mbps+ for API calls
 
-### 1.3 Key Achievements
-- **55x Performance Improvement**: 2 seconds vs 110 seconds for user search
-- **6 Operational Agents**: Complete multi-agent architecture deployed
-- **Full Population Capable**: Scales from 2 to 1,933+ users
-- **AI Integration**: Claude Opus 4-6 for executive-level analysis
-- **Production Ready**: All components tested and validated
+**Software**:
+- **OS**: macOS, Linux, Windows (with WSL)
+- **Python**: 3.9+
+- **PostgreSQL**: 17+ with pgvector 0.8.1
+- **Redis**: 8.0+ (optional, for caching)
 
-### 1.4 Business Impact
-- **Time Savings**: 10+ hours/month for compliance teams
-- **Risk Reduction**: Catches violations before external auditors
-- **Audit Prep**: Minutes instead of days
-- **Cost Avoidance**: Prevents SOX Material Weakness findings
-- **ROI**: Pays for itself in 1-2 months
+### Environment Setup
 
----
-
-## 2. System Overview
-
-### 2.1 System Architecture
-
-```
-┌────────────────────────────────────────────────────────────────┐
-│                    ORCHESTRATOR LAYER                           │
-│              (LangGraph Multi-Agent Coordinator)                │
-│        Manages workflow, state, and agent communication         │
-└───────────────────────────┬────────────────────────────────────┘
-                            │
-        ┌───────────────────┼───────────────────┐
-        │                   │                   │
-        ▼                   ▼                   ▼
-┌──────────────────┐ ┌──────────────┐ ┌──────────────────┐
-│ DATA COLLECTION  │ │ ANALYSIS     │ │ NOTIFICATION     │
-│     AGENT        │ │   AGENTS     │ │     AGENT        │
-└──────────────────┘ └──────────────┘ └──────────────────┘
-        │                   │                   │
-        │         ┌─────────┼─────────┐         │
-        │         │         │         │         │
-        ▼         ▼         ▼         ▼         ▼
-┌──────────┐ ┌──────┐ ┌─────┐ ┌─────────┐ ┌────────┐
-│ NetSuite │ │ SOD  │ │Risk │ │Knowledge│ │Email   │
-│ RESTlets │ │Analyzer│ │Assessor│ │  Base   │ │Slack   │
-│  (OAuth) │ │Agent │ │Agent│ │ Agent   │ │Webhook │
-└──────────┘ └──────┘ └─────┘ └─────────┘ └────────┘
-     │            │        │         │
-     └────────────┴────────┴─────────┴───────────┐
-                                                  │
-                                                  ▼
-                                    ┌──────────────────────┐
-                                    │  PERSISTENCE LAYER   │
-                                    │  PostgreSQL + Redis  │
-                                    │  + Vector Database   │
-                                    └──────────────────────┘
-```
-
-### 2.2 Core Components
-
-#### 2.2.1 Agent Layer (6 Specialized Agents)
-
-**1. Data Collection Agent**
-- Fetches users, roles, permissions from NetSuite
-- Uses fast search RESTlet (2-second response)
-- Caches results in PostgreSQL
-- Handles pagination and rate limiting
-
-**2. SOD Analysis Agent**
-- Loads 18 SOD compliance rules
-- Pattern matches roles and permissions
-- Detects conflicting access combinations
-- **Context-aware analysis** - applies job function-based exemptions:
-  - IT/Systems users exempt from financial SOD rules
-  - Finance users still subject to financial rules
-  - Automated job function classification from NetSuite data
-  - 67% reduction in false positives for IT staff
-- Creates violation records
-
-**3. Risk Assessment Agent**
-- Calculates risk scores (0-100)
-- Multi-factor algorithm:
-  - Severity weight (CRITICAL/HIGH/MEDIUM/LOW)
-  - Number of conflicting items
-  - Department sensitivity (Finance +10)
-  - Role count (excess roles +5 each)
-- Prioritizes remediation actions
-
-**4. Knowledge Base Agent**
-- Vector search for compliance rules (pgvector)
-- Semantic similarity matching
-- Regulatory framework lookup (SOX, PCAOB)
-- Context-aware guidance
-
-**5. AI Analysis Agent (Claude Opus 4-6)**
-- Executive summary generation
-- Business impact assessment
-- SOX compliance analysis
-- Fraud risk scenarios
-- PCAOB standard citations
-
-**6. Notification Agent**
-- Multi-channel delivery (Email, Slack, Dashboard)
-- **User comparison tables** - side-by-side compliance metrics for multiple users
-- Severity-based routing
-- Escalation management
-- Delivery tracking and audit trail
-
-#### 2.2.2 Data Layer
-
-**NetSuite Integration:**
-- Search RESTlet (script 3685): Fast targeted lookup
-- Main RESTlet (script 3684): Bulk operations (when needed)
-- OAuth 1.0a authentication
-- RESTful API with JSON payloads
-
-**Database (PostgreSQL 16):**
-- User records with roles and permissions
-- SOD violation tracking
-- Compliance scan history
-- Notification logs
-- Audit trail
-
-**Cache (Redis):**
-- User session data
-- Frequently accessed rules
-- Rate limiting counters
-- Background job queue
-
-#### 2.2.3 Analysis Layer
-
-**SOD Rules Engine:**
-- 18 rules across 5 categories:
-  - Financial Controls (8 rules) - SOX
-  - IT Access Controls (4 rules) - ITGC
-  - Procurement Controls (2 rules)
-  - Sales Controls (2 rules)
-  - Compliance Controls (2 rules)
-
-**Risk Scoring Algorithm:**
-```python
-base_score = severity_map[severity]  # CRITICAL: 90, HIGH: 70, MEDIUM: 50, LOW: 30
-+ (conflicting_items_count * 5)      # Each conflicting role/perm adds 5
-+ (excess_roles_count * 5)           # Roles beyond 2 add 5 each
-+ (department_weight * 10)           # Finance department adds 10
-= risk_score (capped at 100)
-```
-
----
-
-## 3. Multi-Agent Architecture
-
-### 3.1 Agent Framework
-
-**Technology Stack:**
-- LangChain: Agent framework and tools
-- LangGraph: Workflow orchestration and state management
-- Claude Opus 4-6: LLM for AI reasoning
-- Python 3.9+: Implementation language
-
-### 3.2 Agent Workflow
-
-```
-[User Request] → [Orchestrator] → [State Graph]
-                       │
-                       ├→ [Data Collection Agent]
-                       │   └→ NetSuite API Call
-                       │       └→ Cache in PostgreSQL
-                       │
-                       ├→ [SOD Analysis Agent]
-                       │   └→ Load Rules
-                       │       └→ Detect Violations
-                       │
-                       ├→ [Risk Assessment Agent]
-                       │   └→ Calculate Scores
-                       │       └→ Prioritize Actions
-                       │
-                       ├→ [Knowledge Base Agent]
-                       │   └→ Vector Search
-                       │       └→ Retrieve Guidance
-                       │
-                       ├→ [AI Analysis Agent]
-                       │   └→ Claude Opus API
-                       │       └→ Generate Summary
-                       │
-                       └→ [Notification Agent]
-                           └→ Send Alerts
-                               └→ Track Delivery
-
-[Orchestrator] → [Aggregate Results] → [Return to User]
-```
-
-### 3.3 State Management
-
-**Workflow State (LangGraph):**
-```python
-class WorkflowState(TypedDict):
-    stage: str  # Current workflow stage
-    scan_id: Optional[str]  # Scan identifier
-    users_collected: int  # Count of users retrieved
-    violations_detected: int  # Count of violations found
-    notifications_sent: int  # Count of notifications delivered
-    errors: List[str]  # Accumulated errors
-    results: Dict[str, Any]  # Aggregated results
-    start_time: datetime  # Scan start timestamp
-    end_time: Optional[datetime]  # Scan end timestamp
-```
-
-### 3.4 Agent Coordination & Data Flow
-
-This section details how agents coordinate with each other, including inputs, outputs, and data dependencies.
-
-#### 3.4.1 Agent Input/Output Specifications
-
-**1. DATA COLLECTION AGENT**
-
-**Inputs:**
-```json
-{
-  "scan_type": "full|targeted|incremental",
-  "filters": {
-    "user_ids": ["optional list of user IDs"],
-    "emails": ["optional list of emails"],
-    "departments": ["optional list of departments"],
-    "status": "ACTIVE|INACTIVE|ALL"
-  },
-  "include_permissions": true,
-  "cache_results": true
-}
-```
-
-**Outputs:**
-```json
-{
-  "success": true,
-  "users": [
-    {
-      "user_id": "emp123",
-      "internal_id": "1234",
-      "name": "John Doe",
-      "email": "john.doe@company.com",
-      "department": "Finance",
-      "title": "Controller",
-      "is_active": true,
-      "roles": [
-        {
-          "role_id": "3",
-          "role_name": "Administrator",
-          "permissions": []
-        },
-        {
-          "role_id": "15",
-          "role_name": "Controller",
-          "permissions": []
-        }
-      ],
-      "roles_count": 2
-    }
-  ],
-  "metadata": {
-    "users_collected": 1933,
-    "collection_time": 2.3,
-    "cache_hits": 156,
-    "api_calls": 12
-  }
-}
-```
-
-**Dependencies:** None (first in chain)
-**Consumers:** SOD Analysis Agent, Risk Assessment Agent
-
----
-
-**2. SOD ANALYSIS AGENT**
-
-**Inputs:**
-```json
-{
-  "users": [/* user objects from Data Collection Agent */],
-  "sod_rules": [/* loaded from database/seed_data/sod_rules.json */],
-  "analysis_options": {
-    "severity_filter": ["CRITICAL", "HIGH", "MEDIUM", "LOW"],
-    "rule_types": ["FINANCIAL", "IT_ACCESS", "PROCUREMENT"],
-    "department_focus": ["Finance", "IT"]
-  }
-}
-```
-
-**Outputs:**
-```json
-{
-  "violations": [
-    {
-      "violation_id": "uuid",
-      "user_id": "emp123",
-      "user_name": "John Doe",
-      "user_email": "john.doe@company.com",
-      "rule_id": "SOD-IT-001",
-      "rule_name": "Administrator vs. Regular User Roles",
-      "rule_type": "IT_ACCESS",
-      "severity": "HIGH",
-      "description": "Users should not have both admin and regular business access",
-      "conflicting_items": ["Administrator", "Controller"],
-      "regulatory_framework": "INTERNAL",
-      "remediation_guidance": "Use separate accounts for admin and business operations",
-      "detected_at": "2026-02-10T12:00:00Z"
-    }
-  ],
-  "summary": {
-    "total_violations": 247,
-    "users_with_violations": 156,
-    "users_compliant": 1777,
-    "compliance_rate": 91.9,
-    "violations_by_severity": {
-      "CRITICAL": 15,
-      "HIGH": 62,
-      "MEDIUM": 120,
-      "LOW": 50
-    },
-    "violations_by_type": {
-      "FINANCIAL": 98,
-      "IT_ACCESS": 87,
-      "PROCUREMENT": 32,
-      "SALES": 18,
-      "COMPLIANCE": 12
-    }
-  }
-}
-```
-
-**Dependencies:** Data Collection Agent
-**Consumers:** Risk Assessment Agent, Knowledge Base Agent, Notification Agent
-
----
-
-**3. RISK ASSESSMENT AGENT**
-
-**Inputs:**
-```json
-{
-  "violations": [/* violations from SOD Analysis Agent */],
-  "users": [/* user data with department, role count, etc. */],
-  "risk_factors": {
-    "department_weights": {"Finance": 10, "IT": 5},
-    "severity_scores": {"CRITICAL": 90, "HIGH": 70, "MEDIUM": 50, "LOW": 30},
-    "role_threshold": 2
-  }
-}
-```
-
-**Processing:**
-```python
-# Risk calculation algorithm
-for violation in violations:
-    base_score = SEVERITY_SCORES[violation.severity]
-    conflict_penalty = len(violation.conflicting_items) * 5
-    role_penalty = max(0, len(user.roles) - 2) * 5
-    dept_penalty = DEPT_WEIGHTS.get(user.department, 0)
-
-    risk_score = min(base_score + conflict_penalty + role_penalty + dept_penalty, 100)
-```
-
-**Outputs:**
-```json
-{
-  "risk_assessments": [
-    {
-      "violation_id": "uuid",
-      "risk_score": 84,
-      "risk_level": "HIGH",
-      "risk_factors": {
-        "base_severity": 70,
-        "conflict_penalty": 10,
-        "role_penalty": 5,
-        "department_penalty": 10
-      },
-      "priority": "IMMEDIATE",
-      "remediation_timeline": "7 days"
-    }
-  ],
-  "aggregate_risk": {
-    "high_risk_users": 45,
-    "medium_risk_users": 78,
-    "low_risk_users": 33,
-    "average_risk_score": 52.3,
-    "highest_risk_user": {
-      "name": "Jane Doe",
-      "risk_score": 94,
-      "violation_count": 5
-    }
-  }
-}
-```
-
-**Dependencies:** SOD Analysis Agent, Data Collection Agent
-**Consumers:** AI Analysis Agent, Notification Agent, Report Generator
-
----
-
-**4. KNOWLEDGE BASE AGENT**
-
-**Inputs:**
-```json
-{
-  "query": "What are the SOX requirements for administrator access separation?",
-  "context": {
-    "violation_type": "IT_ACCESS",
-    "regulatory_framework": "SOX"
-  },
-  "top_k": 5
-}
-```
-
-**Processing:**
-- Vector search on SOD rules using pgvector
-- Semantic similarity matching
-- Retrieval of relevant regulations and guidance
-
-**Outputs:**
-```json
-{
-  "relevant_rules": [
-    {
-      "rule_id": "SOD-IT-001",
-      "rule_name": "Administrator vs. Regular User Roles",
-      "similarity_score": 0.92,
-      "description": "Full rule text...",
-      "regulatory_references": ["SOX Section 404", "PCAOB AS 2201"]
-    }
-  ],
-  "guidance": {
-    "best_practices": [
-      "Implement privileged access management (PAM)",
-      "Use separate admin accounts",
-      "Require MFA for privileged access"
-    ],
-    "regulatory_requirements": [
-      "ITGC controls require separation",
-      "SOX 404 mandates effective internal controls"
-    ]
-  }
-}
-```
-
-**Dependencies:** SOD Analysis Agent (for context)
-**Consumers:** AI Analysis Agent, Report Generator
-
----
-
-**5. AI ANALYSIS AGENT (Claude Opus 4-6)**
-
-**Inputs:**
-```json
-{
-  "user_profile": {
-    "name": "John Doe",
-    "department": "Finance",
-    "title": "Controller",
-    "roles": ["Administrator", "Controller", "Plus Financials"]
-  },
-  "violations": [/* detailed violations */],
-  "risk_assessment": {
-    "risk_score": 84,
-    "risk_level": "HIGH"
-  },
-  "knowledge_base_context": {
-    "relevant_rules": [/* rules from KB Agent */],
-    "guidance": [/* guidance from KB Agent */]
-  }
-}
-```
-
-**Processing via Claude:**
-```python
-prompt = ChatPromptTemplate.from_messages([
-    ("system", """You are a SOX compliance expert analyzing SOD violations.
-    Provide executive-level risk assessment with:
-    1. Executive summary
-    2. Primary concerns
-    3. Role combination analysis
-    4. Business impact assessment
-    5. SOX compliance issues
-    6. Detailed recommendations"""),
-    ("human", "Analyze this user: {user_data}")
-])
-```
-
-**Outputs:**
-```json
-{
-  "analysis_id": "uuid",
-  "user_id": "emp123",
-  "risk_level": "CRITICAL",
-  "ai_risk_score": 88,
-  "executive_summary": "User combines IT Admin with Finance Controller role, creating critically dangerous concentration of privileges...",
-  "primary_concerns": [
-    "Admin can modify system while processing transactions",
-    "Bypass code review process",
-    "Create ghost users and approve transactions"
-  ],
-  "role_combination_analysis": "The three-role combination (Admin + Controller + Plus Financials) allows user to...",
-  "business_impact_assessment": {
-    "fraud_risk": "HIGH - Can create and conceal fraudulent transactions",
-    "financial_misstatement": "HIGH - Can manipulate period-end close",
-    "control_breakdown": "CRITICAL - Nullifies internal control environment"
-  },
-  "sox_compliance_issues": [
-    "Violates PCAOB AS 2201 - Audit of Internal Control",
-    "Material weakness in ITGC logical access controls",
-    "SOX 404 control deficiency"
-  ],
-  "detailed_recommendations": [
-    {
-      "action": "Remove Administrator role from business user account",
-      "priority": "IMMEDIATE",
-      "timeline": "7 days",
-      "owner": "IT Security Team",
-      "expected_outcome": "Eliminates admin + finance SOD violation"
-    }
-  ]
-}
-```
-
-**Dependencies:** SOD Analysis Agent, Risk Assessment Agent, Knowledge Base Agent
-**Consumers:** Report Generator, Notification Agent
-
----
-
-**6. NOTIFICATION AGENT**
-
-**Inputs:**
-```json
-{
-  "violations": [/* violations from SOD Analysis */],
-  "risk_assessments": [/* risk scores from Risk Agent */],
-  "ai_analysis": [/* AI summaries from AI Agent */],
-  "notification_config": {
-    "channels": ["email", "slack", "dashboard"],
-    "recipients": {
-      "CRITICAL": ["ciso@company.com", "cfo@company.com"],
-      "HIGH": ["compliance-team@company.com"],
-      "MEDIUM": ["department-heads@company.com"],
-      "LOW": ["it-security@company.com"]
-    },
-    "delivery_schedule": {
-      "CRITICAL": "immediate",
-      "HIGH": "within_1_hour",
-      "MEDIUM": "daily_digest",
-      "LOW": "weekly_digest"
-    }
-  }
-}
-```
-
-**Processing:**
-- Route notifications based on severity
-- Format messages for each channel
-- Track delivery status
-- Handle retries on failure
-
-**Outputs:**
-```json
-{
-  "notifications_sent": 45,
-  "delivery_status": {
-    "email": {
-      "sent": 40,
-      "failed": 2,
-      "pending": 3
-    },
-    "slack": {
-      "sent": 45,
-      "failed": 0
-    },
-    "dashboard": {
-      "updated": true
-    }
-  },
-  "notification_log": [
-    {
-      "notification_id": "uuid",
-      "violation_id": "uuid",
-      "channel": "email",
-      "recipient": "ciso@company.com",
-      "status": "SENT",
-      "sent_at": "2026-02-10T12:05:00Z",
-      "subject": "CRITICAL SOD Violation: Admin + Finance Role Combination"
-    }
-  ]
-}
-```
-
-**Dependencies:** SOD Analysis Agent, Risk Assessment Agent, AI Analysis Agent
-**Consumers:** Audit Trail (logs only)
-
----
-
-**7. REPORT GENERATOR AGENT (NEW - Customizable)**
-
-**Inputs:**
-```json
-{
-  "analysis_results": {
-    "users_analyzed": 1933,
-    "violations": [/* all violations */],
-    "risk_assessments": [/* all risk scores */],
-    "ai_analyses": [/* AI summaries */],
-    "department_stats": {},
-    "top_violators": []
-  },
-  "report_customization": {
-    "report_type": "executive_summary|detailed_analysis|audit_report",
-    "audience": "executives|compliance_team|auditors|it_security",
-    "focus_areas": ["Finance department", "HIGH severity"],
-    "include_sections": ["executive_summary", "top_violators", "recommendations"],
-    "exclude_sections": ["technical_details"],
-    "custom_instructions": "Emphasize urgency before Q1 audit",
-    "format": "markdown|json|html|pdf"
-  }
-}
-```
-
-**Processing via Claude:**
-```python
-# Dynamic prompt based on customization
-prompt = build_custom_prompt(
-    report_type=customization["report_type"],
-    audience=customization["audience"],
-    focus_areas=customization["focus_areas"],
-    custom_instructions=customization["custom_instructions"]
-)
-
-# Generate with Claude
-report = llm.invoke(prompt, analysis_data)
-```
-
-**Outputs:**
-```json
-{
-  "report_id": "uuid",
-  "report_type": "executive_summary",
-  "audience": "executives",
-  "generated_at": "2026-02-10T12:10:00Z",
-  "report_content": "# Executive Summary\n\n## Compliance Status\n...",
-  "metadata": {
-    "focus_areas": ["Finance department"],
-    "sections_included": ["executive_summary", "top_violators"],
-    "generation_time": 8.2
-  }
-}
-```
-
-**Dependencies:** All analysis agents
-**Consumers:** User (final output), Audit Trail
-
----
-
-#### 3.4.2 Data Flow Sequence
-
-**Complete Workflow:**
-
-```
-┌─────────────────┐
-│ USER REQUEST    │
-│ "Scan Finance   │
-│  department"    │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────────────────────────────┐
-│ ORCHESTRATOR                            │
-│ - Creates workflow state                │
-│ - Initializes scan_id                   │
-│ - Sets stage = COLLECT_DATA             │
-└────────┬────────────────────────────────┘
-         │
-         ▼
-┌─────────────────────────────────────────┐
-│ AGENT 1: DATA COLLECTION                │
-│ Input:  { filters: {dept: "Finance"} }  │
-│ Process: NetSuite API → PostgreSQL      │
-│ Output: 45 Finance users with roles     │
-└────────┬────────────────────────────────┘
-         │
-         ▼ (shares user data)
-┌─────────────────────────────────────────┐
-│ AGENT 2: SOD ANALYSIS                   │
-│ Input:  45 users + 18 SOD rules         │
-│ Process: Pattern matching, conflict det.│
-│ Output: 28 violations found             │
-└────────┬────────────────────────────────┘
-         │
-         ▼ (shares violations)
-┌─────────────────────────────────────────┐
-│ AGENT 3: RISK ASSESSMENT                │
-│ Input:  28 violations + user context    │
-│ Process: Risk score calculation         │
-│ Output: Risk scores (15 HIGH, 13 MED)   │
-└────────┬────────────────────────────────┘
-         │
-         ├───────────────┐
-         │               │
-         ▼               ▼
-┌──────────────┐  ┌──────────────────────┐
-│ AGENT 4:     │  │ AGENT 5:             │
-│ KNOWLEDGE    │  │ AI ANALYSIS          │
-│ BASE         │  │ (Claude Opus)        │
-│              │  │                      │
-│ Input: Query │  │ Input: Top 5 HIGH    │
-│ Output: Rules│──▶│ violations + context │
-│ + Guidance   │  │                      │
-└──────────────┘  │ Output: AI summaries │
-                  │ with recommendations │
-                  └──────────┬───────────┘
-                             │
-         ┌───────────────────┴────────────┐
-         │                                │
-         ▼                                ▼
-┌──────────────────┐           ┌──────────────────┐
-│ AGENT 6:         │           │ AGENT 7:         │
-│ NOTIFICATION     │           │ REPORT GENERATOR │
-│                  │           │                  │
-│ Input: 28 alerts │           │ Input: All data  │
-│ Output:          │           │ + Customization  │
-│ - 15 emails      │           │                  │
-│ - 28 Slack msgs  │           │ Output: Custom   │
-│ - Dashboard      │           │ Executive Report │
-└──────────────────┘           └─────────┬────────┘
-                                         │
-         ┌───────────────────────────────┘
-         │
-         ▼
-┌─────────────────────────────────────────┐
-│ ORCHESTRATOR                            │
-│ - Aggregates all agent outputs          │
-│ - Updates workflow state                │
-│ - Sets stage = COMPLETE                 │
-│ - Returns results to user               │
-└────────┬────────────────────────────────┘
-         │
-         ▼
-┌─────────────────┐
-│ USER RECEIVES   │
-│ - Violation list│
-│ - Risk scores   │
-│ - AI analysis   │
-│ - Custom report │
-│ - Notifications │
-└─────────────────┘
-```
-
-#### 3.4.3 Agent Communication Protocol
-
-**Message Format:**
-```python
-{
-    "agent_id": "data_collector",
-    "timestamp": "2026-02-10T12:00:00Z",
-    "stage": "COLLECT_DATA",
-    "status": "SUCCESS",
-    "data": {/* agent-specific output */},
-    "metadata": {
-        "execution_time": 2.3,
-        "records_processed": 45,
-        "errors": []
-    },
-    "next_stage": "ANALYZE_VIOLATIONS"
-}
-```
-
-**Error Handling:**
-```python
-{
-    "agent_id": "data_collector",
-    "timestamp": "2026-02-10T12:00:00Z",
-    "stage": "COLLECT_DATA",
-    "status": "ERROR",
-    "error": {
-        "type": "APIConnectionError",
-        "message": "NetSuite API timeout",
-        "recoverable": true
-    },
-    "retry_count": 1,
-    "max_retries": 3,
-    "next_action": "RETRY"
-}
-```
-
-### 3.5 Agent Communication
-
-**Inter-Agent Protocol:**
-- Agents communicate through shared state graph
-- Each agent updates state upon completion
-- Orchestrator coordinates transitions
-- Error handling at each stage
-- Rollback on critical failures
-
----
-
-## 4. Technical Stack
-
-### 4.1 Core Technologies
-
-| Component | Technology | Version | Purpose |
-|-----------|------------|---------|---------|
-| **Language** | Python | 3.9+ | Primary implementation |
-| **Agent Framework** | LangChain | 0.3.27 | Agent tools and chains |
-| **Orchestration** | LangGraph | 0.6.11 | Multi-agent workflows |
-| **LLM** | Claude Opus | 4-6 | AI reasoning and analysis |
-| **Database** | PostgreSQL | 16 | Primary data store |
-| **Vector DB** | pgvector | Latest | Semantic search |
-| **Cache** | Redis | 8.4.1 | Caching and queuing |
-| **API Framework** | FastAPI | Latest | REST API endpoints |
-| **Task Queue** | Celery | Latest | Background jobs |
-| **HTTP Client** | httpx | Latest | Async HTTP requests |
-| **OAuth** | requests-oauthlib | Latest | NetSuite authentication |
-
-### 4.2 Python Dependencies
-
-```txt
-# Core
-langchain==0.3.27
-langchain-anthropic==0.3.22
-langchain-community==0.3.31
-langchain-core==0.3.83
-langchain-huggingface==0.1.2  # NEW: Replaces langchain_community.embeddings
-langgraph==0.6.11
-anthropic==0.79.0
-
-# Database
-psycopg2-binary==2.9.11
-sqlalchemy==2.0.36
-redis==5.2.1
-
-# API & Web
-fastapi==0.115.6
-uvicorn==0.34.0
-httpx==0.28.1
-requests==2.32.5
-requests-oauthlib==2.0.0
-
-# Task Queue
-celery==5.4.0
-
-# Data Processing
-pydantic==2.9.2
-python-dotenv==1.0.1
-
-# Utilities
-numpy==2.1.3
-
-# ML & Embeddings
-sentence-transformers>=2.2.0  # Required by HuggingFaceEmbeddings
-```
-
-**Recent Updates (2026-02-11):**
-- Added `langchain-huggingface` to fix deprecation warning
-- Migrated from `langchain_community.embeddings.HuggingFaceEmbeddings` to `langchain_huggingface.HuggingFaceEmbeddings`
-- Backward compatibility maintained with try-except fallback
-
-### 4.3 Infrastructure Requirements
-
-**Minimum Requirements:**
-- CPU: 2 cores
-- RAM: 4 GB
-- Disk: 10 GB
-- Network: Stable internet for NetSuite API
-
-**Recommended for Production:**
-- CPU: 4+ cores
-- RAM: 8+ GB
-- Disk: 50+ GB (for historical data)
-- Network: Low-latency, high-bandwidth
-
----
-
-## 5. Component Specifications
-
-### 5.1 Data Collection Agent
-
-**File:** `agents/data_collector.py`
-
-**Responsibilities:**
-- Fetch users from NetSuite via RESTlets
-- Retrieve roles and permissions
-- Handle pagination for large datasets
-- Cache results in PostgreSQL
-- Manage rate limiting
-
-**Key Methods:**
-```python
-class DataCollectionAgent:
-    def collect_all_users(self, status='ACTIVE') -> Dict[str, Any]
-    def collect_user_by_email(self, email: str) -> Optional[Dict]
-    def collect_user_by_id(self, user_id: str) -> Optional[Dict]
-    def sync_to_database(self, users: List[Dict]) -> int
-```
-
-**Performance:**
-- Search: 1-2 seconds per query
-- Bulk: 20-30 seconds for 1,000 users (when working)
-- Cache hit rate: 80%+ (repeated searches)
-
-### 5.2 SOD Analysis Agent
-
-**File:** `agents/analyzer.py`
-
-**Responsibilities:**
-- Load SOD rules from configuration
-- Analyze user access against rules
-- Detect role/permission conflicts
-- Generate violation records
-
-**Rule Structure:**
-```json
-{
-  "rule_id": "SOD-FIN-001",
-  "rule_name": "AP Entry vs. Approval Separation",
-  "description": "Users should not create and approve vendor bills",
-  "rule_type": "FINANCIAL",
-  "severity": "CRITICAL",
-  "regulatory_framework": "SOX",
-  "conflicting_permissions": {
-    "conflicts": [
-      ["Create Bill", "Approve Bill"],
-      ["Enter Vendor Payment", "Approve Vendor Payment"]
-    ]
-  },
-  "remediation_guidance": "Remove either creation or approval permission"
-}
-```
-
-**Analysis Logic:**
-- Pattern matching on role names
-- Permission conflict detection
-- Multi-role combination analysis
-- Department-aware risk factors
-- **Context-aware exemptions** (Added 2026-02-11):
-  - Job function-based rule exemptions
-  - IT/Systems users exempt from financial SOD rules
-  - Finance/Accounting users not exempt (still checked)
-  - Automated classification from NetSuite data
-
-**Context-Aware Analysis Methods:**
-
-```python
-def _is_it_systems_user(self, user) -> bool:
-    """Check if user is IT/Systems staff"""
-    if user.job_function in ['IT/SYSTEMS_ENGINEERING', 'IT', 'TECHNOLOGY']:
-        return True
-    # Fallback to department/title keywords
-    return False
-
-def _is_financial_rule(self, rule) -> bool:
-    """Check if rule is financial/accounting related"""
-    if rule['rule_type'] in ['FINANCIAL', 'ACCOUNTING', 'AP', 'AR']:
-        return True
-    # Check rule_id and keywords
-    return False
-
-def _check_rule_violation(self, user, user_roles, rule):
-    """Check if user violates SOD rule with context awareness"""
-    # CONTEXT-AWARE EXEMPTIONS
-    if self._is_it_systems_user(user) and self._is_financial_rule(rule):
-        logger.info(f"Exempting IT/Systems user {user.email} from financial rule")
-        return None  # No violation
-    # Continue with standard checks...
-```
-
-**Job Function Classifications:**
-- `IT/SYSTEMS_ENGINEERING` - Exempt from financial rules
-- `FINANCE`, `ACCOUNTING`, `ACCOUNTS_PAYABLE`, `ACCOUNTS_RECEIVABLE` - No exemptions
-- `SALES`, `PROCUREMENT`, `HUMAN_RESOURCES`, `EXECUTIVE` - No exemptions
-- `GENERAL_ADMIN`, `OTHER` - No exemptions
-
-### 5.3 Risk Assessment Agent
-
-**File:** `agents/risk_assessor.py`
-
-**Responsibilities:**
-- Calculate risk scores (0-100)
-- Apply multi-factor weighting
-- Prioritize violations
-- Generate remediation timelines
-
-**Bug Fix (2026-02-11):**
-Updated `calculate_user_risk_score()` to accept both UUID and NetSuite user_id as input parameters:
-- First tries UUID lookup (`get_user_by_uuid`)
-- Falls back to NetSuite ID lookup (`get_user_by_id`)
-- Always uses UUID for violation queries (database foreign keys)
-- Fixes `psycopg2.errors.InvalidTextRepresentation` error
-
-```python
-def calculate_user_risk_score(self, user_id: str, include_historical: bool = True):
-    """Calculate risk score - accepts UUID or NetSuite ID"""
-    # Try UUID first, then NetSuite ID
-    user = self.user_repo.get_user_by_uuid(user_id)
-    if not user:
-        user = self.user_repo.get_user_by_id(user_id)
-
-    if not user:
-        return {'success': False, 'error': 'User not found'}
-
-    # Use UUID for violation queries (database foreign keys)
-    violations = self.violation_repo.get_violations_by_user(
-        str(user.id),  # Always use UUID
-        status=ViolationStatus.OPEN
-    )
-    # ... continue with risk calculation
-```
-
-**Risk Calculation:**
-```python
-def calculate_risk_score(violation, user):
-    base_score = SEVERITY_SCORES[violation.severity]
-
-    # Additional risk factors
-    conflict_penalty = len(violation.conflicting_items) * 5
-    role_penalty = max(0, len(user.roles) - 2) * 5
-    dept_penalty = 10 if user.department in HIGH_RISK_DEPTS else 0
-
-    total_score = base_score + conflict_penalty + role_penalty + dept_penalty
-
-    return min(total_score, 100)  # Cap at 100
-```
-
-**Severity Weights:**
-- CRITICAL: 90
-- HIGH: 70
-- MEDIUM: 50
-- LOW: 30
-
-### 5.4 Knowledge Base Agent
-
-**File:** `agents/knowledge_base.py`
-
-**Responsibilities:**
-- Store SOD rules in vector database
-- Perform semantic similarity search
-- Retrieve relevant regulations
-- Provide context-aware guidance
-
-**Vector Search:**
-- Embeddings: 1536 dimensions
-- Similarity metric: Cosine similarity
-- Top-K results: 5 most relevant rules
-- Use cases: Natural language queries about compliance
-
-### 5.5 AI Analysis Agent (Claude Opus 4-6)
-
-**Integration:** Via LangChain ChatAnthropic
-
-**Prompt Structure:**
-```python
-prompt = ChatPromptTemplate.from_messages([
-    ("system", """You are a SOX compliance expert analyzing SOD violations.
-    Provide executive-level risk assessment with:
-    1. Executive summary
-    2. Primary concerns
-    3. Role combination analysis
-    4. Business impact assessment
-    5. SOX compliance issues
-    6. Detailed recommendations"""),
-    ("human", """Analyze this user:
-    Name: {user_name}
-    Department: {department}
-    Roles: {roles}
-    Violations: {violations}
-
-    Provide comprehensive risk assessment.""")
-])
-```
-
-**Output Format:**
-```json
-{
-  "risk_level": "CRITICAL",
-  "risk_score": 88,
-  "executive_summary": "User combines IT Admin with Finance...",
-  "primary_concerns": ["Admin fraud concealment", "Bypass controls"],
-  "role_combination_analysis": "The three-role combination...",
-  "business_impact_assessment": "Potential business impacts...",
-  "sox_compliance_issues": "Violates PCAOB AS 2201...",
-  "detailed_recommendations": [
-    {"action": "Remove admin role", "timeline": "7 days"}
-  ],
-  "remediation_priority": "IMMEDIATE",
-  "remediation_timeline": "7 days"
-}
-```
-
-### 5.6 Notification Agent
-
-**File:** `agents/notifier.py`
-
-**Channels:**
-1. **Email** (SendGrid):
-   - HTML templates for violations
-   - Severity-based prioritization
-   - Executive summaries
-   - User comparison tables
-
-2. **Slack** (Webhooks):
-   - Real-time alerts to channels
-   - Formatted violation messages
-   - Action buttons for acknowledgment
-   - User comparison tables (ASCII art)
-
-3. **Dashboard** (FastAPI):
-   - Web UI for viewing violations
-   - Real-time updates via WebSocket
-   - Drill-down to details
-
-**Notification Features:**
-
-1. **User Comparison Tables** (Added 2026-02-11)
-   - Side-by-side compliance metrics for multiple users
-   - ASCII table with borders
-   - Includes: Risk score, violations, status, roles count
-   - Remediation priority and estimated time
-   - Format: Plain text for email/Slack compatibility
-
-   ```
-   ┌────────────┬──────────────┬──────────────┐
-   │ User       │ Prabal Saha  │ Robin Turner │
-   │ Risk Score │ 74/100       │ 100/100      │
-   │ Violations │ 4            │ 12           │
-   │ Status     │ 🟠 HIGH      │ 🔴 CRITICAL  │
-   └────────────┴──────────────┴──────────────┘
-   ```
-
-   **Method:** `generate_user_comparison_table(user_emails, include_border=True)`
-
-**Notification Rules:**
-- CRITICAL: Immediate notification
-- HIGH: Within 1 hour
-- MEDIUM: Daily digest
-- LOW: Weekly digest
-
----
-
-## 6. Database Design
-
-### 6.1 Schema Overview
-
-**Core Tables:**
-1. `users` - NetSuite user records
-2. `roles` - NetSuite roles
-3. `permissions` - Role permissions
-4. `violations` - SOD violations
-5. `compliance_scans` - Scan metadata
-6. `notifications` - Notification logs
-7. `audit_trail` - All system actions
-
-### 6.2 Key Models
-
-#### Users Table
-```sql
-CREATE TABLE users (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id VARCHAR(255) UNIQUE NOT NULL,
-    internal_id VARCHAR(50) UNIQUE,
-    name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) UNIQUE NOT NULL,
-    first_name VARCHAR(255),
-    last_name VARCHAR(255),
-    title VARCHAR(255),
-    department VARCHAR(255),
-    subsidiary VARCHAR(255),
-    is_active BOOLEAN DEFAULT TRUE,
-    last_login TIMESTAMP,
-
-    -- Context fields for SOD analysis (Added 2026-02-11)
-    job_function VARCHAR(100),  -- IT/SYSTEMS_ENGINEERING, FINANCE, etc.
-    business_unit VARCHAR(255),
-    supervisor VARCHAR(255),
-    supervisor_id VARCHAR(100),
-    location VARCHAR(255),
-    hire_date TIMESTAMP,
-
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_user_email (email),
-    INDEX idx_user_active (is_active),
-    INDEX idx_user_job_function (job_function)  -- NEW
-);
-```
-
-#### Violations Table
-```sql
-CREATE TABLE violations (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES users(id),
-    scan_id UUID REFERENCES compliance_scans(id),
-    rule_id VARCHAR(50) NOT NULL,
-    rule_name VARCHAR(500),
-    severity VARCHAR(20),
-    risk_score INTEGER,
-    regulatory_framework VARCHAR(50),
-    conflicting_items JSON,
-    status VARCHAR(50) DEFAULT 'OPEN',
-    detected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    resolved_at TIMESTAMP,
-    resolution_notes TEXT,
-    INDEX idx_violation_severity (severity),
-    INDEX idx_violation_status (status),
-    INDEX idx_violation_user (user_id)
-);
-```
-
-### 6.3 Enums
-
-```python
-class UserStatus(enum.Enum):
-    ACTIVE = "ACTIVE"
-    INACTIVE = "INACTIVE"
-    SUSPENDED = "SUSPENDED"
-
-class ViolationSeverity(enum.Enum):
-    CRITICAL = "CRITICAL"
-    HIGH = "HIGH"
-    MEDIUM = "MEDIUM"
-    LOW = "LOW"
-
-class ViolationStatus(enum.Enum):
-    OPEN = "OPEN"
-    IN_REVIEW = "IN_REVIEW"
-    RESOLVED = "RESOLVED"
-    ACCEPTED_RISK = "ACCEPTED_RISK"
-    FALSE_POSITIVE = "FALSE_POSITIVE"
-
-class NotificationChannel(enum.Enum):
-    EMAIL = "EMAIL"
-    SLACK = "SLACK"
-    DASHBOARD = "DASHBOARD"
-    WEBHOOK = "WEBHOOK"
-
-class NotificationStatus(enum.Enum):
-    PENDING = "PENDING"
-    SENT = "SENT"
-    FAILED = "FAILED"
-    RETRYING = "RETRYING"
-```
-
-### 6.4 Database Operations
-
-The system uses a **Repository Pattern** for all database operations, providing a clean separation between business logic (agents) and data access (repositories).
-
-#### Repository Architecture
-
-**Location:** `repositories/`
-
-```
-repositories/
-├── __init__.py
-├── user_repository.py          # User & UserRole CRUD
-├── role_repository.py          # Role CRUD
-├── violation_repository.py     # Violation CRUD
-└── sod_rule_repository.py      # SOD Rule CRUD (future)
-```
-
-#### 6.4.1 User Repository
-
-**File:** `repositories/user_repository.py`
-
-**Class:** `UserRepository`
-
-**Insert Operations:**
-
-| Method | Purpose | Returns | Line |
-|--------|---------|---------|------|
-| `create_user(user_data)` | Create new user | User object | 30-58 |
-| `upsert_user(user_data)` | Create or update user | User object | 125-156 |
-| `bulk_upsert_users(users_data)` | Bulk user operations | Count processed | 158-178 |
-| `assign_role_to_user(user_id, role_id)` | Assign role to user | UserRole object | 210-252 |
-
-**Query Operations:**
-
-| Method | Purpose | Returns |
-|--------|---------|---------|
-| `get_user_by_id(user_id)` | Get user by NetSuite ID | User or None |
-| `get_user_by_email(email)` | Get user by email | User or None |
-| `get_users_with_roles(status, min_roles)` | Get users with roles loaded | List[User] |
-| `get_high_risk_users(min_roles)` | Users with 3+ roles | List[User] |
-| `search_users(search_term)` | Search by name/email | List[User] |
-
-**Update Operations:**
-
-| Method | Purpose | Returns |
-|--------|---------|---------|
-| `upsert_user(user_data)` | Update existing user | User object |
-| `remove_role_from_user(user_id, role_id)` | Remove role assignment | None |
-
-**Delete Operations:**
-
-| Method | Purpose | Returns |
-|--------|---------|---------|
-| `delete_user(user_id)` | Delete user (cascade deletes user_roles) | None |
-
-**Example Usage:**
-```python
-from repositories.user_repository import UserRepository
-
-# Create user
-user_data = {
-    'user_id': 'emp123',
-    'name': 'John Doe',
-    'email': 'john@company.com',
-    'status': 'ACTIVE',
-    'department': 'Finance'
-}
-user = user_repo.create_user(user_data)
-
-# Assign role
-user_repo.assign_role_to_user(
-    user_id=str(user.id),
-    role_id=role_uuid,
-    assigned_by='NetSuite Sync'
-)
-```
-
-#### 6.4.2 Role Repository
-
-**File:** `repositories/role_repository.py`
-
-**Class:** `RoleRepository`
-
-**Insert Operations:**
-
-| Method | Purpose | Returns | Line |
-|--------|---------|---------|------|
-| `create_role(role_data)` | Create new role | Role object | 30-54 |
-| `upsert_role(role_data)` | Create or update role | Role object | 109-136 |
-| `bulk_upsert_roles(roles_data)` | Bulk role operations | Count processed | 138-158 |
-
-**Query Operations:**
-
-| Method | Purpose | Returns |
-|--------|---------|---------|
-| `get_role_by_id(role_id)` | Get role by NetSuite ID | Role or None |
-| `get_role_by_name(role_name)` | Get role by name | Role or None |
-| `get_all_roles(is_custom)` | Get all roles | List[Role] |
-| `get_admin_roles()` | Roles with 'admin' in name | List[Role] |
-| `get_finance_roles()` | Finance-related roles | List[Role] |
-| `search_roles(search_term)` | Search by name | List[Role] |
-
-**Example Usage:**
-```python
-from repositories.role_repository import RoleRepository
-
-# Create role
-role_data = {
-    'role_id': '3',
-    'role_name': 'Administrator',
-    'is_custom': False,
-    'permissions': ['VIEW_EMPLOYEES', 'EDIT_TRANSACTIONS'],
-    'permission_count': 2
-}
-role = role_repo.create_role(role_data)
-```
-
-#### 6.4.3 Violation Repository
-
-**File:** `repositories/violation_repository.py`
-
-**Class:** `ViolationRepository`
-
-**Insert Operations:**
-
-| Method | Purpose | Returns | Line |
-|--------|---------|---------|------|
-| `create_violation(violation_data)` | Create new violation | Violation object | 30-59 |
-| `bulk_create_violations(violations_data)` | Bulk violation creation | Count created | 192-212 |
-
-**Query Operations:**
-
-| Method | Purpose | Returns |
-|--------|---------|---------|
-| `get_violation_by_id(violation_id)` | Get specific violation | Violation or None |
-| `get_violations_by_user(user_id, status)` | All violations for user | List[Violation] |
-| `get_open_violations(severity, min_risk)` | Open violations with filters | List[Violation] |
-| `get_critical_violations(limit)` | Critical open violations | List[Violation] |
-| `get_high_risk_violations(min_risk_score)` | Violations above risk threshold | List[Violation] |
-| `get_violations_by_scan(scan_id)` | All violations from scan | List[Violation] |
-| `get_violation_summary()` | Violation statistics | Dict[str, Any] |
-
-**Update Operations:**
-
-| Method | Purpose | Returns |
-|--------|---------|---------|
-| `resolve_violation(violation_id, resolved_by, notes)` | Mark violation resolved | Violation object |
-| `update_risk_score(violation_id, new_score)` | Update risk score | Violation object |
-
-**Delete Operations:**
-
-| Method | Purpose | Returns |
-|--------|---------|---------|
-| `delete_violation(violation_id)` | Delete violation | None |
-
-**Example Usage:**
-```python
-from repositories.violation_repository import ViolationRepository
-
-# Create violation
-violation_data = {
-    'user_id': user_uuid,
-    'rule_id': rule_uuid,
-    'scan_id': scan_uuid,
-    'severity': 'HIGH',
-    'status': 'OPEN',
-    'risk_score': 78.5,
-    'title': 'Journal Entry SOD Violation',
-    'description': 'User can create and approve journal entries',
-    'conflicting_roles': ['3', '18'],
-    'conflicting_permissions': ['CREATE_JOURNAL', 'APPROVE_JOURNAL']
-}
-violation = violation_repo.create_violation(violation_data)
-
-# Resolve violation
-violation_repo.resolve_violation(
-    violation_id=str(violation.id),
-    resolved_by='admin@company.com',
-    resolution_notes='Role removed from user',
-    status=ViolationStatus.RESOLVED
-)
-```
-
-#### 6.4.4 Data Insertion Flow
-
-**1. NetSuite Data Sync (Users & Roles)**
-
-```
-┌────────────────────────────────────────────────────────────┐
-│ scripts/sync_from_netsuite.py                              │
-│                                                             │
-│ 1. Data Collection Agent                                   │
-│    ↓ netsuite_client.get_users_and_roles()                 │
-│    → Fetches users with roles from NetSuite                │
-│                                                             │
-│ 2. Extract Unique Roles                                    │
-│    ↓ role_repo.bulk_upsert_roles(roles_data)               │
-│    → Inserts/Updates: roles table                          │
-│                                                             │
-│ 3. Process Users                                           │
-│    ↓ user_repo.upsert_user(user_data)                      │
-│    → Inserts/Updates: users table                          │
-│                                                             │
-│ 4. Assign Roles to Users                                   │
-│    ↓ user_repo.assign_role_to_user(user_id, role_id)      │
-│    → Inserts: user_roles table                             │
-│                                                             │
-│ Result: Database populated with NetSuite data              │
-└────────────────────────────────────────────────────────────┘
-
-Command: python3 scripts/sync_from_netsuite.py --limit 100
-```
-
-**2. SOD Violation Detection (Violations)**
-
-```
-┌────────────────────────────────────────────────────────────┐
-│ agents/analyzer.py (SOD Analysis Agent)                    │
-│                                                             │
-│ 1. Load User & Roles                                       │
-│    ↓ user_repo.get_users_with_roles()                      │
-│    → Reads: users, roles, user_roles tables                │
-│                                                             │
-│ 2. Evaluate SOD Rules                                      │
-│    ↓ Check each rule against user's roles/permissions      │
-│    → Detects conflicts                                     │
-│                                                             │
-│ 3. Calculate Risk Score                                    │
-│    ↓ Multi-factor risk algorithm                           │
-│    → Severity + Conflicts + Roles + Department             │
-│                                                             │
-│ 4. Create Violation Record                                 │
-│    ↓ violation_repo.create_violation(violation_data)       │
-│    → Inserts: violations table                             │
-│                                                             │
-│ Result: Violations detected and stored                     │
-└────────────────────────────────────────────────────────────┘
-
-Triggered by: Orchestrator or direct agent call
-```
-
-**3. Violation Resolution (Updates)**
-
-```
-┌────────────────────────────────────────────────────────────┐
-│ Manual Resolution or Automated Workflow                    │
-│                                                             │
-│ 1. Admin Reviews Violation                                 │
-│    ↓ violation_repo.get_violation_by_id(violation_id)     │
-│    → Reads: violations table                               │
-│                                                             │
-│ 2. Admin Takes Action                                      │
-│    • Removes conflicting role from user                    │
-│    • Or accepts risk with justification                    │
-│                                                             │
-│ 3. Mark Violation as Resolved                              │
-│    ↓ violation_repo.resolve_violation(...)                 │
-│    → Updates: violations table                             │
-│    → Sets: status, resolved_at, resolved_by, notes         │
-│                                                             │
-│ Result: Violation closed with audit trail                  │
-└────────────────────────────────────────────────────────────┘
-
-Triggered by: API endpoint or manual script
-```
-
-#### 6.4.5 Database Session Management
-
-**Session Creation:**
-```python
-from models.database_config import get_db_config
-
-# Get database configuration
-db_config = get_db_config()
-
-# Create session
-session = db_config.get_session()
-
-# Use repositories
-user_repo = UserRepository(session)
-role_repo = RoleRepository(session)
-violation_repo = ViolationRepository(session)
-
-# Always close session when done
-try:
-    # Perform operations
-    user = user_repo.create_user(user_data)
-    session.commit()
-finally:
-    session.close()
-```
-
-**Transaction Management:**
-```python
-# Automatic rollback on error
-try:
-    user = user_repo.create_user(user_data)
-    role = role_repo.create_role(role_data)
-    user_repo.assign_role_to_user(user.id, role.id)
-    session.commit()
-except Exception as e:
-    session.rollback()
-    logger.error(f"Transaction failed: {e}")
-    raise
-```
-
-#### 6.4.6 Agent-Repository Mapping
-
-**Which Agents Call Which Repositories:**
-
-| Agent | Repositories Used | Operations |
-|-------|------------------|------------|
-| **Data Collection Agent** | None directly | Fetches from NetSuite, passes to sync script |
-| **SOD Analysis Agent** | UserRepository, RoleRepository, ViolationRepository | Read users/roles, Create violations |
-| **Risk Assessment Agent** | ViolationRepository | Read violations, Update risk scores |
-| **Notification Agent** | UserRepository, ViolationRepository | Read user/violation data for notifications |
-| **Orchestrator** | All repositories | Coordinates all operations |
-
-**Script-Repository Mapping:**
-
-| Script | Repositories Used | Operations |
-|--------|------------------|------------|
-| `sync_from_netsuite.py` | UserRepository, RoleRepository | Create/Update users, roles, role assignments |
-| `demo_with_database.py` | UserRepository, ViolationRepository | Read users/violations for demo |
-| `query_database.py` | All repositories | Query operations for CLI |
-
-#### 6.4.7 Performance Considerations
-
-**Bulk Operations:**
-- Use `bulk_upsert_users()` instead of individual `create_user()` calls for large datasets
-- Use `bulk_upsert_roles()` for initial role sync
-- Use `bulk_create_violations()` when processing many violations
-
-**Query Optimization:**
-- Repositories use SQLAlchemy `joinedload()` for eager loading relationships
-- Indexes on frequently queried fields (email, user_id, status, severity)
-- Pagination parameters (limit, offset) for large result sets
-
-**Example - Optimized Bulk Sync:**
-```python
-# GOOD: Bulk operation (fast)
-users_data = [...]  # 100 users
-count = user_repo.bulk_upsert_users(users_data)
-# Single commit, one transaction
-
-# BAD: Individual operations (slow)
-for user_data in users_data:
-    user_repo.create_user(user_data)  # 100 commits, 100 transactions
-```
-
-#### 6.4.8 Database Initialization
-
-**Initial Setup:**
+**1. Install Dependencies**:
 ```bash
-# 1. Create database
-createdb sod_compliance
+# Core dependencies
+pip install anthropic sqlalchemy psycopg2-binary pyyaml cryptography
 
-# 2. Run migrations (if using Alembic)
-alembic upgrade head
+# Vector search dependencies
+pip install sentence-transformers numpy
 
-# 3. Sync initial data from NetSuite
-python3 scripts/sync_from_netsuite.py --limit 100
+# Optional LLM providers
+pip install openai tiktoken google-generativeai cohere
 
-# 4. Verify data
-python3 -c "from scripts.query_database import show_users; show_users()"
-```
+# Database (PostgreSQL 17 required for pgvector 0.8.1)
+brew install postgresql@17 pgvector
+brew install redis
 
-**Database Schema Generation:**
-```python
-from models.database_config import Base, engine
-
-# Create all tables
-Base.metadata.create_all(engine)
-```
-
----
-
-## 7. API Specifications
-
-### 7.1 REST Endpoints
-
-**Base URL:** `http://localhost:8000/api/v1`
-
-#### User Endpoints
-
-```
-GET /users
-  - List all users
-  - Query params: status, department, limit, offset
-  - Response: Paginated user list
-
-GET /users/{user_id}
-  - Get specific user details
-  - Response: User object with roles
-
-POST /users/search
-  - Search users by name or email
-  - Body: { "query": "string", "filters": {} }
-  - Response: Matching users
-```
-
-#### Violation Endpoints
-
-```
-GET /violations
-  - List all violations
-  - Query params: severity, status, user_id, limit, offset
-  - Response: Paginated violation list
-
-GET /violations/{violation_id}
-  - Get specific violation details
-  - Response: Violation object with remediation
-
-POST /violations/resolve
-  - Mark violation as resolved
-  - Body: { "violation_id": "uuid", "notes": "string" }
-  - Response: Updated violation
-```
-
-#### Scan Endpoints
-
-```
-POST /scans/start
-  - Start new compliance scan
-  - Body: { "scope": "full|targeted", "users": [] }
-  - Response: Scan ID and status
-
-GET /scans/{scan_id}
-  - Get scan status and results
-  - Response: Scan metadata and violations
-
-GET /scans/{scan_id}/report
-  - Generate scan report (PDF/Excel)
-  - Query params: format=pdf|excel
-  - Response: File download
-```
-
-#### Report Endpoints
-
-```
-GET /reports/composite
-  - Get full population composite report
-  - Query params: scan_id, format=json|pdf
-  - Response: Composite report with all metrics
-
-GET /reports/executive
-  - Get executive summary
-  - Response: High-level metrics and top risks
-
-GET /reports/department/{dept_name}
-  - Get department-specific report
-  - Response: Department violations and trends
-```
-
----
-
-## 8. Integration Points
-
-### 8.1 NetSuite Integration
-
-**RESTlets Deployed:**
-
-1. **Search RESTlet (script 3685)** - Enhanced with Context Data (v5_hybrid)
-   - Purpose: Fast targeted user lookup with job function classification
-   - Method: POST
-   - Parameters:
-     ```json
-     {
-       "searchType": "name|email|both",
-       "searchValue": "string",
-       "includePermissions": boolean,
-       "includeInactive": boolean
-     }
-     ```
-   - **Enhanced Fields Returned (Added 2026-02-11):**
-     ```json
-     {
-       "user_id": "prabal.saha@fivetran.com",
-       "name": "Prabal Saha",
-       "email": "prabal.saha@fivetran.com",
-       "department": "Systems Engineering - G&A",
-       "title": "Systems Engineer",
-       "job_function": "IT/SYSTEMS_ENGINEERING",  // ⭐ NEW
-       "business_unit": "Technology",             // ⭐ NEW
-       "supervisor": "Engineering Manager",       // ⭐ NEW
-       "location": "United States",               // ⭐ NEW
-       "hire_date": "2020-01-15",                // ⭐ NEW
-       "roles": [...]
-     }
-     ```
-   - **Job Function Derivation:**
-     - Server-side classification from department, title, business unit
-     - Supports: IT/SYSTEMS_ENGINEERING, FINANCE, ACCOUNTING, SALES, etc.
-     - Fallback to `OTHER` if classification unclear
-   - Performance: 1-2 seconds
-   - Data transfer: ~2KB per response
-
-2. **Main RESTlet (script 3684)**
-   - Purpose: Bulk user operations
-   - Method: GET/POST
-   - Parameters: limit, offset, status
-   - Note: Currently returns 400 error, needs debugging
-
-**Authentication:**
-- Protocol: OAuth 1.0a
-- Consumer Key/Secret: In .env
-- Token ID/Secret: In .env
-- Signature Method: HMAC-SHA256
-
-### 8.2 Claude API Integration
-
-**Endpoint:** `https://api.anthropic.com/v1/messages`
-
-**Configuration:**
-```python
-ChatAnthropic(
-    model="claude-opus-4-6",
-    temperature=0,  # Deterministic for compliance
-    max_tokens=4096,
-    anthropic_api_key=os.getenv('ANTHROPIC_API_KEY')
-)
-```
-
-**Rate Limits:**
-- 50 requests/minute (configurable)
-- Implement exponential backoff
-
-### 8.3 Notification Integrations
-
-**SendGrid (Email):**
-- API Key: In .env
-- From email: compliance-alerts@company.com
-- Templates: HTML for violations
-
-**Slack (Webhook):**
-- Webhook URL: In .env
-- Channel: #compliance-alerts
-- Format: Rich message blocks
-
----
-
-## 9. Workflow Engine
-
-### 9.1 LangGraph State Machine
-
-**Workflow Stages:**
-```python
-class WorkflowStage(str, Enum):
-    INIT = "INIT"
-    COLLECT_DATA = "COLLECT_DATA"
-    ANALYZE_VIOLATIONS = "ANALYZE_VIOLATIONS"
-    ASSESS_RISK = "ASSESS_RISK"
-    SEND_NOTIFICATIONS = "SEND_NOTIFICATIONS"
-    COMPLETE = "COMPLETE"
-    ERROR = "ERROR"
-```
-
-**State Transitions:**
-```
-INIT → COLLECT_DATA → ANALYZE_VIOLATIONS → ASSESS_RISK
-     → SEND_NOTIFICATIONS → COMPLETE
-
-Any stage can transition to ERROR on failure
-ERROR can retry or abort based on error type
-```
-
-### 9.2 Execution Modes
-
-**1. On-Demand Scan**
-- Triggered by API call
-- Scans specific users or full population
-- Returns results immediately
-
-**2. Scheduled Scan**
-- Cron-based (Celery Beat)
-- Runs daily/weekly/monthly
-- Results stored in database
-- Notifications sent automatically
-
-**3. Real-Time Monitoring**
-- Triggered by NetSuite role changes (webhook)
-- Analyzes affected user immediately
-- Alerts on new violations
-
-**4. Batch Processing**
-- Large population scans
-- Parallel processing with worker pool
-- Progress tracking
-- Incremental result updates
-
----
-
-## 10. Security & Compliance
-
-### 10.1 Data Security
-
-**Encryption:**
-- At rest: PostgreSQL encryption
-- In transit: TLS 1.3
-- API keys: Encrypted in .env
-- OAuth secrets: Secure storage
-
-**Access Control:**
-- Role-based access (RBAC)
-- API authentication via JWT
-- NetSuite OAuth tokens rotated
-
-### 10.2 Compliance Standards
-
-**SOX (Sarbanes-Oxley):**
-- 8 financial control rules
-- Audit trail for all actions
-- Violation tracking and remediation
-
-**ITGC (IT General Controls):**
-- 4 IT access control rules
-- Change management monitoring
-- Segregation enforced
-
-**PCAOB Standards:**
-- AS 2201: Audit of Internal Control
-- Material weakness detection
-- Control deficiency reporting
-
-### 10.3 Audit Trail
-
-**Logged Events:**
-- All user access to system
-- SOD rule changes
-- Violation detection and resolution
-- Notification delivery
-- System configuration changes
-
-**Retention:**
-- Audit logs: 7 years
-- Violation records: Indefinite
-- Scan results: 2 years
-
----
-
-## 11. Performance Requirements
-
-### 11.1 Response Times
-
-| Operation | Target | Achieved | Status |
-|-----------|--------|----------|--------|
-| User search | < 3 sec | 2 sec | ✅ |
-| Violation analysis (single user) | < 0.1 sec | 0.001 sec | ✅ |
-| Full population scan (1,933 users) | < 5 min | 3-64 min* | ⚠️ |
-| Composite report generation | < 10 sec | 4 sec | ✅ |
-| AI analysis (per user) | < 30 sec | 28 sec | ✅ |
-
-\* Depends on bulk fetch method (optimized vs current)
-
-### 11.2 Scalability
-
-**Horizontal Scaling:**
-- API servers: N instances behind load balancer
-- Worker processes: N Celery workers
-- Database: Read replicas for queries
-
-**Vertical Scaling:**
-- Increase worker threads
-- Larger database instance
-- More cache memory
-
-**Projected Capacity:**
-- Users: 10,000+ (with optimization)
-- Concurrent scans: 10+
-- API requests: 1,000 req/sec
-
-### 11.3 Optimization Strategies
-
-**1. Caching:**
-- Redis for user data (TTL: 1 hour)
-- SOD rules in memory (reload on change)
-- Frequent queries cached
-
-**2. Batch Processing:**
-- Bulk user fetches (when working)
-- Parallel violation analysis
-- Asynchronous notifications
-
-**3. Database Indexes:**
-- User email, user_id
-- Violation severity, status
-- Scan timestamps
-
----
-
-## 12. Deployment Architecture
-
-### 12.1 Desktop Deployment (Current)
-
-**Environment:**
-- macOS (Homebrew native)
-- PostgreSQL 16 (localhost:5432)
-- Redis 8.4.1 (localhost:6379)
-- Python 3.9+ virtual environment
-
-**Startup:**
-```bash
 # Start services
-brew services start postgresql@16
+brew services start postgresql@17
 brew services start redis
+```
 
-# Activate environment
-source .venv/bin/activate
+**2. Database Setup**:
+```bash
+# Install PostgreSQL 17
+brew install postgresql@17
+brew services start postgresql@17
+
+# Create database
+/opt/homebrew/opt/postgresql@17/bin/createdb compliance_db
+
+# Enable pgvector extension (as superuser)
+/opt/homebrew/opt/postgresql@17/bin/psql compliance_db -c "CREATE EXTENSION IF NOT EXISTS vector;"
+/opt/homebrew/opt/postgresql@17/bin/psql compliance_db -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"
+
+# Initialize schema
+python3 scripts/init_database.py
+
+# Verify vector setup
+/opt/homebrew/opt/postgresql@17/bin/psql compliance_db -c "SELECT extname, extversion FROM pg_extension WHERE extname = 'vector';"
+```
+
+**3. Configuration**:
+```bash
+# Copy config templates
+cp config/llm_config.example.yaml config/llm_config.yaml
+cp .env.example .env
+
+# Set environment variables
+export ANTHROPIC_API_KEY="sk-ant-..."
+export NETSUITE_ACCOUNT_ID="..."
+export NETSUITE_CONSUMER_KEY="..."
+export DATABASE_URL="postgresql://user:pass@localhost/compliance_db"
+```
+
+**4. Verify Setup**:
+```bash
+# Test LLM connection
+python3 -c "from services.llm import get_llm_from_config; llm = get_llm_from_config(); print(llm.test_connection())"
+
+# Test database
+python3 -c "from models.database_config import DatabaseConfig; db = DatabaseConfig(); print(db.test_connection())"
+
+# Run smoke test
+python3 demos/demo_end_to_end.py
+```
+
+### Production Deployment
+
+**Docker Setup** (Recommended):
+```dockerfile
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Install dependencies
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+
+# Copy application
+COPY . .
 
 # Run application
-python3 demos/test_two_users.py  # Individual analysis
-python3 /tmp/full_population_sod_analysis.py  # Full scan
-python3 /tmp/demonstrate_all_agents.py  # Agent demo
+CMD ["python", "main.py"]
 ```
 
-### 12.2 Production Deployment Options
-
-**Option A: Single Server**
-- All components on one machine
-- Suitable for < 5,000 users
-- Simple maintenance
-
-**Option B: Distributed**
-- API server tier (2+ instances)
-- Database server (primary + replica)
-- Worker tier (4+ Celery workers)
-- Redis cluster (3+ nodes)
-
-**Option C: Cloud (AWS/Azure/GCP)**
-- RDS for PostgreSQL
-- ElastiCache for Redis
-- ECS/EKS for containers
-- ALB for load balancing
-- S3 for report storage
-
-### 12.3 Docker Deployment (Optional)
-
-**docker-compose.yml:**
+**Docker Compose**:
 ```yaml
 version: '3.8'
+
 services:
+  app:
+    build: .
+    environment:
+      - DATABASE_URL=postgresql://db:5432/compliance
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    depends_on:
+      - db
+      - redis
+
   db:
     image: postgres:16
     environment:
-      POSTGRES_DB: compliance_db
-      POSTGRES_USER: compliance_user
-      POSTGRES_PASSWORD: compliance_pass
-    ports:
-      - "5432:5432"
+      - POSTGRES_DB=compliance_db
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
 
   redis:
     image: redis:8-alpine
-    ports:
-      - "6379:6379"
-
-  api:
-    build: .
-    environment:
-      - DATABASE_URL=postgresql://compliance_user:compliance_pass@db:5432/compliance_db
-      - REDIS_URL=redis://redis:6379/0
-    ports:
-      - "8000:8000"
-    depends_on:
-      - db
-      - redis
-
-  worker:
-    build: .
-    command: celery -A celery_app worker --loglevel=info
-    depends_on:
-      - db
-      - redis
+    volumes:
+      - redis_data:/data
 ```
 
----
+**Kubernetes** (Enterprise):
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: compliance-system
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: compliance
+  template:
+    metadata:
+      labels:
+        app: compliance
+    spec:
+      containers:
+      - name: app
+        image: compliance-system:latest
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: url
+        - name: ANTHROPIC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: llm-credentials
+              key: anthropic_key
+```
 
-## 13. Monitoring & Observability
+### Monitoring & Logging
 
-### 13.1 Metrics
-
-**System Metrics:**
-- CPU usage
-- Memory usage
-- Disk I/O
-- Network latency
-
-**Application Metrics:**
-- Scan duration
-- Violations detected per scan
-- Agent execution time
-- API response times
-- Cache hit rate
-
-**Business Metrics:**
-- Compliance rate (% compliant users)
-- Violation trend (increasing/decreasing)
-- Mean time to remediation (MTTR)
-- High-risk user count
-
-### 13.2 Logging
-
-**Log Levels:**
-- ERROR: System failures
-- WARN: Recoverable issues
-- INFO: Normal operations
-- DEBUG: Detailed diagnostics
-
-**Log Aggregation:**
-- Centralized logging (ELK stack optional)
-- Structured logging (JSON format)
-- Log rotation (daily)
-
-### 13.3 Alerting
-
-**Alert Conditions:**
-- System down (< 1 min)
-- Database connection lost
-- API error rate > 5%
-- Scan failure
-- CRITICAL violation detected
-
-**Alert Channels:**
-- Email to ops team
-- Slack to #alerts channel
-- PagerDuty for critical (optional)
-
----
-
-## 14. Error Handling & Recovery
-
-### 14.1 Error Categories
-
-**1. Transient Errors:**
-- Network timeouts
-- API rate limits
-- Database connection drops
-
-**Strategy:** Retry with exponential backoff
-
-**2. Data Errors:**
-- Missing user data
-- Invalid role configuration
-- Malformed API responses
-
-**Strategy:** Log error, skip record, continue processing
-
-**3. System Errors:**
-- Out of memory
-- Disk full
-- Service crash
-
-**Strategy:** Alert ops team, restart service, resume from checkpoint
-
-### 14.2 Retry Logic
-
+**Logging Configuration**:
 ```python
-@retry(
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=4, max=10),
-    retry=retry_if_exception_type(TransientError)
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('logs/compliance.log'),
+        logging.StreamHandler()
+    ]
 )
-def fetch_user_data(user_id):
-    # API call with automatic retry
-    pass
 ```
 
-### 14.3 Graceful Degradation
+**Metrics to Monitor**:
+- API call latency (NetSuite, Okta, LLM)
+- Database query performance
+- Agent execution time
+- Error rates
+- Cost tracking
+- User violation counts
+- System resource usage
 
-**Fallback Strategies:**
-- Cache stale data if API unavailable
-- Use last known good scan results
-- Skip AI analysis if Claude API down
-- Queue notifications for retry
+**Alerting**:
+- Critical violations detected
+- API failures
+- Database connection issues
+- High cost operations
+- Failed deactivations
 
 ---
 
-## 15. Testing Strategy
+## Appendix
 
-### 15.1 Unit Tests
+### A. Technology Stack
 
-**Coverage:**
-- All agent methods
-- Risk calculation logic
-- Rule matching algorithms
-- Database models
-- Context-aware exemption logic
+| Component | Technology | Version |
+|-----------|-----------|---------|
+| **Language** | Python | 3.9+ |
+| **Database** | PostgreSQL + pgvector | 17.7 + 0.8.1 |
+| **Cache** | Redis | 8.4.1 |
+| **ORM** | SQLAlchemy | 2.0+ |
+| **Agents** | LangChain + LangGraph | Latest |
+| **Embeddings** | HuggingFace (sentence-transformers) | 384-dim MiniLM |
+| **Vector Search** | pgvector cosine similarity | 0.8.1 |
+| **Semantic Router** | sentence-transformers/all-MiniLM-L6-v2 | Local, 384-dim, no API key |
+| **Eval Framework** | LangSmith | 0.4.x — experiment tracking + datasets |
+| **LLM** | Claude, GPT, Gemini | Latest |
+| **NetSuite** | SuiteScript 2.1 | Latest |
+| **Okta** | REST API | v1 |
+| **Encryption** | cryptography (Fernet) | Latest |
 
-**Framework:** pytest
+### B. File Structure
 
-**Example:**
-```python
-def test_risk_calculator():
-    violation = create_test_violation(severity='HIGH')
-    user = create_test_user(roles_count=3, dept='Finance')
-
-    score = calculate_risk_score(violation, user)
-
-    assert 70 <= score <= 100
-    assert score > calculate_risk_score(violation, user_without_finance)
-
-def test_context_aware_exemption():
-    it_user = create_test_user(job_function='IT/SYSTEMS_ENGINEERING')
-    financial_rule = create_test_rule(rule_type='FINANCIAL')
-
-    # IT user should be exempt from financial rules
-    violations = analyzer._check_rule_violation(it_user, financial_rule)
-    assert violations is None  # Exempted
+```
+compliance-agent/
+├── agents/                          # Agent implementations
+│   ├── analyzer.py                  # SOD analysis (context-aware)
+│   ├── data_collector.py            # NetSuite/Okta data fetching
+│   ├── risk_assessor.py             # Risk scoring
+│   ├── knowledge_base.py            # Semantic search
+│   ├── notifier.py                  # Notifications (LLM abstraction)
+│   ├── orchestrator.py              # LangGraph workflow
+│   └── [NEW] reconciliation.py      # Okta-NS reconciliation (Phase 2)
+│   └── [NEW] deactivation.py        # User deactivation (Phase 2)
+│
+├── services/                        # Service layer
+│   ├── netsuite_client.py           # NetSuite OAuth client
+│   ├── okta_client.py               # Okta API client (NEW)
+│   └── llm/                         # LLM abstraction layer (NEW)
+│       ├── __init__.py
+│       ├── base.py                  # Abstract interface
+│       ├── factory.py               # Provider factory
+│       ├── config_manager.py        # Config + encryption
+│       └── providers/               # Provider implementations
+│           ├── anthropic_provider.py
+│           ├── openai_provider.py
+│           ├── google_provider.py
+│           ├── cohere_provider.py
+│           ├── azure_provider.py
+│           └── local_provider.py
+│
+├── repositories/                    # Data access layer
+│   ├── user_repository.py
+│   ├── role_repository.py
+│   ├── violation_repository.py
+│   ├── sod_rule_repository.py
+│   ├── okta_user_repository.py      # NEW
+│   ├── user_reconciliation_repository.py  # NEW
+│   ├── deactivation_approval_repository.py  # NEW
+│   └── deactivation_log_repository.py  # NEW
+│
+├── models/                          # Database models
+│   ├── database.py                  # SQLAlchemy models (17 tables)
+│   └── database_config.py           # DB connection config
+│
+├── netsuite_scripts/                # SuiteScript files
+│   ├── user_search_restlet_v5_hybrid.js  # Search RESTlet
+│   ├── user_deactivation_restlet.js       # Deactivation RESTlet (NEW)
+│   └── user_deactivation_mapreduce.js     # Map/Reduce script (NEW)
+│
+├── migrations/                      # Database migrations
+│   ├── 001_initial_schema.sql
+│   ├── 002_context_fields.sql
+│   └── 003_okta_reconciliation.sql  # NEW
+│
+├── config/                          # Configuration files
+│   ├── llm_config.yaml              # LLM provider config (NEW)
+│   └── llm_config.example.yaml      # Config template (NEW)
+│
+├── utils/                           # Shared utilities
+│   ├── tool_router.py               # Regex/keyword router (fallback)
+│   └── semantic_router.py           # Semantic router — primary selector (NEW Mar 2026)
+│
+├── eval/                            # Offline evaluation suite (NEW Mar 2026)
+│   ├── __init__.py
+│   ├── golden_set.py                # 32-query tool-selection dataset + 10-query answer quality dataset
+│   ├── evaluators.py                # hit_rate, MRR, NDCG, precision, faithfulness evaluators
+│   └── run_eval.py                  # CLI runner — --router, --suite, --live flags
+│
+├── tests/                           # Test suites
+│   ├── test_all_agents.py           # Agent tests (23 tests)
+│   ├── test_context_aware_sod.py    # Context-aware logic tests
+│   └── test_end_to_end_stress.py    # Stress test
+│
+├── demos/                           # Demo scripts
+│   ├── demo_end_to_end.py           # Full system demo
+│   └── demo_llm_abstraction.py      # LLM abstraction demo (NEW)
+│
+├── examples/                        # Example scripts
+│   └── demo_llm_abstraction.py      # LLM usage examples (NEW)
+│
+├── docs/                            # Documentation
+│   ├── TECHNICAL_SPECIFICATION_V3.md  # This document
+│   ├── LLM_ABSTRACTION_GUIDE.md       # LLM abstraction guide (NEW)
+│   ├── LLM_ABSTRACTION_SUMMARY.md     # Quick reference (NEW)
+│   ├── OKTA_NETSUITE_RECONCILIATION_PLAN.md  # Okta integration (NEW)
+│   └── PHASE_1_COMPLETION.md          # Phase 1 summary (NEW)
+│
+├── .env.example                     # Environment variables template
+├── requirements.txt                 # Python dependencies
+└── README.md                        # Project overview
 ```
 
-### 15.2 Comprehensive Agent Tests
+### C. Version History
 
-**File:** `tests/test_all_agents.py`
+| Version | Date | Changes |
+|---------|------|---------|
+| **1.0.0** | 2026-01-15 | Initial system with 6 agents |
+| **2.0.0** | 2026-02-05 | Context-aware SOD analysis |
+| **2.1.0** | 2026-02-11 | User comparison tables + AI insights |
+| **3.0.0** | 2026-02-09 | LLM abstraction + Okta integration (Phase 1) |
+| **3.1.0** | 2026-02-12 | pgvector integration complete - vector search operational |
+| **3.2.0** | 2026-02-12 | Redis caching layer - 90% cost reduction for LLM calls |
+| **3.3.0** | 2026-02-12 | Agent response pattern + analyze_role_permissions tool |
+| **3.4.0** | 2026-03-15 | Semantic tool router (utils/semantic_router.py) + eval suite (eval/) — hit_rate_at_10 1.00, MRR 0.91 |
 
-**Coverage:** All 6 agents tested individually with multiple test cases each
+### D. Future Enhancements
 
-**Test Results (2026-02-11):**
+**Phase 2** (Okta Reconciliation - 2 weeks):
+- ✅ Foundation complete (database, repositories, Okta client, NS scripts)
+- ⏳ Implement Reconciliation Agent
+- ⏳ Implement Deactivation Agent
+- ⏳ Build approval workflow UI
+- ⏳ Integration testing
 
-#### Agent 1: Data Collector (4/4 tests passed)
-- ✅ Initialization
-- ✅ User search via NetSuite client (`search_users`)
-- ✅ Data quality (all required fields present)
-- ✅ Role loading
+**Phase 3** (Advanced Features - 4 weeks):
+- [ ] Machine learning for anomaly detection
+- [ ] Predictive risk scoring
+- [ ] Advanced dashboards (web UI)
+- [ ] Mobile notifications
+- [ ] Integration with more systems (Workday, SAP, etc.)
 
-#### Agent 2: Analyzer (5/5 tests passed)
-- ✅ Initialization
-- ✅ SOD rules loaded (18 rules)
-- ✅ Analysis execution (22 users analyzed, 16 violations detected)
-- ✅ Context-aware logic (IT/Systems users correctly identified and exempted)
-- ✅ Violation storage
-
-#### Agent 3: Risk Assessor (4/4 tests passed)
-- ✅ Initialization
-- ✅ User risk calculation (accepts both UUID and NetSuite ID)
-- ✅ Organization risk assessment
-- ✅ Risk distribution calculation
-
-**Bug Fixed:** Updated `calculate_user_risk_score()` to accept both UUID and NetSuite user_id, properly convert to UUID for violation queries.
-
-#### Agent 4: Knowledge Base (4/4 tests passed)
-- ✅ Initialization
-- ✅ Embeddings created for 18 rules (HuggingFace)
-- ✅ Semantic search (finds relevant rules by natural language query)
-- ✅ Rule retrieval by type (e.g., financial rules)
-
-#### Agent 5: Notifier (3/3 tests passed)
-- ✅ Initialization (Email/Slack configuration)
-- ✅ User comparison table generation (ASCII table with borders)
-- ✅ Notification formatting
-
-#### Agent 6: Orchestrator (3/3 tests passed)
-- ✅ Initialization
-- ✅ Workflow definition (all sub-agents configured)
-- ✅ Agent coordination
-
-**Command:**
-```bash
-python3 tests/test_all_agents.py
-```
-
-**Output:**
-```
-================================================================================
-📊 Overall Results: 6/6 agents passed
-🎉 ALL AGENTS WORKING CORRECTLY!
-================================================================================
-```
-
-### 15.3 Context-Aware SOD Tests
-
-**File:** `tests/test_context_aware_sod.py`
-
-**Test Scenarios:**
-1. IT/Systems user identification (job_function field)
-2. Financial rule identification
-3. Context-aware exemptions (IT users exempt from financial rules)
-4. Non-exempt user validation (Finance users still flagged)
-
-**Test Results:**
-- ✅ Prabal Saha (IT/Systems) correctly identified
-- ✅ Financial rules loaded (11 rules)
-- ✅ Violations reduced from 12 to 4 (67% reduction)
-- ✅ Robin Turner (Finance) still has 12 violations (correct)
-
-### 15.4 Integration Tests
-
-**Test Scenarios:**
-1. End-to-end scan workflow
-2. NetSuite API integration with job function data
-3. Database persistence (including context fields)
-4. Notification delivery with comparison tables
-5. Multi-agent coordination
-
-**Test Users:**
-- Compliant user (0 violations)
-- IT/Systems user with admin access (context-aware exemptions)
-- Finance user with SOD violations (no exemptions)
-- Multiple violation user (high risk)
-- Edge cases (admin, no roles, etc.)
-
-### 15.5 Performance Tests
-
-**Load Testing:**
-- 100 concurrent API requests
-- Full population scan (1,933 users)
-- Sustained load over 1 hour
-
-**Benchmarks:**
-- User search: < 3 seconds (95th percentile)
-- Violation analysis: < 0.01 seconds per user
-- Composite report: < 10 seconds
+**Phase 4** (Enterprise Features - 6 weeks):
+- [ ] Multi-tenancy support
+- [ ] Role-based access control (RBAC)
+- [ ] Advanced reporting (BI integration)
+- [ ] Compliance audit export (SOC 2, ISO 27001)
+- [ ] API for external integrations
 
 ---
 
-## 16. Production Deployment
+## Summary
 
-### 16.1 Pre-Deployment Checklist
+This technical specification documents a comprehensive, production-ready SOD compliance system with:
 
-- [ ] All 6 agents tested and operational
-- [ ] Database migrations applied
-- [ ] NetSuite RESTlets deployed and tested
-- [ ] OAuth credentials configured
-- [ ] Claude API key valid
-- [ ] Email/Slack webhooks configured
-- [ ] Backup strategy in place
-- [ ] Monitoring configured
-- [ ] Documentation updated
-- [ ] Team trained on system
+✅ **Multi-Agent Architecture** - 8 specialized agents (6 operational, 2 in development)
+✅ **LLM-Agnostic Design** - Switch between any LLM provider via configuration
+✅ **Context-Aware Analysis** - 67% false positive reduction for IT staff
+✅ **Vector Search** - Semantic rule matching with pgvector (384-dim embeddings)
+✅ **Redis Caching** - 90% cost reduction, 10-500x faster repeated queries
+✅ **Okta Integration** - User lifecycle reconciliation with approval workflow
+✅ **High Performance** - 185 users/sec analysis throughput
+✅ **Enterprise Security** - Encrypted API keys, OAuth, audit trails
+✅ **Scalable Architecture** - Linear scaling to 100K+ users
+✅ **Comprehensive Testing** - 100% agent test pass rate
+✅ **Semantic Tool Router** - Dense vector tool selection, hit_rate_at_10 1.00, MRR 0.91 (utils/semantic_router.py)
+✅ **Eval Suite** - LangSmith-integrated offline evaluation, 5 metrics, 2 datasets (eval/)
 
-### 16.2 Deployment Steps
-
-1. **Infrastructure Setup**
-   ```bash
-   # Install dependencies
-   pip install -r requirements.txt
-
-   # Initialize database
-   python scripts/init_database.py
-
-   # Verify setup
-   python scripts/verify_setup.py
-   ```
-
-2. **Configuration**
-   ```bash
-   # Copy and edit .env
-   cp .env.example .env
-   nano .env  # Add credentials
-   ```
-
-3. **Start Services**
-   ```bash
-   # Start PostgreSQL & Redis
-   brew services start postgresql@16
-   brew services start redis
-
-   # Start API server
-   uvicorn api.main:app --host 0.0.0.0 --port 8000
-
-   # Start Celery worker
-   celery -A celery_app worker --loglevel=info
-
-   # Start Celery beat (scheduler)
-   celery -A celery_app beat --loglevel=info
-   ```
-
-4. **Verify Deployment**
-   ```bash
-   # Test endpoints
-   curl http://localhost:8000/health
-
-   # Run test scan
-   python demos/quick_test.py
-
-   # Check logs
-   tail -f logs/compliance.log
-   ```
-
-### 16.3 Post-Deployment
-
-1. **Run Initial Scan**
-   - Analyze full user population
-   - Generate baseline composite report
-   - Identify immediate risks
-
-2. **Configure Notifications**
-   - Set up email recipients
-   - Configure Slack channels
-   - Test notification delivery
-
-3. **Schedule Scans**
-   - Daily scan at 2 AM
-   - Weekly executive report
-   - Monthly trend analysis
-
-4. **Monitor System**
-   - Check metrics dashboard
-   - Review logs daily
-   - Track compliance rate trend
-
-### 16.4 Maintenance
-
-**Weekly:**
-- Review violation trends
-- Check system logs for errors
-- Verify backup completion
-
-**Monthly:**
-- Update SOD rules if needed
-- Review and archive old scans
-- Performance optimization
-
-**Quarterly:**
-- Security audit
-- Dependency updates
-- Capacity planning review
+**Current Status**: v3.4.0 - Production Ready with Semantic Router + Eval Suite
+**Next Milestone**: Phase 2 - Okta Reconciliation Agents (2 weeks)
 
 ---
 
-## 17. Known Issues & Roadmap
-
-### 17.1 Known Issues
-
-1. **Main RESTlet (3684) - 400 Error**
-   - Status: In progress
-   - Impact: Bulk fetch slower via pagination
-   - Workaround: Use search RESTlet with filters
-   - ETA: Fix pending NetSuite debugging
-
-2. **AI Analysis Rate Limits**
-   - Status: Monitored
-   - Impact: Large scans may hit Claude API limits
-   - Workaround: Batch processing with delays
-   - Solution: Implement queue-based processing
-
-### 17.2 Recent Enhancements (2026-02-11)
-
-✅ **Completed:**
-- [x] Context-aware SOD analysis with job function classification
-- [x] User comparison tables for side-by-side metrics
-- [x] Comprehensive agent test suite (all 6 agents)
-- [x] LangChain HuggingFace embeddings migration
-- [x] Risk Assessor UUID/NetSuite ID dual support bug fix
-- [x] Enhanced NetSuite RESTlet with context fields
-- [x] Database schema updated with 7 new context fields
-- [x] 67% false positive reduction for IT/Systems users
-
-**Impact:**
-- False positive rate reduced by 67% for IT staff
-- All 6 agents individually tested and passing (100% pass rate)
-- Improved accuracy from ~70% to ~95%
-- Better resource allocation by focusing on real violations
-
-### 17.3 Future Enhancements
-
-**Phase 2 (Q1 2026):**
-- [ ] SOD exception registry (documented approved exceptions)
-- [ ] Compensating controls tracking
-- [ ] Permission usage analytics (last used, dormant permissions)
-- [ ] Approval limit verification
-- [ ] Real-time monitoring (role change webhooks)
-
-**Phase 3 (Q2 2026):**
-- [ ] Machine learning risk prediction
-- [ ] Automated remediation workflows
-- [ ] Multi-tenant support
-- [ ] Custom rule builder (no-code)
-- [ ] Integration with ServiceNow/Jira
-- [ ] Advanced analytics dashboard
-
-**Phase 4 (Q3 2026):**
-- [ ] Predictive compliance forecasting
-- [ ] Anomaly detection (behavioral analysis)
-- [ ] Multi-ERP support (SAP, Oracle)
-- [ ] AI-powered remediation suggestions
-- [ ] Mobile app for notifications
-
----
-
-## 18. Conclusion
-
-### 18.1 System Status
-
-**Production Ready:** ✅ All core components operational + Context-aware analysis
-
-**Capabilities:**
-- 6 specialized agents working in coordination (100% test pass rate)
-- **Context-aware SOD analysis** - eliminates 67% false positives for IT staff
-- Real-time user analysis (2-second searches with job function data)
-- Full population scanning (1,933+ users)
-- Composite reporting with executive dashboards
-- **User comparison tables** - side-by-side compliance metrics
-- AI-powered risk assessment (Claude Opus 4-6)
-- Multi-channel notifications
-- Comprehensive test coverage (23 individual agent tests)
-
-**Performance:**
-- 55x faster than manual review
-- Sub-second violation detection
-- Scalable architecture
-- 95% compliance accuracy (up from ~70%)
-
-**Recent Improvements (2026-02-11):**
-- Context-aware exemptions reduce false positives by 67%
-- Job function classification from NetSuite (automated)
-- All 6 agents individually tested and validated
-- Risk Assessor bug fixed (UUID handling)
-- LangChain embeddings updated (HuggingFace)
-
-**Business Value:**
-- Prevents SOX Material Weakness findings
-- Saves 10+ hours/month for compliance teams
-- ROI in 1-2 months
-- Continuous compliance monitoring
-- **95% accuracy** (vs 70% before context-aware analysis)
-- Better resource allocation - focus on real violations
-
-### 18.2 Contact & Support
-
-**Project Owner:** Prabal Saha
-**Documentation:** See README.md, DEMO_GUIDE.md
-**Source Code:** /Users/prabal.saha/Documents/Celigo/syseng-celigo/compliance-agent
-
----
-
-**Document Version:** 2.1.0
-**Last Updated:** 2026-02-11
-**Next Review:** 2026-03-11
-
-**Changelog (v2.1.0):**
-- Added context-aware SOD analysis documentation
-- Added comprehensive agent test suite details (6/6 agents passing)
-- Documented job function classification system
-- Added user comparison table feature
-- Updated database schema with 7 new context fields
-- Documented Risk Assessor bug fix (UUID handling)
-- Updated NetSuite RESTlet documentation (v5_hybrid)
-- Added LangChain HuggingFace embeddings migration
-- Updated test results and metrics
+**Document End**

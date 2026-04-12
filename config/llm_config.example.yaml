@@ -1,0 +1,137 @@
+# LLM Configuration File
+#
+# This file configures which LLM provider and model to use.
+# API keys can be encrypted for security or referenced from environment variables.
+#
+# To generate a master encryption key:
+#   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+#
+# Then set it as an environment variable:
+#   export MASTER_ENCRYPTION_KEY="your-generated-key-here"
+
+# Default provider to use (if not specified in code)
+default_provider: anthropic
+
+# Provider configurations
+providers:
+  # ==========================================
+  # Anthropic Claude
+  # ==========================================
+  anthropic:
+    model: claude-sonnet-4-5-20250929  # or claude-opus-4-6, claude-haiku-4-5
+
+    # Option 1: Direct API key (not recommended for production)
+    # api_key: sk-ant-api03-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+    # Option 2: Environment variable (recommended)
+    api_key_env: ANTHROPIC_API_KEY
+
+    # Option 3: Encrypted API key (most secure)
+    # api_key: gAAAAABk...encrypted_key_here...
+    # encrypted: true
+
+    temperature: 0.0
+    max_tokens: 4096
+    timeout: 120
+    max_retries: 3
+    streaming: false
+
+    # Optional: Extra provider-specific parameters
+    # extra_params:
+    #   top_p: 0.9
+    #   top_k: 40
+
+  # ==========================================
+  # OpenAI GPT
+  # ==========================================
+  openai:
+    model: gpt-4o  # or gpt-4-turbo, gpt-4o-mini, gpt-3.5-turbo
+    api_key_env: OPENAI_API_KEY
+    temperature: 0.0
+    max_tokens: 4096
+    timeout: 120
+    max_retries: 3
+
+    # Optional: Custom base URL
+    # api_base: https://api.openai.com/v1
+
+  # ==========================================
+  # Azure OpenAI
+  # ==========================================
+  azure:
+    model: gpt-4  # Your deployment name
+    api_key_env: AZURE_OPENAI_API_KEY
+    api_base: https://your-resource.openai.azure.com/
+    temperature: 0.0
+    max_tokens: 4096
+
+    # Azure-specific parameters (required)
+    extra_params:
+      api_version: "2024-02-01"
+      azure_deployment: your-deployment-name
+
+  # ==========================================
+  # Google Gemini
+  # ==========================================
+  google:
+    model: gemini-1.5-pro  # or gemini-pro, gemini-1.5-flash
+    api_key_env: GOOGLE_API_KEY
+    temperature: 0.0
+    max_tokens: 4096
+    timeout: 120
+
+  # ==========================================
+  # Cohere
+  # ==========================================
+  cohere:
+    model: command-r-plus  # or command, command-light, command-r
+    api_key_env: COHERE_API_KEY
+    temperature: 0.0
+    max_tokens: 4096
+    timeout: 120
+
+  # ==========================================
+  # Local Ollama
+  # ==========================================
+  ollama:
+    model: llama2  # or mistral, codellama, etc.
+    api_key: local  # Not needed for local models
+    api_base: http://localhost:11434
+    temperature: 0.0
+    max_tokens: 2048
+    timeout: 300  # Local models may need more time
+
+  # ==========================================
+  # Local vLLM (OpenAI-compatible)
+  # ==========================================
+  vllm:
+    model: meta-llama/Llama-2-7b-hf
+    api_key: local
+    api_base: http://localhost:8000
+    temperature: 0.0
+    max_tokens: 2048
+    timeout: 300
+
+# ==========================================
+# Cost Tracking Configuration
+# ==========================================
+cost_tracking:
+  enabled: true
+  log_file: logs/llm_costs.json
+
+# ==========================================
+# Fallback Configuration
+# ==========================================
+# If primary provider fails, try these in order
+fallback_providers:
+  - openai
+  - google
+
+# ==========================================
+# Rate Limiting (per minute)
+# ==========================================
+rate_limits:
+  anthropic: 50
+  openai: 60
+  google: 60
+  cohere: 20

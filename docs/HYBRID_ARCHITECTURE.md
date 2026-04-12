@@ -406,6 +406,78 @@ graph TB
 
 ## Deployment Architecture
 
+### MCP Response Style Architecture (Added 2026-02-13)
+
+**Design Principle:** Concise, executive-friendly responses for conversational UI
+
+```mermaid
+graph LR
+    A[User Query] --> B[MCP Tool Handler]
+    B --> C{Analysis Type}
+    
+    C -->|Access Review| D[Analyze Permissions]
+    C -->|Violation Check| E[Check SOD Rules]
+    C -->|Risk Assessment| F[Calculate Risk]
+    
+    D --> G[Generate Detailed Data]
+    E --> G
+    F --> G
+    
+    G --> H{Response Formatter}
+    H --> I[Extract Key Metrics]
+    I --> J[Identify Top Issues]
+    J --> K[Generate Options]
+    K --> L[Create Summary]
+    
+    L --> M[Concise Response<br/>10-15 lines]
+    M --> N[Claude UI]
+    
+    style H fill:#FFD700,stroke:#FFA500,stroke-width:2px
+    style M fill:#90EE90,stroke:#006400,stroke-width:2px
+```
+
+**Response Format:**
+1. **Lead with recommendation** (✅ APPROVE / ❌ DENY / ⚠️ REVIEW)
+2. **Key metrics** (Conflicts, Risk Score, Severity Breakdown)
+3. **Top 3-5 critical issues** (Not exhaustive list)
+4. **Options** (2-3 alternatives with cost/impact)
+5. **One-line summary**
+
+**Target:** 10-15 lines (vs 30+ lines for verbose format)
+
+**Documentation:** `mcp/RESPONSE_STYLE_GUIDE.md`
+
+### Dependency Version Management (Updated 2026-02-13)
+
+**Strategy:** Compatible ranges over exact pins for resilient dependency resolution
+
+```yaml
+# Before: Brittle (exact pins)
+dependencies:
+  pydantic: "==2.5.0"              # ❌ Breaks when langchain updates
+  anthropic: "==0.42.0"            # ❌ Conflicts with langchain-anthropic
+  sentence-transformers: "==2.2.2" # ❌ Incompatible with modern huggingface-hub
+
+# After: Resilient (compatible ranges)
+dependencies:
+  pydantic: ">=2.7.4,<3.0.0"          # ✅ Compatible with langchain ecosystem
+  anthropic: ">=0.45.0,<1.0.0"        # ✅ Meets langchain-anthropic requirements
+  sentence-transformers: ">=2.3.0"     # ✅ Works with latest huggingface-hub
+  cryptography: ">=46.0.0"             # ✅ Added for config encryption
+```
+
+**Rationale:**
+- Prevents cascading dependency conflicts when packages update
+- Allows minor version updates without breaking changes
+- Documents minimum required versions for compatibility
+
+**Current Versions (as of 2026-02-13):**
+- sentence-transformers: 5.1.2 (upgraded from 2.2.2)
+- pydantic: 2.12.5 (upgraded from 2.5.0)
+- anthropic: 0.78.0 (upgraded from 0.42.0)
+- langchain-core: 0.3.34+ (upgraded from 0.3.26)
+
+
 ```mermaid
 graph TB
     subgraph "Local Development"
@@ -448,6 +520,460 @@ graph TB
     API --> CLPROD
     WORK --> CLPROD
 ```
+
+---
+
+## Phase 4: RBAC and Approval Workflows (2026-02-13) ✅
+
+### Overview
+
+Phase 4 implements comprehensive Role-Based Access Control (RBAC) for SOD exception management, ensuring only authorized personnel can approve exceptions based on risk level.
+
+### Architecture Components
+
+```mermaid
+graph TB
+    subgraph "User Login & Session"
+        USER[👤 User Logs In<br/>via Claude Desktop/Code]
+        INIT[🎯 initialize_session<br/>my_email]
+        AUTH[🔐 ApprovalService<br/>authenticate_user]
+        PROFILE[📋 User Profile<br/>Name, Roles, Department]
+    end
+
+    subgraph "Approval Authority Validation"
+        CHECK[✅ check_my_approval_authority<br/>Risk Level Matrix]
+        MATRIX[📊 Authority Map<br/>CRITICAL/HIGH/MEDIUM/LOW]
+        ROLES[🎭 NetSuite Roles<br/>CFO, Controller, Director, Manager]
+    end
+
+    subgraph "Exception Approval Workflow"
+        REQUEST[📝 request_exception_approval<br/>Requester + Exception Details]
+        RBAC[🔒 RBAC Validation<br/>Check Authority for Risk Level]
+        DECISION{Authorized?}
+        APPROVE[✅ Auto-Approve<br/>record_exception]
+        ESCALATE[🔼 Escalate<br/>Find Manager Chain]
+        JIRA[🎫 Create Jira Ticket<br/>Route to Approver]
+    end
+
+    subgraph "Data Sources"
+        DB[(PostgreSQL<br/>Users, Roles, Exceptions)]
+        NS[NetSuite<br/>Active Users & Roles]
+    end
+
+    USER --> INIT
+    INIT --> AUTH
+    AUTH --> DB
+    AUTH --> NS
+    AUTH --> PROFILE
+    PROFILE --> CHECK
+    CHECK --> MATRIX
+    MATRIX --> ROLES
+
+    USER --> REQUEST
+    REQUEST --> RBAC
+    RBAC --> MATRIX
+    RBAC --> DECISION
+    DECISION -->|Yes| APPROVE
+    DECISION -->|No| ESCALATE
+    ESCALATE --> JIRA
+    APPROVE --> DB
+    JIRA --> DB
+
+    style USER fill:#4A90E2,stroke:#2E5C8A,stroke-width:3px,color:#fff
+    style INIT fill:#50C878,stroke:#2E8B57,stroke-width:2px
+    style AUTH fill:#FFB84D,stroke:#CC9233,stroke-width:2px
+    style RBAC fill:#FF6B6B,stroke:#CC5555,stroke-width:2px
+    style APPROVE fill:#4CAF50,stroke:#388E3C,stroke-width:2px
+    style ESCALATE fill:#FFA726,stroke:#F57C00,stroke-width:2px
+    style JIRA fill:#9C27B0,stroke:#7B1FA2,stroke-width:2px
+```
+
+### New MCP Tools (3)
+
+**1. initialize_session(my_email)**
+- Authenticates user against active NetSuite users
+- Returns personalized welcome with approval authority
+- Shows which risk levels user can approve
+- Lists available actions based on permissions
+
+**2. check_my_approval_authority(my_email, check_for_risk_score)**
+- Validates user's approval authority at all risk levels
+- Returns detailed authority matrix
+- Optionally checks authority for specific risk score
+- Shows manager chain if escalation needed
+
+**3. request_exception_approval(...)**
+- RBAC-enabled exception approval workflow
+- Automatic authority validation
+- Manager chain traversal for unauthorized requests
+- Jira ticket creation for escalations
+- Auto-approve if requester is authorized
+
+### Approval Authority Levels
+
+| Risk Level | Score Range | Required Authority | Example Roles |
+|------------|-------------|-------------------|---------------|
+| **CRITICAL** | ≥75 | CFO, Audit Committee | CFO, Chief Financial Officer, Audit Committee Member |
+| **HIGH** | 60-74 | Controller+ | CFO, Controller, VP Finance, CAO |
+| **MEDIUM** | 40-59 | Director+ | Controller, Director, VP Finance, Compliance Officer |
+| **LOW** | <40 | Manager+ | Manager, Director, Supervisor, Team Lead |
+
+### Key Features
+
+✅ **Prevents Self-Approval** - Users cannot approve their own role changes (conflict of interest)
+✅ **Role Validation** - Cross-references NetSuite roles for approval authority
+✅ **Automatic Escalation** - Routes unauthorized requests to manager chain
+✅ **Manager Chain Lookup** - Traverses up to 5 levels to find authorized approver
+✅ **Jira Integration** - Creates tickets for approval routing
+✅ **Session Recognition** - Personalized login experience with permissions
+✅ **Audit Trail** - Complete logging of all approval requests and decisions
+
+### Security Features
+
+**Authentication:**
+- Email validation against active NetSuite users
+- Corporate domain enforcement (@fivetran.com)
+- Active status verification (not suspended/inactive)
+- Role-based permission checks
+
+**Authorization:**
+- 4-tier risk-based approval levels
+- Role-to-authority mapping (CFO → all levels, Manager → LOW only)
+- Prevents privilege escalation
+- Enforces separation of duties (IT cannot approve financial exceptions)
+
+**Audit & Compliance:**
+- All authentication attempts logged
+- Authorization decisions recorded
+- Exception approvals tracked with approver identity
+- Full audit trail for SOX compliance
+
+### Integration Points
+
+**Database:**
+- `users` table - User authentication
+- `roles` table - Role definitions
+- `user_roles` table - User-to-role mappings
+- `approved_exceptions` table - Exception records
+- `exception_reviews` table - Periodic reviews
+
+**External Systems:**
+- NetSuite - User and role data source
+- Jira - Ticket creation for escalations
+- Claude Desktop/Code - User interface
+
+### Usage Examples
+
+**Example 1: User Login**
+```python
+# When user logs into Claude
+initialize_session(my_email="prabal.saha@fivetran.com")
+
+# Returns:
+# Welcome, Prabal Saha!
+# Your Approval Authority: ❌ No Approval Authority
+# What You Can Do:
+# • Submit exception requests (will escalate to CFO/Controller)
+# • View approved exceptions
+# • Check violations
+```
+
+**Example 2: Controller Approves Exception**
+```python
+# Controller with HIGH authority approves MEDIUM risk exception
+request_exception_approval(
+    requester_email="robin.turner@fivetran.com",  # Controller
+    user_identifier="tax.user@fivetran.com",
+    role_names=["Tax Manager", "GL Accounting"],
+    risk_score=55.0,  # MEDIUM level
+    auto_approve_if_authorized=True
+)
+
+# Result: ✅ Approved automatically (Controller can approve MEDIUM)
+```
+
+**Example 3: Unauthorized User Escalates**
+```python
+# Systems Engineer tries to approve CRITICAL exception
+request_exception_approval(
+    requester_email="prabal.saha@fivetran.com",  # Admin, not Finance
+    user_identifier="user@fivetran.com",
+    role_names=["Controller", "CFO"],
+    risk_score=92.0,  # CRITICAL level
+    auto_approve_if_authorized=False
+)
+
+# Result: ❌ Not authorized
+# • Manager chain lookup finds CFO
+# • Jira ticket created
+# • Routed to kalor@fivetran.com (CFO)
+```
+
+### Implementation Details
+
+**Files:**
+- `services/approval_service.py` - Core RBAC logic (600+ lines)
+- `mcp/mcp_tools.py` - 3 new tool handlers registered
+- `tests/test_phase4_rbac.py` - 6 integration tests
+
+**Dependencies:**
+- `models/database.py` - UserStatus enum
+- `repositories/user_repository.py` - User lookups
+- `repositories/exception_repository.py` - Exception CRUD
+- Jira API (optional, for escalations)
+
+**Performance:**
+- Authentication: <100ms (cached user lookups)
+- Authority check: <50ms (in-memory role mapping)
+- Manager chain: <200ms (max 5 DB queries)
+- Total workflow: <500ms end-to-end
+
+### Status
+
+- **Phase**: 4 (RBAC and Approval Workflows)
+- **Status**: ✅ COMPLETE (2026-02-13)
+- **Tools Added**: 3 (initialize_session, check_my_approval_authority, request_exception_approval)
+- **Tests**: 6/6 passing
+- **Documentation**: Complete (PHASE4_COMPLETE.md)
+- **Total MCP Tools**: 14
+
+---
+
+## Phase 6: Reporting & Demo Enhancements (2026-02-14) ✅
+
+### Overview
+
+Enhanced reporting capabilities with multiple export formats and demo user management for external presentations without company branding.
+
+### Architecture Components
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    REPORTING LAYER                               │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │           Violation Report Service                        │  │
+│  │                                                           │  │
+│  │  • generate_markdown_table()                             │  │
+│  │  • generate_detailed_table()                             │  │
+│  │  • export_to_excel()                                     │  │
+│  │  • export_to_csv()                                       │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                          │                                       │
+│                          ▼                                       │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │              Format Handlers                              │  │
+│  │                                                           │  │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐     │  │
+│  │  │   Table     │  │  Concise    │  │  Detailed   │     │  │
+│  │  │  (default)  │  │  (brief)    │  │  (full)     │     │  │
+│  │  └─────────────┘  └─────────────┘  └─────────────┘     │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    DEMO USER SYSTEM                              │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  create_demo_user.py                                            │
+│  ├─ sanitize_text()        # Remove "Fivetran" branding        │
+│  ├─ sanitize_json_field()  # Clean role names                  │
+│  ├─ create_sanitized_roles() # Create demo roles               │
+│  └─ create_demo_user()     # Copy & sanitize user data         │
+│                                                                  │
+│  Real User          ──────>   Demo User                         │
+│  robin.turner@            test_user@xyz.com                     │
+│  fivetran.com                                                   │
+│  Fivetran - Controller    Controller (sanitized)               │
+│  384 violations           384 violations (sanitized data)       │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### New MCP Tools (1)
+
+#### 1. generate_violation_report
+```python
+{
+  "name": "generate_violation_report",
+  "arguments": {
+    "user_email": "test_user@xyz.com",
+    "format": "excel",  # markdown, detailed, excel, csv
+    "limit": 5,         # for markdown/detailed
+    "export_path": "/path/to/file.xlsx"  # optional
+  }
+}
+```
+
+**Outputs**:
+- **Markdown**: Top N violations in table format
+- **Detailed**: Role conflict matrix
+- **Excel**: Full report with color-coded severity, metadata sheet
+- **CSV**: Basic export for external analysis
+
+### Enhanced Tools
+
+#### get_user_violations (Updated)
+- **New Default**: `format=table` (was `detailed`)
+- **New Formats**:
+  - `table` - Structured markdown tables with summary, top violations, actions
+  - `concise` - Ultra-brief format for quick analysis
+  - `detailed` - Original full violation list
+
+**Table Format Example**:
+```markdown
+📊 Summary
+
+| Metric | Value |
+|--------|-------|
+| Total Violations | 384 |
+| 🔴 CRITICAL | 96 |
+| 🟠 HIGH | 128 |
+| 🟡 MEDIUM | 160 |
+
+⚠️ Top 3 Critical Conflicts
+
+| # | Violation Type | Risk Score | Impact |
+|---|----------------|------------|--------|
+| 1 | Payroll Processing | 100/100 | Fraud risk |
+| 2 | Journal Entry | 100/100 | Maker-checker bypass |
+| 3 | AP Entry | 100/100 | Fraud risk |
+
+✅ Action Required
+
+| Priority | Action | Impact |
+|----------|--------|--------|
+| 🔴 HIGH | Remove Administrator role | Eliminates bypasses |
+```
+
+### Demo User Management
+
+**Purpose**: Create sanitized test users for external demos
+
+**Script**: `scripts/create_demo_user.py`
+
+**Sanitization Rules**:
+```python
+{
+  "Fivetran - ": "",              # Remove role prefix
+  "Fivetran : ": "",              # Remove dept prefix
+  "fivetran.com": "xyz.com",      # Sanitize domain
+  "Fivetran": "Company"           # Replace company name
+}
+```
+
+**Usage**:
+```bash
+# Create test_user@xyz.com from robin.turner@fivetran.com
+python3 scripts/create_demo_user.py --create
+
+# Create custom demo user
+python3 scripts/create_demo_user.py --create \
+  --name "Jane Doe" \
+  --email "jane.doe@acme.com" \
+  --source "chase.roles@fivetran.com"
+
+# Delete demo user
+python3 scripts/create_demo_user.py --delete
+```
+
+### Bug Fixes
+
+#### Issue 1: Department Filtering
+**Problem**: Exact match failed for hierarchical department names
+```python
+# Before: ❌
+if dept.lower() == filter.lower()  # "Finance" != "Fivetran : G&A : Finance"
+
+# After: ✅
+if filter.lower() in dept.lower()  # "Finance" in "Fivetran : G&A : Finance"
+```
+**Impact**: Finance department now returns 76 users instead of 0
+
+#### Issue 2: Violation Counts Always Zero
+**Problem**: Wrong parameter count in `get_user_by_email()` call
+```python
+# Before: ❌
+user = repo.get_user_by_email(email, system_name)  # TypeError
+
+# After: ✅
+user = repo.get_user_by_email(email)  # Correct signature
+```
+**Impact**: Violation counts now display correctly (Robin Turner: 384 not 0)
+
+### Key Features
+
+1. **Multi-Format Reports**
+   - Markdown tables for console/chat
+   - Excel with formatting for audits
+   - CSV for data analysis
+
+2. **Demo User System**
+   - Brand-neutral test data
+   - Perfect for external presentations
+   - Maintains realistic violation patterns
+
+3. **Tabular Analysis**
+   - Default table format for better UX
+   - Executive-friendly summaries
+   - Screenshot-ready tables
+
+4. **Enhanced Department Filtering**
+   - Partial/substring matching
+   - Works with hierarchical names
+   - More intuitive queries
+
+### Usage Examples
+
+```python
+# Generate Excel report
+await generate_violation_report_handler(
+    user_email="test_user@xyz.com",
+    format="excel"
+)
+# → /tmp/compliance_reports/violations_Test_User_20260214.xlsx
+
+# Get violations in table format (default)
+await get_user_violations_handler(
+    system_name="netsuite",
+    user_identifier="test_user@xyz.com"
+)
+# → Returns markdown tables
+
+# Concise format for quick check
+await get_user_violations_handler(
+    system_name="netsuite",
+    user_identifier="test_user@xyz.com",
+    format="concise"
+)
+# → Brief text summary
+```
+
+### Implementation Details
+
+**Files**:
+- `services/violation_report_service.py` - Report generation (400 lines)
+- `scripts/create_demo_user.py` - Demo user management (350 lines)
+- `mcp/mcp_tools.py` - Enhanced handlers with table formatting
+- `mcp/orchestrator.py` - Bug fixes (2 lines changed)
+- `docs/DEMO_USER_GUIDE.md` - Demo user documentation
+
+**Dependencies**:
+- `pandas` - DataFrame for Excel export
+- `openpyxl` - Excel file formatting
+
+### Status
+
+- **Phase**: 6 (Reporting & Demo Enhancements)
+- **Status**: ✅ COMPLETE (2026-02-14)
+- **Tools Added**: 1 (generate_violation_report)
+- **Tools Enhanced**: 1 (get_user_violations - added table format)
+- **Bug Fixes**: 2 (department filtering, violation counts)
+- **Documentation**: Complete (DEMO_USER_GUIDE.md, DEPARTMENT_FILTERING_FIX.md)
+- **Total MCP Tools**: 34
 
 ---
 

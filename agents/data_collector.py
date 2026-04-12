@@ -1,277 +1,579 @@
 """
-Data Collection Agent - Fetches users and roles from NetSuite
+Autonomous Data Collection Agent
 
-This agent is responsible for:
-1. Connecting to NetSuite via RESTlet
-2. Fetching all active users with their roles
-3. Storing data in PostgreSQL
-4. Handling pagination and rate limits
-5. Logging collection metrics
+Continuously syncs user, role, and permission data from external systems
+to the local database, ensuring data is always fresh and complete.
 """
 
 import logging
-from typing import Dict, Any, List, Optional
+import os
 from datetime import datetime
-from langchain_core.tools import tool
-from langchain_anthropic import ChatAnthropic
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import JsonOutputParser
+from typing import Any
 
-from services.netsuite_client import NetSuiteClient
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
+
+from agents.analyzer import SODAnalysisAgent
+from connectors.netsuite_connector import NetSuiteConnector
+from models.database_config import DatabaseConfig
+from repositories.role_repository import RoleRepository
+from repositories.sync_metadata_repository import SyncMetadataRepository
+from repositories.user_repository import UserRepository
 
 logger = logging.getLogger(__name__)
 
 
 class DataCollectionAgent:
-    """Agent for collecting user and role data from NetSuite"""
+    """
+    Autonomous agent for syncing data from external systems to PostgreSQL
+
+    Responsibilities:
+    1. Schedule and execute periodic data syncs
+    2. Track sync metadata and metrics
+    3. Handle errors and retries
+    4. Trigger SOD analysis after syncs
+    5. Send alerts on failures
+    """
 
     def __init__(
         self,
-        netsuite_client: Optional[NetSuiteClient] = None,
-        llm_model: str = "claude-sonnet-4.5-20250929"
+        db_config: DatabaseConfig | None = None,
+        enable_scheduler: bool = True
     ):
         """
-        Initialize Data Collection Agent
+        Initialize the data collection agent
 
         Args:
-            netsuite_client: NetSuite client instance
-            llm_model: Claude model to use for intelligent data processing
+            db_config: Database configuration (creates new if None)
+            enable_scheduler: Whether to enable background scheduler
         """
-        self.netsuite_client = netsuite_client or NetSuiteClient()
-        self.llm = ChatAnthropic(model=llm_model, temperature=0)
-        self.collection_stats = {
-            'users_fetched': 0,
-            'roles_found': 0,
-            'permissions_collected': 0,
-            'start_time': None,
-            'end_time': None
+        logger.info("Initializing DataCollectionAgent...")
+
+        # Database setup
+        self.db_config = db_config or DatabaseConfig()
+        self.session = self.db_config.get_session()
+
+        # Repositories
+        self.user_repo = UserRepository(self.session)
+        self.role_repo = RoleRepository(self.session)
+        self.sync_repo = SyncMetadataRepository(self.session)
+
+        # Connectors
+        self.connectors = {
+            'netsuite': NetSuiteConnector()
         }
 
-        logger.info(f"Data Collection Agent initialized with model: {llm_model}")
+        # SOD Analysis Agent
+        from repositories.sod_rule_repository import SODRuleRepository
+        from repositories.violation_repository import ViolationRepository
 
-    @tool
-    def fetch_users_from_netsuite(
-        self,
-        include_permissions: bool = True,
-        status: str = 'ACTIVE'
-    ) -> Dict[str, Any]:
+        self.violation_repo = ViolationRepository(self.session)
+        self.rule_repo = SODRuleRepository(self.session)
+        self.analyzer = SODAnalysisAgent(
+            user_repo=self.user_repo,
+            role_repo=self.role_repo,
+            violation_repo=self.violation_repo,
+            sod_rule_repo=self.rule_repo
+        )
+
+        # Scheduler
+        self.scheduler = BackgroundScheduler() if enable_scheduler else None
+        self.is_running = False
+
+        logger.info("DataCollectionAgent initialized successfully")
+
+    def start(self):
         """
-        Fetch all users and their roles from NetSuite
+        Start the autonomous collection agent with scheduled jobs
+        """
+        if not self.scheduler:
+            logger.warning("Scheduler not enabled, cannot start scheduled jobs")
+            return
+
+        logger.info("Starting DataCollectionAgent scheduler...")
+
+        # Schedule full sync: Daily at 2 AM
+        self.scheduler.add_job(
+            func=self.full_sync,
+            trigger=CronTrigger(hour=2, minute=0),
+            id='full_sync_daily',
+            name='Full Sync (Daily 2 AM)',
+            replace_existing=True
+        )
+
+        # Schedule incremental sync: Every hour
+        self.scheduler.add_job(
+            func=self.incremental_sync,
+            trigger=IntervalTrigger(hours=1),
+            id='incremental_sync_hourly',
+            name='Incremental Sync (Hourly)',
+            replace_existing=True
+        )
+
+        # Start scheduler
+        self.scheduler.start()
+        self.is_running = True
+
+        logger.info("✅ DataCollectionAgent started successfully")
+        logger.info("   • Full sync: Daily at 2:00 AM")
+        logger.info("   • Incremental sync: Every hour")
+
+    def stop(self):
+        """Stop the scheduler and cleanup"""
+        if self.scheduler and self.is_running:
+            logger.info("Stopping DataCollectionAgent...")
+            self.scheduler.shutdown(wait=True)
+            self.is_running = False
+            logger.info("✅ DataCollectionAgent stopped")
+
+    def full_sync(self, system_name: str = 'netsuite', triggered_by: str = 'scheduler') -> dict[str, Any]:
+        """
+        Perform full sync of all data from external system
 
         Args:
-            include_permissions: Whether to include detailed role permissions
-            status: User status filter ('ACTIVE' or 'INACTIVE')
+            system_name: System to sync (default: 'netsuite')
+            triggered_by: Who triggered the sync
 
         Returns:
-            Dictionary with users data and collection metadata
+            Dictionary with sync results
         """
-        logger.info(f"Starting user collection from NetSuite (status={status})")
-        self.collection_stats['start_time'] = datetime.now()
+        logger.info(f"Starting FULL sync for {system_name}")
+        start_time = datetime.utcnow()
+
+        # Create sync record
+        sync = self.sync_repo.create_sync({
+            'sync_type': 'full',
+            'system_name': system_name,
+            'status': 'pending',
+            'started_at': start_time,
+            'triggered_by': triggered_by
+        })
 
         try:
-            # Fetch all users with pagination
-            result = self.netsuite_client.get_all_users_paginated(
-                include_permissions=include_permissions,
-                status=status
+            # Update status to running
+            self.sync_repo.update_sync(str(sync.id), {'status': 'running'})
+
+            # Get connector
+            connector = self.connectors.get(system_name)
+            if not connector:
+                raise ValueError(f"No connector found for system: {system_name}")
+
+            # Step 1: Fetch ALL users from external system
+            logger.info(f"Fetching all users from {system_name}...")
+            users_data = connector.fetch_users_with_roles_sync(
+                include_permissions=True,
+                include_inactive=True  # Include inactive users
             )
 
-            if not result.get('success'):
-                logger.error(f"Failed to fetch users: {result.get('error')}")
-                return result
+            users_fetched = len(users_data)
+            logger.info(f"✅ Fetched {users_fetched} users from {system_name}")
 
-            users = result['data']['users']
-
-            # Update statistics
-            self.collection_stats['users_fetched'] = len(users)
-            self.collection_stats['roles_found'] = sum(u.get('roles_count', 0) for u in users)
-
-            if include_permissions:
-                total_permissions = 0
-                for user in users:
-                    for role in user.get('roles', []):
-                        total_permissions += len(role.get('permissions', []))
-                self.collection_stats['permissions_collected'] = total_permissions
-
-            self.collection_stats['end_time'] = datetime.now()
-            duration = (self.collection_stats['end_time'] - self.collection_stats['start_time']).total_seconds()
-
-            logger.info(
-                f"Collection complete: {self.collection_stats['users_fetched']} users, "
-                f"{self.collection_stats['roles_found']} roles, "
-                f"{self.collection_stats['permissions_collected']} permissions in {duration:.2f}s"
+            # Step 2: Sync to database
+            logger.info(f"Syncing {users_fetched} users to database...")
+            synced_users = connector.sync_to_database_sync(
+                users_data,
+                self.user_repo,
+                self.role_repo
             )
 
-            return {
-                'success': True,
-                'data': users,
-                'stats': self.collection_stats,
-                'timestamp': datetime.now().isoformat()
-            }
+            users_synced = len(synced_users)
+            logger.info(f"✅ Synced {users_synced} users to database")
 
-        except Exception as e:
-            logger.error(f"Error during user collection: {str(e)}")
-            return {
-                'success': False,
-                'error': str(e),
-                'message': 'Data collection failed'
-            }
+            # Count roles synced
+            total_roles = sum(len(u.user_roles) for u in synced_users)
 
-    def analyze_user_role_distribution(self, users: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """
-        Use Claude to analyze the distribution of roles across users
+            # Step 3: Create compliance scan record for SOD analysis
+            from models.database import ComplianceScan, ScanStatus
 
-        Args:
-            users: List of user dictionaries
+            compliance_scan = ComplianceScan(
+                scan_type='AUTOMATED',
+                status=ScanStatus.PENDING,
+                triggered_by=triggered_by,
+                started_at=datetime.utcnow(),
+                scan_metadata={
+                    'sync_id': str(sync.id),
+                    'system_name': system_name,
+                    'users_to_scan': users_synced
+                }
+            )
+            self.session.add(compliance_scan)
+            self.session.commit()
+            self.session.refresh(compliance_scan)
 
-        Returns:
-            Analysis results from Claude
-        """
-        logger.info(f"Analyzing role distribution for {len(users)} users")
+            logger.info(f"Created compliance scan record: {compliance_scan.id}")
 
-        # Prepare summary data for Claude
-        role_counts = {}
-        users_with_multiple_roles = 0
-        users_with_no_roles = 0
+            # Step 4: Run SOD analysis with proper scan_id
+            logger.info(f"Running SOD analysis on {users_synced} users...")
+            compliance_scan.status = ScanStatus.IN_PROGRESS
+            self.session.commit()
 
-        for user in users:
-            roles = user.get('roles', [])
-            if len(roles) == 0:
-                users_with_no_roles += 1
-            elif len(roles) > 1:
-                users_with_multiple_roles += 1
+            analysis_result = self.analyzer.analyze_all_users(scan_id=str(compliance_scan.id))
 
-            for role in roles:
-                role_name = role.get('role_name', 'Unknown')
-                role_counts[role_name] = role_counts.get(role_name, 0) + 1
+            violations_detected = 0
+            if analysis_result.get('success'):
+                violations_detected = len(analysis_result.get('violations', []))
+                logger.info(f"✅ Detected {violations_detected} violations")
 
-        # Sort roles by frequency
-        top_roles = sorted(role_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+                # Update compliance scan with results
+                compliance_scan.status = ScanStatus.COMPLETED
+                compliance_scan.completed_at = datetime.utcnow()
+                compliance_scan.users_scanned = users_synced
+                compliance_scan.violations_found = violations_detected
 
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are a compliance analyst examining NetSuite user role distribution.
-Analyze the data and identify potential concerns:
-1. Users with multiple roles (potential SOD risks)
-2. Unusual role combinations
-3. Over-privileged roles
-4. Users without roles (access issues)
+                # Count by severity
+                violations_list = analysis_result.get('violations', [])
+                compliance_scan.violations_critical = sum(1 for v in violations_list if v.get('severity') == 'CRITICAL')
+                compliance_scan.violations_high = sum(1 for v in violations_list if v.get('severity') == 'HIGH')
+                compliance_scan.violations_medium = sum(1 for v in violations_list if v.get('severity') == 'MEDIUM')
+                compliance_scan.violations_low = sum(1 for v in violations_list if v.get('severity') == 'LOW')
 
-Provide insights in JSON format."""),
-            ("user", """Analyze this role distribution data:
+                self.session.commit()
+            else:
+                logger.error(f"SOD analysis failed: {analysis_result.get('error')}")
 
-Total users: {total_users}
-Users with multiple roles: {multi_role_users}
-Users with no roles: {no_role_users}
+                # Mark scan as failed
+                compliance_scan.status = ScanStatus.FAILED
+                compliance_scan.completed_at = datetime.utcnow()
+                compliance_scan.error_message = str(analysis_result.get('error'))
+                self.session.commit()
 
-Top 10 roles by frequency:
-{top_roles}
+            # Step 5: Enrich knowledge base with latest data
+            logger.info("Enriching knowledge base with latest compliance data...")
+            try:
+                self._enrich_knowledge_base()
+                logger.info("✅ Knowledge base enrichment completed")
+            except Exception as kb_error:
+                logger.warning(f"⚠️  Knowledge base enrichment failed (non-critical): {kb_error}")
+                # Don't fail the sync if KB enrichment fails
 
-Provide analysis in this JSON format:
-{{
-    "summary": "Brief overview",
-    "concerns": ["List of concerns"],
-    "recommendations": ["List of recommendations"],
-    "high_risk_patterns": ["Patterns that indicate SOD violations"]
-}}""")
-        ])
+            # Step 6: Mark sync as successful
+            end_time = datetime.utcnow()
+            duration = (end_time - start_time).total_seconds()
 
-        chain = prompt | self.llm | JsonOutputParser()
-
-        try:
-            analysis = chain.invoke({
-                "total_users": len(users),
-                "multi_role_users": users_with_multiple_roles,
-                "no_role_users": users_with_no_roles,
-                "top_roles": "\n".join([f"{i+1}. {role}: {count} users" for i, (role, count) in enumerate(top_roles)])
+            self.sync_repo.update_sync(str(sync.id), {
+                'status': 'success',
+                'completed_at': end_time,
+                'users_fetched': users_fetched,
+                'users_synced': users_synced,
+                'roles_synced': total_roles,
+                'violations_detected': violations_detected,
+                'metadata': {
+                    'analysis_success': analysis_result.get('success', False),
+                    'users_analyzed': analysis_result.get('stats', {}).get('users_analyzed', 0),
+                    'compliance_scan_id': str(compliance_scan.id)
+                }
             })
 
-            logger.info("Role distribution analysis complete")
+            logger.info(f"✅ Full sync completed successfully in {duration:.2f}s")
+
             return {
                 'success': True,
-                'analysis': analysis,
-                'raw_stats': {
-                    'total_users': len(users),
-                    'users_with_multiple_roles': users_with_multiple_roles,
-                    'users_with_no_roles': users_with_no_roles,
-                    'unique_roles': len(role_counts),
-                    'top_roles': top_roles
-                }
+                'sync_id': str(sync.id),
+                'scan_id': str(compliance_scan.id),
+                'duration': duration,
+                'users_fetched': users_fetched,
+                'users_synced': users_synced,
+                'roles_synced': total_roles,
+                'violations_detected': violations_detected
             }
 
         except Exception as e:
-            logger.error(f"Error during role analysis: {str(e)}")
+            logger.error(f"Full sync failed: {str(e)}", exc_info=True)
+
+            # Mark sync as failed
+            self.sync_repo.update_sync(str(sync.id), {
+                'status': 'failed',
+                'completed_at': datetime.utcnow(),
+                'error_message': str(e)
+            })
+
+            # Send alert (implement as needed)
+            self._send_alert(f"Full sync failed for {system_name}: {str(e)}")
+
             return {
                 'success': False,
+                'sync_id': str(sync.id),
                 'error': str(e)
             }
 
-    def collect_and_analyze(self) -> Dict[str, Any]:
+    def incremental_sync(self, system_name: str = 'netsuite', triggered_by: str = 'scheduler') -> dict[str, Any]:
         """
-        Complete workflow: Fetch data from NetSuite and perform initial analysis
-
-        Returns:
-            Combined results of collection and analysis
-        """
-        logger.info("Starting complete data collection and analysis workflow")
-
-        # Step 1: Fetch users
-        collection_result = self.fetch_users_from_netsuite(
-            include_permissions=True,
-            status='ACTIVE'
-        )
-
-        if not collection_result.get('success'):
-            return collection_result
-
-        users = collection_result['data']
-
-        # Step 2: Analyze distribution
-        analysis_result = self.analyze_user_role_distribution(users)
-
-        # Step 3: Combine results
-        return {
-            'success': True,
-            'collection': {
-                'users_count': len(users),
-                'stats': collection_result['stats']
-            },
-            'analysis': analysis_result.get('analysis'),
-            'raw_stats': analysis_result.get('raw_stats'),
-            'timestamp': collection_result['timestamp']
-        }
-
-    def get_high_risk_users(self, users: List[Dict[str, Any]], min_roles: int = 3) -> List[Dict[str, Any]]:
-        """
-        Identify users with multiple roles (potential SOD risks)
+        Perform incremental sync (only changed data since last sync)
 
         Args:
-            users: List of user dictionaries
-            min_roles: Minimum number of roles to be considered high risk
+            system_name: System to sync
+            triggered_by: Who triggered the sync
 
         Returns:
-            List of high-risk users
+            Dictionary with sync results
         """
-        high_risk = []
+        logger.info(f"Starting INCREMENTAL sync for {system_name}")
 
-        for user in users:
-            roles_count = user.get('roles_count', 0)
-            if roles_count >= min_roles:
-                high_risk.append({
-                    'user_id': user.get('user_id'),
-                    'name': user.get('name'),
-                    'email': user.get('email'),
-                    'roles_count': roles_count,
-                    'roles': [r.get('role_name') for r in user.get('roles', [])]
+        # Get last successful sync
+        last_sync = self.sync_repo.get_last_successful_sync(system_name)
+
+        # If no previous sync or too old, do full sync instead
+        if not last_sync:
+            logger.info("No previous sync found, performing full sync instead")
+            return self.full_sync(system_name, triggered_by)
+
+        hours_since_last = (datetime.utcnow() - last_sync.completed_at).total_seconds() / 3600
+        if hours_since_last > 24:
+            logger.info(f"Last sync was {hours_since_last:.1f} hours ago, performing full sync")
+            return self.full_sync(system_name, triggered_by)
+
+        # Perform true incremental sync using lastModifiedDate filter
+        last_modified_after = last_sync.completed_at
+        logger.info(f"Running incremental sync for changes since {last_modified_after.isoformat()}")
+
+        start_time = datetime.utcnow()
+        sync = self.sync_repo.create_sync({
+            'sync_type': 'incremental',
+            'system_name': system_name,
+            'status': 'running',
+            'started_at': start_time,
+            'triggered_by': triggered_by
+        })
+
+        try:
+            connector = self.connectors.get(system_name)
+            if not connector:
+                raise ValueError(f"No connector found for system: {system_name}")
+
+            users_data = connector.fetch_users_with_roles_sync(
+                include_permissions=True,
+                include_inactive=False,
+                last_modified_after=last_modified_after
+            )
+
+            users_fetched = len(users_data)
+            logger.info(f"Incremental fetch: {users_fetched} modified users since {last_modified_after.isoformat()}")
+
+            if users_fetched == 0:
+                end_time = datetime.utcnow()
+                self.sync_repo.update_sync(str(sync.id), {
+                    'status': 'success',
+                    'completed_at': end_time,
+                    'users_fetched': 0,
+                    'users_synced': 0,
+                    'roles_synced': 0,
+                    'violations_detected': 0
                 })
+                return {
+                    'success': True,
+                    'sync_id': str(sync.id),
+                    'duration': (end_time - start_time).total_seconds(),
+                    'users_fetched': 0,
+                    'users_synced': 0,
+                    'roles_synced': 0,
+                    'violations_detected': 0
+                }
 
-        logger.info(f"Found {len(high_risk)} high-risk users with {min_roles}+ roles")
-        return high_risk
+            synced_users = connector.sync_to_database_sync(users_data, self.user_repo, self.role_repo)
+            users_synced = len(synced_users)
+            total_roles = sum(len(u.user_roles) for u in synced_users)
 
-    def test_connection(self) -> bool:
-        """Test NetSuite connection"""
-        return self.netsuite_client.test_connection()
+            end_time = datetime.utcnow()
+            duration = (end_time - start_time).total_seconds()
+            self.sync_repo.update_sync(str(sync.id), {
+                'status': 'success',
+                'completed_at': end_time,
+                'users_fetched': users_fetched,
+                'users_synced': users_synced,
+                'roles_synced': total_roles,
+                'violations_detected': 0
+            })
+
+            logger.info(f"Incremental sync complete: {users_synced} users updated in {duration:.2f}s")
+            return {
+                'success': True,
+                'sync_id': str(sync.id),
+                'duration': duration,
+                'users_fetched': users_fetched,
+                'users_synced': users_synced,
+                'roles_synced': total_roles,
+                'violations_detected': 0
+            }
+
+        except Exception as e:
+            logger.error(f"Incremental sync failed: {e}")
+            self.sync_repo.update_sync(str(sync.id), {
+                'status': 'failed',
+                'completed_at': datetime.utcnow(),
+                'error_message': str(e)
+            })
+            self._send_alert(f"Incremental sync failed: {e}")
+            return {'success': False, 'error': str(e)}
+
+    def manual_sync(self, system_name: str = 'netsuite', sync_type: str = 'full') -> dict[str, Any]:
+        """
+        Manually trigger a sync
+
+        Args:
+            system_name: System to sync
+            sync_type: Type of sync ('full' or 'incremental')
+
+        Returns:
+            Dictionary with sync results
+        """
+        logger.info(f"Manual sync triggered: {sync_type} sync for {system_name}")
+
+        if sync_type == 'full':
+            return self.full_sync(system_name, triggered_by='manual')
+        else:
+            return self.incremental_sync(system_name, triggered_by='manual')
+
+    def get_sync_status(self, system_name: str | None = None) -> dict[str, Any]:
+        """
+        Get current sync status and recent history
+
+        Args:
+            system_name: Optional system filter
+
+        Returns:
+            Dictionary with status information
+        """
+        recent_syncs = self.sync_repo.get_recent_syncs(system_name, limit=10)
+        last_success = self.sync_repo.get_last_successful_sync(
+            system_name or 'netsuite'
+        )
+
+        stats = self.sync_repo.get_sync_statistics(
+            system_name or 'netsuite',
+            days=7
+        )
+
+        return {
+            'is_running': self.is_running,
+            'last_successful_sync': {
+                'completed_at': last_success.completed_at.isoformat() if last_success else None,
+                'duration': last_success.duration_seconds if last_success else None,
+                'users_synced': last_success.users_synced if last_success else 0
+            } if last_success else None,
+            'recent_syncs': [
+                {
+                    'id': str(s.id),
+                    'type': s.sync_type.value,
+                    'status': s.status.value,
+                    'started_at': s.started_at.isoformat(),
+                    'duration': s.duration_seconds,
+                    'users_synced': s.users_synced
+                }
+                for s in recent_syncs
+            ],
+            'statistics_7d': stats
+        }
+
+    def _enrich_knowledge_base(self):
+        """
+        Enrich knowledge base with latest compliance data
+
+        Calls the enrich_knowledge_base.py script to:
+        - Update SOD rule embeddings
+        - Update compensating control embeddings
+        - Update job role mapping embeddings
+        - Update permission category embeddings
+        - Update conflict analysis embeddings
+        """
+        import subprocess
+        import sys
+        from pathlib import Path
+
+        # Get path to enrichment script
+        script_path = Path(__file__).parent.parent / 'scripts' / 'enrich_knowledge_base.py'
+
+        if not script_path.exists():
+            logger.warning(f"Enrichment script not found: {script_path}")
+            return
+
+        # Run enrichment script
+        try:
+            result = subprocess.run(
+                [sys.executable, str(script_path)],
+                capture_output=True,
+                text=True,
+                timeout=300  # 5 minute timeout
+            )
+
+            if result.returncode == 0:
+                logger.info("Knowledge base enrichment output:")
+                for line in result.stdout.strip().split('\n'):
+                    if line:
+                        logger.info(f"  {line}")
+            else:
+                logger.error(f"Enrichment script failed with return code {result.returncode}")
+                logger.error(f"Error output: {result.stderr}")
+                raise Exception(f"Enrichment failed: {result.stderr}")
+
+        except subprocess.TimeoutExpired:
+            logger.error("Enrichment script timed out (>5 minutes)")
+            raise Exception("Enrichment timed out")
+
+    def _send_alert(self, message: str):
+        """
+        Send alert notification via Slack webhook or NotificationAgent.
+
+        Args:
+            message: Alert message
+        """
+        logger.warning(f"ALERT: {message}")
+
+        slack_webhook_url = os.getenv('SLACK_WEBHOOK_URL')
+        if slack_webhook_url:
+            try:
+                import requests as _requests
+                _requests.post(
+                    slack_webhook_url,
+                    json={"text": f":warning: *Data Collection Alert*\n{message}"},
+                    timeout=10
+                )
+            except Exception as e:
+                logger.error(f"Failed to send Slack alert: {e}")
+        else:
+            try:
+                from agents.notifier import NotificationAgent
+                notifier = NotificationAgent(
+                    violation_repo=self.violation_repo,
+                    user_repo=self.user_repo
+                )
+                notifier._log_to_console(
+                    subject="Data Collection Alert",
+                    message=message
+                )
+            except Exception as e:
+                logger.error(f"Failed to send alert via NotificationAgent: {e}")
 
 
-# Factory function
-def create_data_collector() -> DataCollectionAgent:
-    """Create a configured Data Collection Agent instance"""
-    return DataCollectionAgent()
+# Global instance
+_agent_instance: DataCollectionAgent | None = None
+
+
+def get_collection_agent() -> DataCollectionAgent:
+    """
+    Get or create global collection agent instance (singleton)
+
+    Returns:
+        DataCollectionAgent instance
+    """
+    global _agent_instance
+
+    if _agent_instance is None:
+        _agent_instance = DataCollectionAgent(enable_scheduler=True)
+
+    return _agent_instance
+
+
+def start_collection_agent():
+    """Start the global collection agent"""
+    agent = get_collection_agent()
+    if not agent.is_running:
+        agent.start()
+    return agent
+
+
+def stop_collection_agent():
+    """Stop the global collection agent"""
+    global _agent_instance
+    if _agent_instance and _agent_instance.is_running:
+        _agent_instance.stop()

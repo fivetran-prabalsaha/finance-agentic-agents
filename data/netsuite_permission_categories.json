@@ -1,0 +1,402 @@
+{
+  "categories": {
+    "transaction_entry": {
+      "description": "Can create or enter transactions",
+      "risk": "HIGH",
+      "conflicts_with": ["transaction_approval", "transaction_payment", "financial_close"],
+      "keywords": [
+        "Bills",
+        "Invoice",
+        "Sales Order",
+        "Purchase Order",
+        "Cash Sale",
+        "Check",
+        "Credit Memo",
+        "Vendor Bill",
+        "Journal",
+        "Expense Report",
+        "Deposit",
+        "Transfer Order",
+        "Item Receipt",
+        "Item Fulfillment"
+      ],
+      "patterns": [
+        "^(Bill|Invoice|Sales Order|Purchase Order|Journal|Check|Deposit)$",
+        "Entry$",
+        "Create.*Transaction",
+        "^Customer Payment$",
+        "^Vendor Payment$"
+      ]
+    },
+    "transaction_approval": {
+      "description": "Can approve transactions",
+      "risk": "HIGH",
+      "conflicts_with": ["transaction_entry", "transaction_payment", "master_data_setup"],
+      "keywords": [
+        "Approve",
+        "Authorization"
+      ],
+      "patterns": [
+        "Approv",
+        "Authorization"
+      ]
+    },
+    "transaction_payment": {
+      "description": "Can process payments",
+      "risk": "CRITICAL",
+      "conflicts_with": ["transaction_entry", "transaction_approval", "vendor_setup", "bank_reconciliation"],
+      "keywords": [
+        "Customer Payment",
+        "Vendor Payment",
+        "Payment",
+        "Bill Payment",
+        "Customer Refund",
+        "Vendor Refund",
+        "Cash Refund"
+      ],
+      "patterns": [
+        "Payment$",
+        "Refund$"
+      ]
+    },
+    "bank_reconciliation": {
+      "description": "Can reconcile bank accounts",
+      "risk": "HIGH",
+      "conflicts_with": ["transaction_payment", "journal_entry", "transaction_entry"],
+      "keywords": [
+        "Reconcile",
+        "Bank Reconciliation"
+      ],
+      "patterns": [
+        "Reconcil"
+      ]
+    },
+    "journal_entry": {
+      "description": "Can create manual journal entries",
+      "risk": "CRITICAL",
+      "conflicts_with": ["bank_reconciliation", "transaction_approval", "financial_close"],
+      "keywords": [
+        "Journal",
+        "Make Journal Entry"
+      ],
+      "patterns": [
+        "^Journal$",
+        "Journal Entry"
+      ]
+    },
+    "vendor_setup": {
+      "description": "Can create and modify vendor records",
+      "risk": "HIGH",
+      "conflicts_with": ["transaction_payment", "transaction_entry", "transaction_approval"],
+      "keywords": [
+        "Vendors"
+      ],
+      "patterns": [
+        "^Vendors$",
+        "Vendor.*Edit",
+        "Vendor.*Create"
+      ]
+    },
+    "customer_setup": {
+      "description": "Can create and modify customer records",
+      "risk": "MEDIUM",
+      "conflicts_with": ["accounts_receivable", "transaction_entry"],
+      "keywords": [
+        "Customers",
+        "Customer Profile"
+      ],
+      "patterns": [
+        "^Customers$",
+        "Customer.*Edit",
+        "Customer Profile"
+      ]
+    },
+    "accounts_payable": {
+      "description": "Accounts payable operations",
+      "risk": "HIGH",
+      "conflicts_with": ["vendor_setup", "transaction_approval"],
+      "keywords": [
+        "Accounts Payable",
+        "Bills"
+      ],
+      "patterns": [
+        "Accounts Payable",
+        "^Bills$",
+        "Vendor Bill"
+      ]
+    },
+    "accounts_receivable": {
+      "description": "Accounts receivable operations",
+      "risk": "HIGH",
+      "conflicts_with": ["customer_setup", "transaction_approval"],
+      "keywords": [
+        "Accounts Receivable",
+        "Invoice"
+      ],
+      "patterns": [
+        "Accounts Receivable",
+        "^Invoice$",
+        "Customer Invoice"
+      ]
+    },
+    "financial_reporting": {
+      "description": "Access to financial reports",
+      "risk": "LOW",
+      "conflicts_with": [],
+      "keywords": [
+        "Balance Sheet",
+        "Income Statement",
+        "Cash Flow Statement",
+        "Trial Balance",
+        "Financial Reports",
+        "Profit and Loss"
+      ],
+      "patterns": [
+        "Balance Sheet",
+        "Cash Flow",
+        "Statement",
+        "Trial Balance",
+        ".*Reports?$"
+      ]
+    },
+    "financial_close": {
+      "description": "Can close accounting periods",
+      "risk": "CRITICAL",
+      "conflicts_with": ["transaction_entry", "journal_entry"],
+      "keywords": [
+        "Close Period",
+        "Lock Period",
+        "Accounting Period"
+      ],
+      "patterns": [
+        "Close.*Period",
+        "Lock.*Period",
+        "Accounting Period.*Edit"
+      ]
+    },
+    "user_admin": {
+      "description": "Can manage users",
+      "risk": "CRITICAL",
+      "conflicts_with": ["role_admin", "permission_admin"],
+      "keywords": [
+        "Employees",
+        "Users",
+        "Employee Center",
+        "User Management"
+      ],
+      "patterns": [
+        "^Employees$",
+        "Employee.*Edit",
+        "User.*Manage"
+      ]
+    },
+    "role_admin": {
+      "description": "Can manage roles and permissions",
+      "risk": "CRITICAL",
+      "conflicts_with": ["user_admin", "permission_admin"],
+      "keywords": [
+        "Roles",
+        "Bulk Manage Roles"
+      ],
+      "patterns": [
+        "Role.*Manage",
+        "Bulk Manage Roles"
+      ]
+    },
+    "permission_admin": {
+      "description": "Can modify permission settings",
+      "risk": "CRITICAL",
+      "conflicts_with": ["user_admin", "role_admin"],
+      "keywords": [
+        "Permissions",
+        "Core Administration Permissions"
+      ],
+      "patterns": [
+        "Permission.*Edit",
+        "Core Administration"
+      ]
+    },
+    "chart_of_accounts": {
+      "description": "Can modify chart of accounts",
+      "risk": "HIGH",
+      "conflicts_with": ["journal_entry", "financial_close"],
+      "keywords": [
+        "Accounts",
+        "Chart of Accounts"
+      ],
+      "patterns": [
+        "^Accounts$",
+        "Chart of Accounts"
+      ]
+    },
+    "master_data_setup": {
+      "description": "Can create and modify master data (items, classes, departments, etc.)",
+      "risk": "MEDIUM",
+      "conflicts_with": ["transaction_approval"],
+      "keywords": [
+        "Classes",
+        "Departments",
+        "Locations",
+        "Items",
+        "Subsidiaries",
+        "Currency",
+        "Tax Codes"
+      ],
+      "patterns": [
+        "^(Classes|Departments|Locations|Items|Subsidiaries|Currency)$"
+      ]
+    },
+    "custom_records": {
+      "description": "Can create and modify custom records",
+      "risk": "MEDIUM",
+      "conflicts_with": [],
+      "keywords": [
+        "Custom Record",
+        "Custom Fields",
+        "Custom Lists"
+      ],
+      "patterns": [
+        "Custom Record",
+        "Custom Field",
+        "Custom List"
+      ]
+    },
+    "system_configuration": {
+      "description": "Can modify system settings",
+      "risk": "HIGH",
+      "conflicts_with": ["user_admin", "role_admin"],
+      "keywords": [
+        "Company Information",
+        "Accounting Preferences",
+        "Setup",
+        "Configuration"
+      ],
+      "patterns": [
+        "Company Information",
+        "Preferences$",
+        "Setup$",
+        "Configuration"
+      ]
+    },
+    "data_export": {
+      "description": "Can export data",
+      "risk": "MEDIUM",
+      "conflicts_with": [],
+      "keywords": [
+        "Export",
+        "CSV Export",
+        "Data Export"
+      ],
+      "patterns": [
+        "Export",
+        "Extract"
+      ]
+    },
+    "audit_trail": {
+      "description": "Can view audit trail",
+      "risk": "LOW",
+      "conflicts_with": [],
+      "keywords": [
+        "Audit Trail",
+        "System Notes",
+        "Transaction History"
+      ],
+      "patterns": [
+        "Audit",
+        "System Notes",
+        "History"
+      ]
+    },
+    "tax_management": {
+      "description": "Can manage tax settings and filings",
+      "risk": "HIGH",
+      "conflicts_with": ["transaction_approval"],
+      "keywords": [
+        "Tax",
+        "Sales Tax",
+        "Tax Returns"
+      ],
+      "patterns": [
+        "^Tax",
+        "Sales Tax"
+      ]
+    },
+    "inventory_management": {
+      "description": "Can manage inventory",
+      "risk": "MEDIUM",
+      "conflicts_with": [],
+      "keywords": [
+        "Items",
+        "Inventory",
+        "Item Receipt",
+        "Item Fulfillment",
+        "Inventory Adjustment"
+      ],
+      "patterns": [
+        "^Items$",
+        "Inventory",
+        "Item (Receipt|Fulfillment|Adjustment)"
+      ]
+    },
+    "price_management": {
+      "description": "Can modify pricing",
+      "risk": "MEDIUM",
+      "conflicts_with": ["transaction_approval"],
+      "keywords": [
+        "Pricing",
+        "Price Level",
+        "Discount"
+      ],
+      "patterns": [
+        "Pric(e|ing)",
+        "Discount"
+      ]
+    },
+    "document_management": {
+      "description": "Can manage documents and files",
+      "risk": "LOW",
+      "conflicts_with": [],
+      "keywords": [
+        "Documents and Files",
+        "File Cabinet"
+      ],
+      "patterns": [
+        "Documents? and Files",
+        "File Cabinet"
+      ]
+    },
+    "search_and_reporting": {
+      "description": "Can create saved searches and reports",
+      "risk": "LOW",
+      "conflicts_with": [],
+      "keywords": [
+        "Saved Searches",
+        "Search",
+        "Reporting"
+      ],
+      "patterns": [
+        "Saved Search",
+        "Search.*Create"
+      ]
+    },
+    "view_only": {
+      "description": "View-only access",
+      "risk": "LOW",
+      "conflicts_with": [],
+      "keywords": [
+        "View",
+        "List"
+      ],
+      "patterns": [
+        ".*Register$",
+        ".*Graphing$",
+        ".*List$"
+      ]
+    }
+  },
+  "numeric_id_mappings": {
+    "comment": "Common numeric permission IDs - will need to be populated from NetSuite documentation",
+    "100": {"name": "Unknown Permission 100", "category": "uncategorized"},
+    "101": {"name": "Unknown Permission 101", "category": "uncategorized"}
+  }
+}

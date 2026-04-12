@@ -1,28 +1,41 @@
 """Models package - Database ORM models and configuration"""
 
+from models.approved_exception import (
+    ApprovedExceptionModel,
+    CompensatingControl,
+    ExceptionControlModel,
+    ExceptionReviewModel,
+    ExceptionStatus,
+    ExceptionViolationModel,
+    ImplementationStatus,
+    RemediationStatus,
+    ReviewOutcome,
+)
+from models.database import (
+    AgentLog,
+    AuditTrail,
+    ComplianceScan,
+    Notification,
+    Role,
+    ScanStatus,
+    SODRule,
+    SyncMetadata,
+    SyncStatus,
+    SyncType,
+    User,
+    UserRole,
+    UserStatus,
+    Violation,
+    ViolationSeverity,
+    ViolationStatus,
+)
 from models.database_config import (
     Base,
     DatabaseConfig,
+    enable_pgvector,
     get_db_config,
     get_db_session,
     init_database,
-    enable_pgvector
-)
-
-from models.database import (
-    User,
-    Role,
-    UserRole,
-    SODRule,
-    Violation,
-    ComplianceScan,
-    AgentLog,
-    Notification,
-    AuditTrail,
-    UserStatus,
-    ViolationSeverity,
-    ViolationStatus,
-    ScanStatus
 )
 
 __all__ = [
@@ -33,19 +46,33 @@ __all__ = [
     'get_db_session',
     'init_database',
     'enable_pgvector',
-    # Models
+    # Core models
     'User',
     'Role',
     'UserRole',
     'SODRule',
     'Violation',
     'ComplianceScan',
+    'SyncMetadata',
     'AgentLog',
     'Notification',
     'AuditTrail',
-    # Enums
+    # Exception management models
+    'ApprovedExceptionModel',
+    'ExceptionControlModel',
+    'ExceptionViolationModel',
+    'ExceptionReviewModel',
+    'CompensatingControl',
+    # Core enums
     'UserStatus',
     'ViolationSeverity',
     'ViolationStatus',
-    'ScanStatus'
+    'ScanStatus',
+    'SyncStatus',
+    'SyncType',
+    # Exception enums
+    'ExceptionStatus',
+    'ImplementationStatus',
+    'RemediationStatus',
+    'ReviewOutcome',
 ]

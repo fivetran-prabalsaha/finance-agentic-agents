@@ -4,10 +4,13 @@ Anthropic Client Wrapper with Token Tracking
 Wraps the Anthropic API client to automatically track token usage and costs
 """
 
-from typing import Any, Dict, Optional
-from anthropic import Anthropic
-from utils.token_tracker import get_global_tracker
 import logging
+
+from anthropic import Anthropic
+from langsmith import traceable
+from langsmith.run_helpers import get_current_run_tree
+
+from utils.token_tracker import get_global_tracker
 
 logger = logging.getLogger(__name__)
 
@@ -24,8 +27,8 @@ class AnthropicClientWrapper:
 
     def __init__(
         self,
-        agent_name: Optional[str] = None,
-        api_key: Optional[str] = None,
+        agent_name: str | None = None,
+        api_key: str | None = None,
         track_tokens: bool = True
     ):
         """
@@ -62,12 +65,13 @@ class MessagesWrapper:
         self.agent_name = agent_name
         self.token_tracker = token_tracker
 
+    @traceable(run_type="llm", name="claude.messages.create")
     def create(
         self,
         model: str,
         max_tokens: int,
         messages: list,
-        operation: Optional[str] = None,
+        operation: str | None = None,
         **kwargs
     ):
         """
@@ -92,10 +96,42 @@ class MessagesWrapper:
         )
 
         # Track token usage
-        if self.token_tracker:
-            usage = response.usage if hasattr(response, 'usage') else None
+        usage = response.usage if hasattr(response, 'usage') else None
 
-            if usage:
+        if usage:
+            # Push token counts + cost into the LangSmith span
+            rt = get_current_run_tree()
+            if rt:
+                input_tokens = usage.input_tokens
+                output_tokens = usage.output_tokens
+                rt.extra = rt.extra or {}
+                # ls_model_name + ls_provider let LangSmith look up pricing
+                # and populate Cost per Trace / Tokens per Trace charts
+                # Map to LangSmith's known pricing model names so cost is computed.
+                # claude-opus-4-6  → claude-3-opus-20240229  ($15/$75 per million)
+                # claude-haiku-4-5 → claude-3-haiku-20240307 ($0.25/$1.25 per million)
+                _PRICING_MAP = {
+                    "claude-opus-4-6":          "claude-3-opus-20240229",
+                    "claude-opus-4":            "claude-3-opus-20240229",
+                    "claude-haiku-4-5-20251001": "claude-3-haiku-20240307",
+                    "claude-haiku-4-5":          "claude-3-haiku-20240307",
+                    "claude-sonnet-4-5-20250929": "claude-3-sonnet-20240229",
+                    "claude-sonnet-4-5":          "claude-3-sonnet-20240229",
+                }
+                ls_model = _PRICING_MAP.get(response.model, response.model)
+                rt.extra.setdefault("metadata", {}).update({
+                    "ls_model_name": ls_model,
+                    "ls_provider": "anthropic",
+                    "actual_model": response.model,   # preserve real name for reference
+                })
+                rt.extra["usage_metadata"] = {
+                    "input_tokens": input_tokens,
+                    "output_tokens": output_tokens,
+                    "total_tokens": input_tokens + output_tokens,
+                }
+                rt.patch()
+
+            if self.token_tracker:
                 self.token_tracker.track(
                     model=response.model,
                     input_tokens=usage.input_tokens,
@@ -106,17 +142,17 @@ class MessagesWrapper:
                     operation=operation or 'message_create'
                 )
 
-                logger.debug(
-                    f"Token usage: {self.agent_name} - "
-                    f"input={usage.input_tokens}, output={usage.output_tokens}"
-                )
-            else:
-                logger.warning(f"No usage data in API response for {self.agent_name}")
+            logger.debug(
+                f"Token usage: {self.agent_name} - "
+                f"input={usage.input_tokens}, output={usage.output_tokens}"
+            )
+        else:
+            logger.warning(f"No usage data in API response for {self.agent_name}")
 
         return response
 
 
-def create_tracked_client(agent_name: str, api_key: Optional[str] = None) -> AnthropicClientWrapper:
+def create_tracked_client(agent_name: str, api_key: str | None = None) -> AnthropicClientWrapper:
     """
     Convenience function to create a tracked Anthropic client
 

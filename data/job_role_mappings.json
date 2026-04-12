@@ -1,0 +1,456 @@
+{
+  "version": "1.0",
+  "description": "Job role to NetSuite role mappings with business justifications",
+  "last_updated": "2026-02-12",
+
+  "job_roles": {
+    "revenue_director": {
+      "title": "Revenue Director",
+      "department": "Finance",
+      "level": "Director",
+      "reports_to": "CFO",
+      "description": "Oversees revenue recognition, invoicing, and revenue reporting",
+
+      "typical_netsuite_roles": [
+        {
+          "role": "Fivetran - Revenue Manager",
+          "justification": "Need to manage revenue recognition process and oversee revenue operations",
+          "common": true,
+          "priority": "Required"
+        },
+        {
+          "role": "Fivetran - Revenue Approver",
+          "justification": "Need approval authority for revenue transactions to ensure proper oversight",
+          "common": true,
+          "priority": "Required",
+          "conflicts_with": ["Fivetran - Revenue Manager"],
+          "typical_resolution": "compensating_controls",
+          "business_need": "Revenue Directors typically need both management and approval authority for operational efficiency"
+        },
+        {
+          "role": "Fivetran - Controller",
+          "justification": "Too broad - Controller role has full financial system access",
+          "common": false,
+          "priority": "Not Recommended",
+          "recommendation": "Use Revenue Manager + Revenue Approver instead"
+        }
+      ],
+
+      "acceptable_role_combinations": [
+        {
+          "roles": ["Fivetran - Revenue Manager", "Fivetran - Revenue Approver"],
+          "requires_compensating_controls": true,
+          "typical_controls": ["segregated_workflows", "dual_approval_workflow", "transaction_limits", "manager_review"],
+          "business_justification": "Standard combination for Revenue Director role requiring both process management and approval authority"
+        }
+      ]
+    },
+
+    "accounts_payable_manager": {
+      "title": "Accounts Payable Manager",
+      "department": "Finance",
+      "level": "Manager",
+      "reports_to": "Controller",
+      "description": "Manages accounts payable process, vendor payments, and vendor relationships",
+
+      "typical_netsuite_roles": [
+        {
+          "role": "Fivetran - A/P Analyst",
+          "justification": "Core AP processing and vendor bill management",
+          "common": true,
+          "priority": "Required"
+        },
+        {
+          "role": "Fivetran - Billing Manager",
+          "justification": "Vendor billing oversight and management",
+          "common": true,
+          "priority": "Optional",
+          "conflicts_with": ["Fivetran - A/P Analyst"],
+          "typical_resolution": "reduce_levels",
+          "business_need": "AP Managers may need visibility into billing but not full control"
+        }
+      ],
+
+      "acceptable_role_combinations": [
+        {
+          "roles": ["Fivetran - A/P Analyst"],
+          "requires_compensating_controls": false,
+          "business_justification": "Standard single role for AP Manager"
+        },
+        {
+          "roles": ["Fivetran - A/P Analyst", "Fivetran - Billing Manager"],
+          "requires_compensating_controls": true,
+          "typical_controls": ["manager_approval", "transaction_limits"],
+          "level_adjustments": {
+            "Fivetran - Billing Manager": "Reduce to View level for oversight only"
+          },
+          "business_justification": "Provides visibility into billing process while maintaining separation"
+        }
+      ]
+    },
+
+    "accounts_receivable_manager": {
+      "title": "Accounts Receivable Manager",
+      "department": "Finance",
+      "level": "Manager",
+      "reports_to": "Controller",
+      "description": "Manages accounts receivable process, customer payments, and collections",
+
+      "typical_netsuite_roles": [
+        {
+          "role": "Fivetran - A/R Analyst",
+          "justification": "Core AR processing and customer payment management",
+          "common": true,
+          "priority": "Required"
+        },
+        {
+          "role": "Fivetran - Dunning Manager",
+          "justification": "Collections and dunning process management",
+          "common": true,
+          "priority": "Optional"
+        }
+      ],
+
+      "acceptable_role_combinations": [
+        {
+          "roles": ["Fivetran - A/R Analyst"],
+          "requires_compensating_controls": false
+        },
+        {
+          "roles": ["Fivetran - A/R Analyst", "Fivetran - Dunning Manager"],
+          "requires_compensating_controls": true,
+          "typical_controls": ["manager_approval", "transaction_limits", "segregated_workflows"]
+        }
+      ]
+    },
+
+    "controller": {
+      "title": "Controller",
+      "department": "Finance",
+      "level": "Executive",
+      "reports_to": "CFO",
+      "description": "Chief accounting officer responsible for all financial operations and reporting",
+
+      "typical_netsuite_roles": [
+        {
+          "role": "Fivetran - Controller",
+          "justification": "Comprehensive financial oversight and reporting",
+          "common": true,
+          "priority": "Required"
+        }
+      ],
+
+      "acceptable_role_combinations": [
+        {
+          "roles": ["Fivetran - Controller"],
+          "requires_compensating_controls": true,
+          "typical_controls": ["dual_approval_workflow", "ceo_approval", "real_time_monitoring", "quarterly_audit_review"],
+          "business_justification": "Executive-level role requires broad access for financial oversight. Extensive compensating controls required due to high privilege level.",
+          "approval_required": "CFO or CEO"
+        },
+        {
+          "roles": ["Fivetran - Controller", "Fivetran - Tax"],
+          "requires_compensating_controls": true,
+          "typical_controls": ["ceo_approval", "dual_approval_workflow", "segregated_workflows", "real_time_monitoring", "weekly_manager_review"],
+          "business_justification": "Controller may need tax oversight in addition to general accounting. Requires executive approval.",
+          "approval_required": "CEO"
+        }
+      ]
+    },
+
+    "senior_accountant": {
+      "title": "Senior Accountant",
+      "department": "Finance",
+      "level": "Senior",
+      "reports_to": "Accounting Manager",
+      "description": "Performs complex accounting tasks, journal entries, and reconciliations",
+
+      "typical_netsuite_roles": [
+        {
+          "role": "Fivetran - Accountant",
+          "justification": "General accounting operations",
+          "common": true,
+          "priority": "Required"
+        },
+        {
+          "role": "Fivetran - Cash Accountant",
+          "justification": "Cash management and bank reconciliation",
+          "common": true,
+          "priority": "Optional",
+          "conflicts_with": ["Fivetran - Accountant"],
+          "typical_resolution": "split_roles",
+          "recommendation": "Assign to different accountants for proper segregation"
+        }
+      ],
+
+      "acceptable_role_combinations": [
+        {
+          "roles": ["Fivetran - Accountant"],
+          "requires_compensating_controls": false
+        }
+      ]
+    },
+
+    "tax_manager": {
+      "title": "Tax Manager",
+      "department": "Finance",
+      "level": "Manager",
+      "reports_to": "Controller",
+      "description": "Manages tax compliance, filings, and tax planning",
+
+      "typical_netsuite_roles": [
+        {
+          "role": "Fivetran - Tax",
+          "justification": "Tax management and compliance",
+          "common": true,
+          "priority": "Required"
+        },
+        {
+          "role": "Fivetran - Sr Manager Tax",
+          "justification": "Senior tax management functions",
+          "common": false,
+          "priority": "Optional - for senior level only"
+        }
+      ],
+
+      "acceptable_role_combinations": [
+        {
+          "roles": ["Fivetran - Tax"],
+          "requires_compensating_controls": false
+        }
+      ]
+    },
+
+    "financial_analyst": {
+      "title": "Financial Analyst",
+      "department": "Finance",
+      "level": "Individual Contributor",
+      "reports_to": "FP&A Manager",
+      "description": "Financial planning, analysis, and reporting",
+
+      "typical_netsuite_roles": [
+        {
+          "role": "Fivetran - FP&A",
+          "justification": "Financial planning and analysis",
+          "common": true,
+          "priority": "Required"
+        },
+        {
+          "role": "Fivetran - External View Only",
+          "justification": "Read-only access for external reporting",
+          "common": false,
+          "priority": "Optional"
+        }
+      ],
+
+      "acceptable_role_combinations": [
+        {
+          "roles": ["Fivetran - FP&A"],
+          "requires_compensating_controls": false
+        },
+        {
+          "roles": ["Fivetran - FP&A", "Fivetran - External View Only"],
+          "requires_compensating_controls": false,
+          "business_justification": "Both roles primarily provide read-only access for analysis"
+        }
+      ]
+    },
+
+    "billing_specialist": {
+      "title": "Billing Specialist",
+      "department": "Finance",
+      "level": "Individual Contributor",
+      "reports_to": "Billing Manager",
+      "description": "Customer billing and invoice management",
+
+      "typical_netsuite_roles": [
+        {
+          "role": "Fivetran - Billing Manager",
+          "justification": "Customer billing operations",
+          "common": true,
+          "priority": "Required"
+        }
+      ],
+
+      "acceptable_role_combinations": [
+        {
+          "roles": ["Fivetran - Billing Manager"],
+          "requires_compensating_controls": false
+        }
+      ]
+    },
+
+    "accounting_manager": {
+      "title": "Accounting Manager / Corporate Accounting Manager",
+      "department": "Finance",
+      "level": "Manager",
+      "reports_to": "Controller",
+      "description": "Oversees general accounting operations, journal entries, and financial close",
+
+      "typical_netsuite_roles": [
+        {
+          "role": "Fivetran - Corporate Accounting Manager",
+          "justification": "General accounting oversight",
+          "common": true,
+          "priority": "Required"
+        },
+        {
+          "role": "Fivetran - Technical Accounting Manager",
+          "justification": "Complex accounting and technical research",
+          "common": false,
+          "priority": "Optional",
+          "conflicts_with": ["Fivetran - Corporate Accounting Manager"],
+          "typical_resolution": "compensating_controls",
+          "business_need": "May need both general and technical accounting oversight"
+        }
+      ],
+
+      "acceptable_role_combinations": [
+        {
+          "roles": ["Fivetran - Corporate Accounting Manager"],
+          "requires_compensating_controls": true,
+          "typical_controls": ["manager_approval", "dual_approval_workflow"],
+          "business_justification": "Manager-level role requires oversight but with appropriate controls"
+        }
+      ]
+    },
+
+    "system_administrator": {
+      "title": "NetSuite System Administrator",
+      "department": "IT",
+      "level": "Senior",
+      "reports_to": "IT Director",
+      "description": "Manages NetSuite system configuration and user access",
+
+      "typical_netsuite_roles": [
+        {
+          "role": "Fivetran - Developer",
+          "justification": "System customization and development",
+          "common": true,
+          "priority": "Required"
+        }
+      ],
+
+      "acceptable_role_combinations": [
+        {
+          "roles": ["Fivetran - Developer"],
+          "requires_compensating_controls": true,
+          "typical_controls": ["change_management", "peer_review", "production_access_controls"],
+          "business_justification": "Developer access requires strict change management controls",
+          "approval_required": "IT Director"
+        }
+      ],
+
+      "restrictions": {
+        "cannot_combine_with": [
+          "Fivetran - Controller",
+          "Fivetran - Revenue Manager",
+          "Fivetran - A/P Analyst"
+        ],
+        "reason": "IT roles should not have operational financial access to maintain segregation between IT and business operations"
+      }
+    },
+
+    "netsuite_administrator": {
+      "title": "NetSuite Administrator",
+      "department": "Systems Engineering",
+      "level": "Senior",
+      "reports_to": "Engineering Manager",
+      "description": "Full-time NetSuite administrator responsible for system configuration, user management, security, integrations, and technical oversight. Requires comprehensive access to both administrative and financial modules for troubleshooting, testing, and system maintenance.",
+
+      "typical_netsuite_roles": [
+        {
+          "role": "Administrator",
+          "justification": "Core administrative privileges for system configuration, user management, security settings, and technical administration",
+          "common": true,
+          "priority": "Required"
+        },
+        {
+          "role": "NetSuite 360 – Plus Financials",
+          "justification": "Financial module access required for: (1) Troubleshooting financial integrations and workflows, (2) Testing financial configurations in production, (3) Supporting finance users with technical issues, (4) Configuring financial approval workflows and automation",
+          "common": true,
+          "priority": "Required",
+          "conflicts_with": ["Administrator"],
+          "typical_resolution": "compensating_controls",
+          "business_need": "NetSuite Administrators need both system admin AND financial access to effectively support and maintain the financial system. They are the technical experts who configure, troubleshoot, and maintain all financial workflows."
+        }
+      ],
+
+      "acceptable_role_combinations": [
+        {
+          "roles": ["Administrator", "NetSuite 360 – Plus Financials"],
+          "requires_compensating_controls": true,
+          "typical_controls": [
+            "segregated_workflows",
+            "real_time_monitoring",
+            "transaction_logging",
+            "manager_review",
+            "dual_approval_workflow",
+            "quarterly_audit_review"
+          ],
+          "business_justification": "STANDARD AND EXPECTED configuration for NetSuite Administrator role. Administrators require both system-level AND financial access to: (1) Configure financial workflows and approval processes, (2) Troubleshoot financial integrations and automations, (3) Test financial configurations in production environment, (4) Support finance users with technical/system issues, (5) Implement and maintain financial controls and customizations. This is NOT a segregation violation - it is the proper configuration for the Systems Engineering team member responsible for NetSuite administration.",
+          "approval_required": "Engineering Manager + Controller",
+          "monitoring_requirements": [
+            "All financial transactions reviewed by Finance team",
+            "Monthly audit of admin activities in financial modules",
+            "Real-time alerts for any financial transaction processing",
+            "Separate audit trail for admin vs. business user activities"
+          ],
+          "acceptable_activities": [
+            "System configuration and customization",
+            "User provisioning and access management",
+            "Integration development and troubleshooting",
+            "Workflow and approval configuration",
+            "Testing in production environment",
+            "Technical support and troubleshooting",
+            "Report development and customization"
+          ],
+          "restricted_activities": [
+            "Processing actual financial transactions for business purposes",
+            "Approving vendor payments or customer invoices",
+            "Creating or modifying financial master data (customers, vendors) without request",
+            "Performing month-end close activities",
+            "Executing financial reporting without oversight"
+          ],
+          "risk_mitigation": "NetSuite Administrators should NOT process business transactions. Their financial access is for TECHNICAL purposes only (configuration, testing, troubleshooting). All actual business transactions are performed by Finance team with proper approval workflows. Admin activities are logged and audited separately."
+        },
+        {
+          "roles": ["Administrator"],
+          "requires_compensating_controls": false,
+          "business_justification": "Admin-only access without financial privileges. Suitable for administrators who only need system configuration without financial module access."
+        }
+      ],
+
+      "restrictions": {
+        "acceptable_note": "Unlike other IT roles, NetSuite Administrators CAN have financial access because their job is to ADMINISTER the financial system, not perform business operations. The key distinction is PURPOSE: technical administration vs. business operations."
+      }
+    }
+  },
+
+  "default_policies": {
+    "executive_roles": {
+      "titles": ["Controller", "CFO", "VP Finance"],
+      "always_require_compensating_controls": true,
+      "always_require_executive_approval": true,
+      "minimum_controls": ["dual_approval_workflow", "real_time_monitoring", "quarterly_audit_review"]
+    },
+
+    "manager_roles": {
+      "titles": ["Manager", "Director", "Sr Manager"],
+      "require_compensating_controls_if_conflicting": true,
+      "minimum_controls": ["manager_approval", "transaction_limits"]
+    },
+
+    "individual_contributor_roles": {
+      "titles": ["Analyst", "Specialist", "Accountant"],
+      "single_role_preferred": true,
+      "multiple_roles_require_justification": true
+    }
+  },
+
+  "role_naming_patterns": {
+    "fivetran_prefix": "Fivetran -",
+    "exclude_suffixes": ["OLD", "DEPRECATED", "TEST"],
+    "custom_role_pattern": "customrole_fivetran_*"
+  }
+}

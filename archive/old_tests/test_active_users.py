@@ -2,9 +2,9 @@
 """Quick test for active users with roles"""
 
 import os
-import json
-from requests_oauthlib import OAuth1Session
+
 from dotenv import load_dotenv
+from requests_oauthlib import OAuth1Session
 
 load_dotenv()
 
@@ -35,7 +35,7 @@ if data.get('success'):
     users = data['data']['users']
     metadata = data['data']['metadata']
 
-    print(f"\n✓ Success!")
+    print("\n✓ Success!")
     print(f"Total Users: {metadata['total_users']}")
     print(f"Returned: {metadata['returned_count']}")
     print(f"Execution Time: {metadata['execution_time_seconds']}s\n")

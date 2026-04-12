@@ -39,7 +39,7 @@ CREATE TABLE roles (
     is_custom BOOLEAN DEFAULT false,
     last_synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    embedding vector(1536),  -- For semantic search of similar roles
+    embedding vector(384),  -- For semantic search of similar roles
     metadata JSONB DEFAULT '{}'::jsonb
 );
 
@@ -79,7 +79,7 @@ CREATE TABLE sod_rules (
     version INTEGER DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    embedding vector(1536),  -- Semantic search for rule matching
+    embedding vector(384),  -- Semantic search for rule matching
     metadata JSONB DEFAULT '{}'::jsonb
 );
 
@@ -105,7 +105,7 @@ CREATE TABLE violations (
     assigned_to VARCHAR(255),
     resolved_at TIMESTAMP,
     resolved_by VARCHAR(255),
-    embedding vector(1536),  -- For finding similar past violations
+    embedding vector(384),  -- For finding similar past violations
     metadata JSONB DEFAULT '{}'::jsonb
 );
 

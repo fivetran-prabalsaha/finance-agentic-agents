@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Architecture One-Pager Generator</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: #f5f6fa; color: #1a1f36; min-height: 100vh; display: flex; flex-direction: column; }
+
+  header { background: #1a1f36; color: #fff; padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; }
+  .header-left { display: flex; align-items: center; gap: 1.25rem; }
+  header h1 { font-size: 1.1rem; font-weight: 700; }
+  header p { font-size: 0.78rem; color: #a8b0cc; margin-top: 0.15rem; }
+  .back-link { color: #a5b4fc; font-size: 0.82rem; text-decoration: none; white-space: nowrap; }
+  .back-link:hover { color: #fff; }
+
+  main { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem; width: 100%; flex: 1; }
+
+  .file-block { border: 1px solid #e4e6f0; border-radius: 8px; overflow: hidden; margin-bottom: 1rem; background: #fff; }
+  .file-hdr { display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 0.9rem; background: #f8f9fc; cursor: pointer; user-select: none; border-bottom: 1px solid #e4e6f0; }
+  .file-hdr:hover { background: #f0f2ff; }
+  .file-label { font-size: 0.85rem; font-weight: 700; }
+  .file-hint { font-size: 0.72rem; color: #8a93b2; flex: 1; }
+  .toggle-ic { font-size: 0.65rem; color: #8a93b2; transition: transform 0.15s; }
+  .file-body textarea { width: 100%; border: none; outline: none; resize: vertical; font-size: 0.75rem; font-family: 'SFMono-Regular', Consolas, monospace; line-height: 1.5; padding: 0.75rem; color: #2d3a52; background: #fff; min-height: 120px; display: block; }
+  .file-body.collapsed { display: none; }
+
+  .actions { display: flex; gap: 0.75rem; margin-top: 0.5rem; }
+  .btn-gen { background: #f59e0b; color: #1a1f36; border: none; padding: 0.7rem 1.75rem; border-radius: 7px; font-size: 0.95rem; font-weight: 700; cursor: pointer; transition: background 0.15s; }
+  .btn-gen:hover { background: #d97706; }
+  .btn-dl  { background: #5865f2; color: #fff; border: none; padding: 0.7rem 1.5rem; border-radius: 7px; font-size: 0.92rem; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+  .btn-dl:hover { background: #4752c4; }
+  .btn-dl:disabled { background: #a8b0cc; cursor: not-allowed; }
+  .btn-clear { background: #f0f2ff; color: #5865f2; border: 1px solid #c7d0ff; padding: 0.7rem 1rem; border-radius: 7px; font-size: 0.88rem; font-weight: 600; cursor: pointer; }
+  .btn-clear:hover { background: #e0e4ff; }
+
+  .status { margin-top: 0.85rem; font-size: 0.82rem; color: #6b728f; min-height: 1.2rem; }
+  .status.ok  { color: #10b981; }
+  .status.err { color: #dc2626; }
+
+  .tip { background: #f0f2ff; border: 1px solid #c7d0ff; border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; font-size: 0.82rem; color: #4a5078; line-height: 1.6; }
+  .tip strong { color: #5865f2; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <a href="index.html" class="back-link">&larr; Back</a>
+    <div>
+      <h1>Architecture One-Pager Generator</h1>
+      <p>Paste CLAUDE.md + plan.md + SKILL.md &rarr; shareable architecture one-pager</p>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="tip">
+    <strong>How it works:</strong> Paste one or more of your project files below, then click <strong>Generate &amp; Open</strong> &mdash; the one-pager opens in a new tab. Use <strong>Download HTML</strong> to save a standalone file.
+  </div>
+
+  <div class="file-block">
+    <div class="file-hdr" onclick="toggle('claude')">
+      <span class="file-label">&#x1F4CB; CLAUDE.md</span>
+      <span class="file-hint">Agents &middot; tech stack &middot; critical rules &middot; model routing</span>
+      <span class="toggle-ic" id="claude-ic">&#x25BC;</span>
+    </div>
+    <div class="file-body" id="claude-body">
+      <textarea id="claude-in" rows="10" placeholder="Paste CLAUDE.md content here..."></textarea>
+    </div>
+  </div>
+
+  <div class="file-block">
+    <div class="file-hdr" onclick="toggle('plan')">
+      <span class="file-label">&#x1F4CA; plan.md</span>
+      <span class="file-hint">Phases &middot; KPIs &middot; deliverables &middot; verification steps</span>
+      <span class="toggle-ic" id="plan-ic">&#x25BC;</span>
+    </div>
+    <div class="file-body" id="plan-body">
+      <textarea id="plan-in" rows="10" placeholder="Paste plan.md content here..."></textarea>
+    </div>
+  </div>
+
+  <div class="file-block">
+    <div class="file-hdr" onclick="toggle('skill')">
+      <span class="file-label">&#x26A1; SKILL.md</span>
+      <span class="file-hint">Workflows &middot; rules &middot; classifications &middot; examples</span>
+      <span class="toggle-ic" id="skill-ic">&#x25BC;</span>
+    </div>
+    <div class="file-body" id="skill-body">
+      <textarea id="skill-in" rows="10" placeholder="Paste SKILL.md content here..."></textarea>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn-gen" onclick="openPreview()">&#x26A1; Generate &amp; Open</button>
+    <button class="btn-dl" id="dl-btn" onclick="downloadHTML()" disabled>&#x2B07; Download HTML</button>
+    <button class="btn-clear" onclick="clearAll()">Clear</button>
+  </div>
+  <div class="status" id="status"></div>
+</main>
+
+<script>
+// --- UI helpers ---
+function toggle(name) {
+  var body = document.getElementById(name + '-body');
+  var ic   = document.getElementById(name + '-ic');
+  var collapsed = body.classList.toggle('collapsed');
+  ic.style.transform = collapsed ? 'rotate(-90deg)' : '';
+}
+
+function clearAll() {
+  ['claude-in','plan-in','skill-in'].forEach(function(id) { document.getElementById(id).value = ''; });
+  document.getElementById('dl-btn').disabled = true;
+  setStatus('', '');
+  lastHTML = '';
+}
+
+function setStatus(msg, type) {
+  var el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = 'status' + (type ? ' ' + type : '');
+}
+
+// --- Utility helpers ---
+function fm(text, patterns) {
+  if (!text) return null;
+  for (var i = 0; i < patterns.length; i++) {
+    var m = text.match(patterns[i]);
+    if (m) return (m[1] !== undefined ? m[1] : m[0]).trim();
+  }
+  return null;
+}
+
+function bullets(text, max) {
+  var out = [];
+  var lines = (text || '').split('\n');
+  for (var i = 0; i < lines.length; i++) {
+    var m = lines[i].match(/^\s*[-\u2022*\u2713]\s+(.+)/);
+    if (m && out.length < max) out.push(m[1].replace(/\*\*/g,'').replace(/\*/g,'').trim());
+  }
+  return out;
+}
+
+function numbered(text, max) {
+  var out = [];
+  var lines = (text || '').split('\n');
+  for (var i = 0; i < lines.length; i++) {
+    var m = lines[i].match(/^\s*\d+\.\s+(.+)/);
+    if (m && out.length < max) out.push(m[1].replace(/\*\*/g,'').trim());
+  }
+  return out;
+}
+
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function stripCodeBlocks(text) {
+  return (text || '').replace(/```[\s\S]+?```/g,' ').replace(/`[^`\n]+`/g,' ');
+}
+
+// --- Parsers ---
+function parse(cm, pm, sm) {
+  return {
+    meta:        parseMeta(cm, pm),
+    agents:      parseAgents(cm),
+    phases:      parsePhases(cm, pm),
+    tech:        parseTech(cm, pm),
+    kpis:        parseKPIs(cm, pm),
+    wf:          parseWorkflows(sm),
+    rules:       parseRules(cm, sm),
+    sources:     parseSources(cm, pm, sm),
+    models:      parseModels(cm),
+    sev:         parseSev(cm, sm),
+    constraints: parseConstraints(cm, pm, sm),
+    dbOutputs:   parseDBOutputsByPhase(cm, pm),
+  };
+}
+
+function parseMeta(cm, pm) {
+  var all = (cm||'') + '\n' + (pm||'');
+  return {
+    name:   fm(all,[/\*\*Project:\*\*\s*(.+)/,/^#\s+(?:Plan:\s*)?(.+)/m,/^##\s+(.+)/m]) || 'Untitled Project',
+    ver:    fm(all,[/\*\*Version:\*\*\s*(.+)/,/version[:\s]+v?([\d.]+)/i,/\bv(\d+\.\d+[\d.]*)\b/]) || '',
+    date:   fm(all,[/\*\*Last Updated:\*\*\s*(.+)/,/Date:\s*(\d{4}-\d{2}-\d{2})/i,/(\d{4}-\d{2}-\d{2})/]) || new Date().toISOString().slice(0,10),
+    author: fm(all,[/\*\*Author:\*\*\s*(.+)/,/Author:\s*(.+)/i,/Maintained by:?\s*(.+)/i]) || '',
+    status: fm(all,[/\*\*Status:\*\*\s*(.+)/,/Status:\s*(DRAFT|IN PROGRESS|COMPLETE|REVIEW|APPROVED|PRODUCTION)/i]) || 'DRAFT',
+    desc:   (fm(all,[/##\s*(?:Goal|Objective|Overview|Context)[^\n]*\n+([^\n#]{20,})/i,/>\s*(.{15,120})/m]) || '').slice(0,200),
+  };
+}
+
+function parseAgents(cm) {
+  if (!cm) return [];
+  var out = [];
+
+  // Strategy 1: explicit ## Agent A -- Name headers
+  var parts = cm.split(/\n(?=#{2,4}\s*Agent\s+[A-Z]\b)/i);
+  for (var i = 0; i < parts.length; i++) {
+    var p = parts[i];
+    var hm = p.match(/^#{2,4}\s*Agent\s+([A-Z])\s*[—\u2014\u2013:-]?\s*(.+)/i);
+    if (!hm) continue;
+    var letter = hm[1].toUpperCase();
+    var name   = hm[2].trim().replace(/\*\*/g,'').split('\n')[0].trim();
+    var phM    = p.match(/Phase\s+(\d+)/i);
+    var tableMatches = [];
+    var re = /`([a-z_]+(?:_[a-z]+)+)`/g, tm;
+    while ((tm = re.exec(p)) !== null) tableMatches.push(tm[1]);
+    var tables = tableMatches.filter(function(v,j,a){ return a.indexOf(v)===j; }).slice(0,5);
+    out.push({
+      letter: letter, name: name,
+      phase: phM ? parseInt(phM[1]) : null,
+      parallel: /parallel/i.test(p),
+      buls: bullets(p, 4), tables: tables,
+    });
+  }
+
+  // Strategy 2: Component/Agent tables
+  if (out.length === 0) {
+    var usedLetters = {};
+    var letterIdx = 0;
+    var letters = 'ABCDEFGHIJKLMNOP';
+    // Fixed regex: {2,40} instead of invalid {2,35?}
+    var rowRe = /\|\s*\*?\*?\s*([A-Z][^|*\n]{2,40}?)\s*\*?\*?\s*\|\s*(?:`[^`\n]*`)?\s*(?:\||\s)\s*([^|\n]{8,100})\s*\|/g;
+    var rowM;
+    while ((rowM = rowRe.exec(cm)) !== null && out.length < 9) {
+      var rawName = rowM[1].trim();
+      var rawDesc = rowM[2].trim().replace(/\*\*/g,'').replace(/\*/g,'');
+      // Skip header rows, dividers, and short entries
+      if (/^[-\s]+$/.test(rawName)) continue;
+      if (/^(component|file|purpose|name|agent|key|library|tool)/i.test(rawName)) continue;
+      if (rawName.length < 3) continue;
+      if (rawDesc.length < 8) continue;
+      if (!usedLetters[rawName]) {
+        usedLetters[rawName] = letters[letterIdx++] || String.fromCharCode(65 + out.length);
+        out.push({
+          letter: usedLetters[rawName],
+          name: rawName.replace(/^\*+|\*+$/g,'').trim(),
+          phase: null, parallel: false,
+          buls: [rawDesc.slice(0,80)], tables: [],
+        });
+      }
+    }
+  }
+
+  return out.slice(0,9);
+}
+
+function parsePhases(cm, pm) {
+  var all = (cm||'') + '\n' + (pm||'');
+  var map = {};
+  var re = /(?:##\s+)?Phase\s+([A-Z\d]+)[:\s\u2014\u2013-]+([^\n]*)/gi, m;
+  while ((m = re.exec(all)) !== null) {
+    var key = m[1].toUpperCase();
+    var n = /^\d+$/.test(key) ? parseInt(key) : key.charCodeAt(0) - 64;
+    var name = m[2].trim().replace(/\*\*/g,'').split('(')[0].trim();
+    if (!map[n] && name.length > 1) map[n] = { num: n, label: m[1], name: name };
+  }
+  return Object.keys(map).map(function(k){ return map[k]; })
+    .sort(function(a,b){ return a.num-b.num; }).slice(0,8);
+}
+
+function parseTech(cm, pm) {
+  var text = (cm||'') + '\n' + (pm||'');
+  var tech = [];
+  var secM = text.match(/(?:##[#]?\s+)?(?:Tech(?:nology)?\s+Stack|Core Technologies|Key Libraries)[^\n]*\n([\s\S]+?)(?=\n##|\n---|\n\*\*\*|$)/i);
+  if (secM) {
+    var sec = secM[1];
+    var rows = sec.match(/\|([^|\n]+)\|([^|\n]+)\|?([^|\n]*)\|?/g) || [];
+    for (var i = 0; i < rows.length; i++) {
+      var cells = rows[i].split('|').map(function(c){ return c.trim().replace(/\*\*/g,''); }).filter(Boolean);
+      if (cells.length >= 2 && cells[0].indexOf('---') === -1 && cells[0].toLowerCase().indexOf('component') === -1 && cells[0].toLowerCase().indexOf('library') === -1) {
+        tech.push({ name: cells[0].replace(/`/g,''), desc: cells[cells.length-1].replace(/`/g,'') });
+      }
+    }
+    if (tech.length === 0) {
+      var cb = sec.match(/```[\s\S]+?```/);
+      if (cb) {
+        var lines = cb[0].split('\n');
+        for (var j = 0; j < lines.length; j++) {
+          var lm = lines[j].match(/^([a-zA-Z][\w-]+)==([\d.]+)/);
+          if (lm) tech.push({ name: lm[1], desc: 'v'+lm[2] });
+        }
+      }
+    }
+    if (tech.length === 0) {
+      var bms = sec.match(/[-*]\s+\*\*([^*]+)\*\*[:\s]+(.+)/g) || [];
+      for (var k = 0; k < bms.length; k++) {
+        var bm = bms[k].match(/\*\*([^*]+)\*\*[:\s]+(.+)/);
+        if (bm) tech.push({ name: bm[1].trim(), desc: bm[2].trim() });
+      }
+    }
+  }
+  return tech.slice(0,14);
+}
+
+function parseKPIs(cm, pm) {
+  var all = (cm||'') + '\n' + (pm||'');
+  var kpis = [];
+
+  // Strategy 1: check-mark success metrics lines — fixed regex to use unicode code points
+  var checkRe = /[\u2705\u2714\u2611]\s+(.+)/g, cm2;
+  while ((cm2 = checkRe.exec(all)) !== null && kpis.length < 6) {
+    var line = cm2[1].replace(/\*\*/g,'').replace(/\[x\]/gi,'').trim();
+    // Fixed: leading number pattern per spec
+    var nm = line.match(/^([\d,]+(?:\/[\d,]+)?(?:\.\d+)?[%x]?(?:\s*(?:K|M|users?|rules?|tools?|x))?)\s+(.+)/);
+    if (nm) {
+      kpis.push({ value: nm[1].trim(), label: nm[2].trim().slice(0,40) });
+    } else {
+      // Try parenthetical patterns like (99.7% coverage)
+      var pm2 = line.match(/\(([≥≤<>]?[\d.]+[%x]?\+?)\s+([^)]+)\)/);
+      if (pm2) kpis.push({ value: pm2[1].trim(), label: pm2[2].trim().slice(0,40) });
+    }
+  }
+
+  // Strategy 2: dedicated KPI section
+  if (kpis.length < 2) {
+    var secM = all.match(/(?:KPI|Success Metric|Target KPI|Key Metric|Success Criteria)s?[^\n]*\n([\s\S]+?)(?=\n##|$)/i);
+    if (secM) {
+      var lines = secM[1].split('\n');
+      for (var i = 0; i < lines.length; i++) {
+        var m1 = lines[i].match(/[-\u2022*]\s*([≥≤<>]?[\d]+(?:\.\d+)?[%x]?(?:\s*(?:hrs?|hours?|days?|min))?)\s+(.{5,50})/i);
+        if (m1 && kpis.length < 6) { kpis.push({ value: m1[1].trim(), label: m1[2].trim() }); continue; }
+        var m2 = lines[i].match(/[-\u2022*]?\s*(.{5,40}?):\s*([≥≤<>]?[\d]+(?:\.\d+)?[%x]?(?:\s*(?:hrs?|hours?|days?|min))?)/i);
+        if (m2 && /\d/.test(m2[2]) && kpis.length < 6) kpis.push({ value: m2[2].trim(), label: m2[1].trim() });
+      }
+    }
+  }
+
+  return kpis.slice(0,6);
+}
+
+function parseWorkflows(sm) {
+  if (!sm) return [];
+  var out = [];
+  var parts = sm.split(/\n(?=#{2,3}\s*Workflow\s+\d+)/i);
+  for (var i = 0; i < parts.length; i++) {
+    var p = parts[i];
+    var hm = p.match(/^#{2,3}\s*Workflow\s+(\d+)[:\s\u2014\u2013-]*(.+)/i);
+    if (!hm) continue;
+    out.push({
+      num: parseInt(hm[1]),
+      name: hm[2].trim().replace(/\*\*/g,'').replace(/[()]/g,'').trim(),
+      when: (fm(p,[/Use when:\s*(.{10,})/i, /Trigger(?:\s+phrases?)?:\s*(.{10,})/i]) || '').slice(0,80),
+      steps: bullets(p, 3),
+    });
+  }
+  return out.slice(0,8);
+}
+
+function parseRules(cm, sm) {
+  var all = (cm||'') + '\n' + (sm||'');
+  var secM = all.match(/(?:Critical Rules?|Non-Negotiable Rules?|MUST READ|Important Rules?)[^\n]*\n([\s\S]+?)(?=\n##|$)/i);
+  if (!secM) return [];
+  var r1 = numbered(secM[1], 6);
+  var r2 = bullets(secM[1], 6);
+  return r1.concat(r2).slice(0,6);
+}
+
+function parseSources(cm, pm, sm) {
+  var all = (cm||'') + '\n' + (pm||'') + '\n' + (sm||'');
+  var known = [
+    { name:'Salesforce CPQ', pat:/salesforce\s+cpq/i,       color:'#0070d2' },
+    { name:'NetSuite ERP',   pat:/netsuite/i,                color:'#2eb67d' },
+    { name:'Ironclad',       pat:/ironclad/i,                color:'#6366f1' },
+    { name:'Okta',           pat:/okta/i,                    color:'#007dc1' },
+    { name:'Workday',        pat:/workday/i,                  color:'#f5821f' },
+    { name:'Salesforce',     pat:/salesforce(?!\s+cpq)/i,    color:'#0070d2' },
+    { name:'Jira',           pat:/jira/i,                    color:'#0052cc' },
+    { name:'Coupa',          pat:/coupa/i,                   color:'#ee3124' },
+    { name:'Stripe',         pat:/stripe/i,                  color:'#635bff' },
+    { name:'PostgreSQL',     pat:/postgres(?:ql)?/i,         color:'#336791' },
+    { name:'Slack',          pat:/slack/i,                   color:'#4a154b' },
+    { name:'LangSmith',      pat:/langsmith/i,               color:'#ef6c00' },
+  ];
+  var found = [];
+  for (var i = 0; i < known.length; i++) {
+    if (!known[i].pat.test(all)) continue;
+
+    // Extract nearby context (500 chars after the source name mention)
+    var srcEscaped = known[i].name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    var ctxRe = new RegExp(srcEscaped + '([\\s\\S]{0,500})', 'i');
+    var ctxM = all.match(ctxRe);
+    var ctx = ctxM ? ctxM[0] : '';
+
+    // 1. Auth method + API version
+    var authStr = 'Token-Based Auth';
+    var authM = ctx.match(/(OAuth\s*[\d.]+|Bearer\s*Token|Token.Based\s*Auth|API\s*Key|RESTlet|SuiteQL|JWT)/i);
+    if (authM) authStr = authM[1].trim();
+    var apiStr = 'REST API';
+    var verM = ctx.match(/REST\s*API\s*v?([\d.]+)/i);
+    if (verM) apiStr = 'REST API v' + verM[1];
+    else if (/RESTlet/i.test(ctx)) apiStr = 'RESTlet API';
+    else if (/SuiteQL/i.test(ctx)) apiStr = 'SuiteQL';
+    else if (/GraphQL/i.test(ctx)) apiStr = 'GraphQL API';
+
+    // Build 4-5 bullet strings
+    var buls = [];
+
+    // Bullet 1: Auth + API
+    buls.push(authStr + ' \u00b7 ' + apiStr);
+
+    // Bullet 2: Key objects synced
+    var objNames = [];
+    var objPatterns = [
+      /(?:sync(?:s|ed|ing)?|fetch(?:es|ed|ing)?|pull(?:s|ed|ing)?)\s+([A-Za-z_/,\s]{5,60}?)(?:\s+from|\s+via|\s+data|\n|$)/i,
+      /objects?:\s*([A-Za-z_,\s/]{5,60})/i,
+      /(Users?|Roles?|Permissions?|Invoices?|Vendors?|Journals?|Quotes?|Contacts?)[,\s/]*(Users?|Roles?|Permissions?|Invoices?|Vendors?|Journals?|Quotes?|Contacts?)?/i,
+    ];
+    for (var oi = 0; oi < objPatterns.length; oi++) {
+      var om = ctx.match(objPatterns[oi]);
+      if (om && om[1]) { objNames.push(om[1].trim().replace(/\s+/g,' ').slice(0,50)); break; }
+    }
+    if (objNames.length === 0) objNames.push('Users / Roles / Permissions');
+    buls.push('Objects: ' + objNames[0]);
+
+    // Bullet 3: Pagination
+    var pageM = ctx.match(/page[_\s]?size[:\s=]+(\d+)/i);
+    if (pageM) {
+      buls.push('Pagination: page_size=' + pageM[1]);
+    } else {
+      buls.push('Pagination: cursor-based');
+    }
+
+    // Bullet 4: Sync schedule
+    var schedM = ctx.match(/(daily\s+full\s+sync|hourly\s+incremental|incremental\s+sync|daily\s+sync|real.?time|webhook|scheduled)/i);
+    if (schedM) {
+      buls.push('Schedule: ' + schedM[1].trim().replace(/\s+/g,' '));
+    } else {
+      buls.push('Schedule: daily sync');
+    }
+
+    // Bullet 5: Coverage/count if found
+    var covM = ctx.match(/([\d,]+)\s*\/\s*([\d,]+)\s+([a-z]+)\s+synced/i);
+    if (covM) {
+      buls.push(covM[1] + '/' + covM[2] + ' ' + covM[3] + ' synced');
+    } else {
+      var pctM = ctx.match(/([\d.]+%)\s+coverage/i);
+      if (pctM) buls.push('Coverage: ' + pctM[1]);
+    }
+
+    found.push({
+      name: known[i].name,
+      color: known[i].color,
+      auth: authStr + ' \u00b7 ' + apiStr,
+      bullets: buls,
+    });
+    if (found.length >= 4) break;
+  }
+  return found;
+}
+
+function parseModels(cm) {
+  if (!cm) return [];
+  var out = [];
+
+  if (/deterministic|no.llm|free/i.test(cm)) {
+    out.push({
+      name: 'No LLM',
+      role: 'Deterministic (free)',
+      cost: '~$0.00/run',
+      color: '#10b981',
+      bullets: ['Rule-based processing only', 'No API costs incurred', 'Instant deterministic results'],
+    });
+  }
+  if (/haiku/i.test(cm)) {
+    var haikuCtx = '';
+    var hm = cm.match(/haiku[\s\S]{0,400}/i);
+    if (hm) haikuCtx = hm[0];
+    var haikuBuls = [];
+    if (/dispatch|tool\s+call|routing/i.test(haikuCtx)) haikuBuls.push('Tool dispatch and intent routing');
+    if (/fast|cheap|high.vol/i.test(haikuCtx)) haikuBuls.push('High-volume, low-latency calls');
+    if (/summar/i.test(haikuCtx)) haikuBuls.push('Conversation summarization');
+    if (haikuBuls.length === 0) haikuBuls = ['Fast, high-volume dispatch', 'Low-cost processing', 'Routing and classification'];
+    out.push({ name: 'Claude Haiku', role: 'Fast / High-volume dispatch', cost: '~$0.15/1M tok', color: '#f59e0b', bullets: haikuBuls });
+  }
+  if (/sonnet/i.test(cm) && !/opus/i.test(cm)) {
+    out.push({
+      name: 'Claude Sonnet',
+      role: 'Balanced reasoning',
+      cost: '~$3/1M tok',
+      color: '#3b82f6',
+      bullets: ['Balanced speed and quality', 'Complex multi-step analysis', 'Mid-tier cost efficiency'],
+    });
+  }
+  if (/opus/i.test(cm)) {
+    var opusCtx = '';
+    var om = cm.match(/opus[\s\S]{0,400}/i);
+    if (om) opusCtx = om[0];
+    var opusBuls = [];
+    if (/synthes|reasoning|analys/i.test(opusCtx)) opusBuls.push('Deep reasoning and synthesis');
+    if (/sod|compliance|violation/i.test(opusCtx)) opusBuls.push('SOD / compliance analysis');
+    if (/200k|context|long/i.test(opusCtx)) opusBuls.push('200K token context window');
+    if (opusBuls.length === 0) opusBuls = ['Deep reasoning on complex queries', 'High-quality synthesis', 'Largest context window'];
+    out.push({ name: 'Claude Opus', role: 'Smart / Deep reasoning', cost: '~$15/1M tok', color: '#7c3aed', bullets: opusBuls });
+  }
+  return out;
+}
+
+function parseSev(cm, sm) {
+  var cmClean = stripCodeBlocks(cm || '');
+  var smClean = stripCodeBlocks(sm || '');
+  var all = cmClean + '\n' + smClean;
+  if (!/CRITICAL|HIGH|MEDIUM|LOW/i.test(all)) return null;
+
+  var defaults = {
+    critical: 'Direct fraud risk, immediate remediation required',
+    high:     'Significant risk, remediate within 30 days',
+    medium:   'Moderate risk, remediate within 90 days',
+    low:      'Minor risk, document compensating controls',
+  };
+
+  function extractSev(level, def) {
+    var p1 = new RegExp('[-*]\\s+\\*\\*' + level + '\\*\\*[:\\s]+([^\\n]{10,90})', 'i');
+    var p2 = new RegExp('\\|\\s*\\*?\\*?' + level + '\\*?\\*?\\s*\\|\\s*([^|\\n]{10,90})', 'i');
+    var p3 = new RegExp('^[\\s>*-]*' + level + '[:\\u2014\\u2013]+\\s*([^\\n.]{10,80})', 'im');
+    var result = fm(all, [p1, p2, p3]) || def;
+    return result.replace(/\*\*/g,'').replace(/\|/g,'').trim().slice(0,75);
+  }
+
+  return {
+    critical: extractSev('CRITICAL', defaults.critical),
+    high:     extractSev('HIGH',     defaults.high),
+    medium:   extractSev('MEDIUM',   defaults.medium),
+    low:      extractSev('LOW',      defaults.low),
+  };
+}
+
+function parseConstraints(cm, pm, sm) {
+  var all = (pm||'') + '\n' + (sm||'') + '\n' + (cm||'');
+  var secM = all.match(/(?:Hard Constraint|Non-Negotiable|Important Constraint)[^\n]*\n([\s\S]+?)(?=\n##|$)/i);
+  if (!secM) return [];
+  return bullets(secM[1],4).concat(numbered(secM[1],4)).slice(0,4);
+}
+
+function parseDBOutputsByPhase(cm, pm) {
+  var all = (cm||'') + '\n' + (pm||'');
+  var result = {};
+
+  // Find all Phase mentions and nearby backtick snake_case table names
+  // Split into segments by phase headings
+  var phaseRe = /Phase\s+(\d+)/gi;
+  var segments = [];
+  var lastIdx = 0;
+  var lastPhase = null;
+  var pm2;
+
+  // Collect all phase positions
+  var phasePositions = [];
+  var tempRe = /Phase\s+(\d+)/gi;
+  var tempM;
+  while ((tempM = tempRe.exec(all)) !== null) {
+    phasePositions.push({ idx: tempM.index, num: parseInt(tempM[1]) });
+  }
+
+  // For each phase, gather text until the next phase or end, then extract table names
+  for (var pi = 0; pi < phasePositions.length; pi++) {
+    var startIdx = phasePositions[pi].idx;
+    var endIdx = pi + 1 < phasePositions.length ? phasePositions[pi + 1].idx : all.length;
+    var phNum = phasePositions[pi].num;
+    var chunk = all.slice(startIdx, Math.min(startIdx + 1000, endIdx));
+
+    // Find backtick-wrapped snake_case identifiers
+    var tableRe = /`([a-z][a-z0-9]*(?:_[a-z0-9]+)+)`/g;
+    var tm2;
+    var tables = [];
+    while ((tm2 = tableRe.exec(chunk)) !== null) {
+      var tname = tm2[1];
+      // Filter out common non-table names (file paths, config keys, etc.)
+      if (/\.py$|\.js$|\.md$|\.sql$|\.json$|\.sh$/.test(tname)) continue;
+      if (/^[a-z]+_[a-z]+/.test(tname) && tname.length >= 5 && tables.indexOf(tname) === -1) {
+        tables.push(tname);
+      }
+    }
+
+    if (tables.length > 0) {
+      if (!result[phNum]) result[phNum] = [];
+      for (var ti = 0; ti < tables.length; ti++) {
+        if (result[phNum].indexOf(tables[ti]) === -1) {
+          result[phNum].push(tables[ti]);
+        }
+      }
+    }
+  }
+
+  // Also scan for explicit "Phase N Output" or "Phase N Tables" sections
+  var outputSecRe = /Phase\s+(\d+)\s+(?:Output|Tables?|Schema)[^\n]*\n([\s\S]{0,600}?)(?=\nPhase\s+\d+|\n##|$)/gi;
+  var osm;
+  while ((osm = outputSecRe.exec(all)) !== null) {
+    var phN = parseInt(osm[1]);
+    var secText = osm[2];
+    var tRe2 = /`([a-z][a-z0-9]*(?:_[a-z0-9]+)+)`/g;
+    var tm3;
+    while ((tm3 = tRe2.exec(secText)) !== null) {
+      if (!result[phN]) result[phN] = [];
+      if (result[phN].indexOf(tm3[1]) === -1) result[phN].push(tm3[1]);
+    }
+  }
+
+  return result;
+}
+
+// --- Render helpers ---
+var ACOLS = ['#1d4ed8','#0891b2','#7c3aed','#ea580c','#16a34a','#dc2626','#d97706','#6b21a8','#065f46'];
+var PCOLS = ['#1d4ed8','#0891b2','#7c3aed','#ea580c','#16a34a','#dc2626','#d97706','#0f766e'];
+var CHIP_COLS = ['#1d4ed8','#0891b2','#7c3aed','#ea580c','#16a34a'];
+function aCol(l) { return ACOLS[(l.charCodeAt(0)-65) % ACOLS.length]; }
+function pCol(n) { return PCOLS[((n||1)-1) % PCOLS.length]; }
+
+function sectLabel(title, color) {
+  return '<div style="font-size:7.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:' + (color||'#6b728f') + ';margin-bottom:6px;border-bottom:2px solid ' + (color||'#e4e6f0') + ';padding-bottom:3px;">' + esc(title) + '</div>';
+}
+
+function card(title, body, accent) {
+  var ac = accent || '#e4e6f0';
+  var titleHtml = title ? sectLabel(title, ac) : '';
+  return '<div style="background:#fff;border-radius:8px;padding:10px 12px;box-shadow:0 1px 4px rgba(26,31,54,0.08);border-top:3px solid ' + ac + ';">' + titleHtml + body + '</div>';
+}
+
+function rHeader(meta) {
+  var verBadge = meta.ver
+    ? '<div style="background:#3b82f6;color:#fff;display:inline-block;padding:3px 11px;border-radius:99px;font-size:9px;font-weight:700;">v' + esc(meta.ver) + ' \u00b7 ' + esc(meta.date) + '</div>'
+    : '<div style="color:#8892b0;font-size:9px;">' + esc(meta.date) + '</div>';
+  var authorLine = meta.author
+    ? '<div style="font-size:8.5px;color:#8892b0;margin-top:4px;">Author: ' + esc(meta.author) + ' \u00b7 Status: ' + esc(meta.status) + '</div>'
+    : '<div style="font-size:8.5px;color:#8892b0;margin-top:4px;">Status: ' + esc(meta.status) + '</div>';
+  var descLine = meta.desc
+    ? '<div style="font-size:9px;color:#a8b0cc;margin-top:3px;max-width:600px;">' + esc(meta.desc.slice(0,180)) + '</div>'
+    : '';
+  return '<div style="background:#1a1f36;color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;">'
+    + '<div><div style="font-size:18px;font-weight:800;letter-spacing:-.02em;">' + esc(meta.name) + '</div>' + descLine + '</div>'
+    + '<div style="text-align:right;flex-shrink:0;margin-left:16px;">' + verBadge + authorLine + '</div>'
+    + '</div>';
+}
+
+function rSources(sources) {
+  var items = sources.map(function(s) {
+    var bulsHtml = '';
+    if (s.bullets && s.bullets.length) {
+      bulsHtml = s.bullets.map(function(b) {
+        return '<div style="font-size:8px;color:#8a93b2;padding:1px 0;">\u203a ' + esc(b.slice(0,80)) + '</div>';
+      }).join('');
+    } else {
+      bulsHtml = '<div style="font-size:7.5px;color:#8a93b2;margin-top:2px;">' + esc(s.auth || '') + '</div>';
+    }
+    return '<div style="flex:1;min-width:0;background:#fff;border-radius:7px;padding:9px 11px;box-shadow:0 1px 3px rgba(26,31,54,0.07);">'
+      + '<div style="font-size:9.5px;font-weight:700;color:' + s.color + ';padding-bottom:5px;margin-bottom:5px;border-bottom:1px solid #eef0f8;">' + esc(s.name) + '</div>'
+      + '<div style="font-size:7.5px;color:#4a5078;font-weight:600;margin-bottom:3px;">' + esc(s.auth || '') + '</div>'
+      + bulsHtml
+      + '</div>';
+  }).join('');
+  return '<div style="display:flex;gap:8px;padding:8px 10px;background:#eaecf4;border-bottom:1px solid #d8dce8;">' + items + '</div>';
+}
+
+function rAgents(agents, phases, dbOutputs) {
+  var dbOut = dbOutputs || {};
+
+  // Group agents by phase
+  var phaseMap = {};
+  var noPhase = [];
+  agents.forEach(function(a) {
+    if (a.phase !== null) {
+      if (!phaseMap[a.phase]) phaseMap[a.phase] = [];
+      phaseMap[a.phase].push(a);
+    } else {
+      noPhase.push(a);
+    }
+  });
+  var hasPhases = Object.keys(phaseMap).length > 0;
+
+  function agentCard(a) {
+    // Phase tag
+    var pTag = a.phase !== null
+      ? '<span style="background:' + pCol(a.phase) + ';color:#fff;font-size:6.5px;padding:1px 5px;border-radius:3px;font-weight:600;margin-left:auto;white-space:nowrap;">Phase ' + a.phase + '</span>'
+      : '';
+    // Parallel badge
+    var parTag = a.parallel
+      ? '<span style="border:1px solid #c7d0ff;color:#5865f2;font-size:6px;padding:1px 4px;border-radius:3px;margin-left:3px;">parallel</span>'
+      : '';
+    var buls = a.buls.map(function(b) {
+      return '<div style="color:#4a5078;font-size:8px;padding:1px 0 1px 2px;">\u203a ' + esc(b.slice(0,85)) + '</div>';
+    }).join('');
+    var tbls = a.tables.length
+      ? '<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px;">' + a.tables.map(function(t) {
+          return '<span style="background:#f0f2ff;color:#5865f2;font-size:7px;padding:1px 5px;border-radius:3px;font-family:monospace;">' + esc(t) + '</span>';
+        }).join('') + '</div>'
+      : '';
+    // Agent card header: circle + name + phase tag + parallel badge in one flex row
+    return '<div style="background:#fff;border-radius:7px;padding:7px 9px;margin-bottom:5px;box-shadow:0 1px 3px rgba(26,31,54,0.07);">'
+      + '<div style="display:flex;align-items:center;gap:5px;margin-bottom:3px;">'
+      + '<div style="background:' + aCol(a.letter) + ';color:#fff;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:9px;flex-shrink:0;">' + esc(a.letter) + '</div>'
+      + '<div style="font-weight:700;font-size:9.5px;color:#1a1f36;">' + esc(a.name.slice(0,40)) + '</div>'
+      + pTag + parTag
+      + '</div>' + buls + tbls + '</div>';
+  }
+
+  function dbSection(phaseNum) {
+    var tables = dbOut[phaseNum];
+    if (!tables || tables.length === 0) return '';
+    var chips = tables.map(function(t, idx) {
+      var chipColor = CHIP_COLS[idx % CHIP_COLS.length];
+      return '<span style="background:' + chipColor + ';color:#fff;font-size:7px;padding:2px 7px;border-radius:99px;font-family:monospace;font-weight:600;">' + esc(t) + '</span>';
+    }).join('');
+    return '<div style="background:#eef0f8;border-radius:5px;padding:5px 8px;margin:5px 0;">'
+      + '<div style="font-size:6.5px;font-weight:800;color:#6b728f;text-transform:uppercase;letter-spacing:.07em;">POSTGRESQL \u2014 PHASE ' + phaseNum + ' OUTPUT</div>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;">' + chips + '</div>'
+      + '</div>';
+  }
+
+  var rows = '';
+  if (hasPhases) {
+    var phNums = Object.keys(phaseMap).map(Number).sort(function(a,b){return a-b;});
+    phNums.forEach(function(pn) {
+      var ph = phases.filter(function(p){ return p.num === pn; })[0];
+      var phName = ph ? ph.name : 'Phase ' + pn;
+      var parCount = phaseMap[pn].filter(function(a){ return a.parallel; }).length;
+      rows += '<div style="display:flex;align-items:center;gap:5px;margin:6px 0 4px;">'
+        + '<span style="background:' + pCol(pn) + ';color:#fff;font-size:7px;font-weight:700;padding:2px 7px;border-radius:3px;white-space:nowrap;">Phase ' + pn + '</span>'
+        + '<span style="font-size:8px;color:#4a5078;font-weight:600;">' + esc(phName.slice(0,35)) + '</span>'
+        + (parCount > 0 ? '<span style="border:1px solid #e4e6f0;color:#6b728f;font-size:6.5px;padding:1px 4px;border-radius:3px;margin-left:auto;">' + parCount + ' parallel</span>' : '')
+        + '</div>';
+      phaseMap[pn].forEach(function(a) { rows += agentCard(a); });
+      // Insert DB output bar after this phase group
+      rows += dbSection(pn);
+    });
+    noPhase.forEach(function(a) { rows += agentCard(a); });
+  } else {
+    agents.forEach(function(a) { rows += agentCard(a); });
+  }
+
+  // Compute phase range label
+  var phKeys = Object.keys(phaseMap).map(Number).sort(function(a,b){return a-b;});
+  var phLabel = phKeys.length > 1 ? 'PHASES ' + phKeys[0] + '\u2013' + phKeys[phKeys.length-1] : (phKeys.length === 1 ? 'PHASE ' + phKeys[0] : '');
+  var headerLabel = phLabel ? 'AGENT PIPELINE \u2014 ' + phLabel : 'AGENT PIPELINE';
+
+  return '<div>'
+    + '<div style="font-size:7.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#6b728f;margin-bottom:6px;border-bottom:2px solid #e4e6f0;padding-bottom:3px;">' + headerLabel + '</div>'
+    + rows + '</div>';
+}
+
+function rModels(models) {
+  var rows = models.map(function(m) {
+    var bulsHtml = '';
+    if (m.bullets && m.bullets.length) {
+      bulsHtml = m.bullets.slice(0,3).map(function(b) {
+        return '<div style="font-size:7.5px;color:#4a5078;padding:1px 0;">\u203a ' + esc(b.slice(0,75)) + '</div>';
+      }).join('');
+    }
+    return '<div style="margin-bottom:5px;padding:7px 9px;background:#f8f9fc;border-radius:6px;border-left:3px solid ' + m.color + ';">'
+      + '<div style="font-weight:700;font-size:9px;color:' + m.color + ';">' + esc(m.name) + ' \u2014 ' + esc(m.role) + '</div>'
+      + '<div style="font-size:7.5px;color:#8a93b2;margin-top:1px;margin-bottom:' + (bulsHtml ? '3px' : '0') + ';">' + esc(m.cost) + '</div>'
+      + bulsHtml
+      + '</div>';
+  }).join('');
+  return card('Claude Model Routing', rows, '#7c3aed');
+}
+
+function rSev(sev, agents) {
+  // Check if any agent handles severity (look for agent with 'sev' or 'risk' in name, or common severity-handling agents)
+  var sevAgentLetter = '';
+  if (agents && agents.length) {
+    for (var i = 0; i < agents.length; i++) {
+      var a = agents[i];
+      if (/risk|sev|analyz|assess/i.test(a.name)) {
+        sevAgentLetter = a.letter;
+        break;
+      }
+    }
+  }
+  var title = sevAgentLetter ? 'SEVERITY MATRIX (AGENT ' + sevAgentLetter + ')' : 'Severity Matrix';
+
+  var lvls = [
+    {label:'CRITICAL', desc:sev.critical, color:'#dc2626'},
+    {label:'HIGH',     desc:sev.high,     color:'#ea580c'},
+    {label:'MEDIUM',   desc:sev.medium,   color:'#d97706'},
+    {label:'LOW',      desc:sev.low,      color:'#16a34a'},
+  ];
+  var rows = lvls.map(function(l) {
+    return '<div style="display:flex;align-items:flex-start;gap:5px;margin-bottom:4px;">'
+      + '<span style="background:' + l.color + ';color:#fff;font-size:6.5px;font-weight:700;padding:2px 5px;border-radius:3px;min-width:52px;text-align:center;flex-shrink:0;margin-top:1px;">' + l.label + '</span>'
+      + '<span style="font-size:8.5px;color:#4a5078;">' + esc(l.desc) + '</span>'
+      + '</div>';
+  }).join('');
+  return card(title, rows, '#ea580c');
+}
+
+function rKPIs(kpis) {
+  var cols = kpis.length <= 2 ? 1 : 2;
+  var items = kpis.slice(0,6).map(function(k) {
+    return '<div style="text-align:center;padding:6px 4px;background:#f8f9fc;border-radius:6px;">'
+      + '<div style="font-size:16px;font-weight:800;color:#1a1f36;line-height:1;">' + esc(k.value) + '</div>'
+      + '<div style="font-size:7px;color:#6b728f;margin-top:3px;line-height:1.3;">' + esc(k.label.slice(0,40)) + '</div>'
+      + '</div>';
+  }).join('');
+  return card('Target KPIs', '<div style="display:grid;grid-template-columns:repeat(' + cols + ',1fr);gap:4px;">' + items + '</div>', '#10b981');
+}
+
+function rRules(rules) {
+  var rows = rules.map(function(r, i) {
+    return '<div style="font-size:8px;color:#4a5078;padding:3px 0;border-bottom:1px solid #f0f2ff;">'
+      + '<span style="color:#dc2626;font-weight:700;">' + (i+1) + '.</span> ' + esc(r.slice(0,85)) + '</div>';
+  }).join('');
+  return card('Critical Rules', rows, '#dc2626');
+}
+
+function rPhases(phases, agents) {
+  var rows = phases.map(function(p) {
+    var ags = agents.filter(function(a){ return a.phase === p.num; }).map(function(a) {
+      return '<span style="background:' + aCol(a.letter) + ';color:#fff;border-radius:50%;width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center;font-size:6px;font-weight:700;">' + esc(a.letter) + '</span>';
+    }).join('');
+    return '<div style="display:flex;align-items:center;gap:5px;padding:3px 0;border-bottom:1px solid #f0f2ff;">'
+      + '<span style="background:' + pCol(p.num) + ';color:#fff;font-size:7px;font-weight:700;padding:2px 6px;border-radius:3px;white-space:nowrap;">' + esc(p.label || ('Phase ' + p.num)) + '</span>'
+      + '<span style="font-size:8.5px;color:#4a5078;flex:1;">' + esc(p.name.slice(0,45)) + '</span>'
+      + (ags ? '<div style="display:flex;gap:2px;flex-shrink:0;">' + ags + '</div>' : '')
+      + '</div>';
+  }).join('');
+  return card('Execution Sequence', rows, '#1d4ed8');
+}
+
+function rWorkflows(wf) {
+  var rows = wf.map(function(w) {
+    var whenLine = w.when ? '<div style="font-size:7.5px;color:#8a93b2;margin:2px 0 1px;">When: ' + esc(w.when.slice(0,80)) + '</div>' : '';
+    var stepLines = w.steps.slice(0,3).map(function(s) {
+      return '<div style="font-size:8px;color:#4a5078;padding:1px 0;">\u203a ' + esc(s.slice(0,65)) + '</div>';
+    }).join('');
+    return '<div style="margin-bottom:6px;padding-bottom:5px;border-bottom:1px solid #f0f2ff;">'
+      + '<div style="font-weight:700;font-size:9px;color:#1a1f36;">Workflow ' + w.num + ': ' + esc(w.name.slice(0,35)) + '</div>'
+      + whenLine + stepLines + '</div>';
+  }).join('');
+  return card('Outputs &amp; Constraints', rows, '#0891b2');
+}
+
+function rTech(tech, constraints) {
+  var body = '';
+  if (tech.length > 0) {
+    body += tech.slice(0,12).map(function(t) {
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid #f0f2ff;">'
+        + '<span style="font-size:8.5px;color:#1a1f36;font-weight:600;">&bull; ' + esc(t.name.slice(0,22)) + '</span>'
+        + '<span style="font-size:7.5px;color:#6b728f;text-align:right;">' + esc(t.desc.slice(0,28)) + '</span>'
+        + '</div>';
+    }).join('');
+  }
+  if (constraints.length > 0) {
+    body += '<div style="font-size:7px;font-weight:800;color:#dc2626;text-transform:uppercase;letter-spacing:.05em;margin:7px 0 3px;">Hard Constraints</div>';
+    body += constraints.map(function(c) {
+      return '<div style="font-size:7.5px;color:#4a5078;padding:2px 0;">\u26a0 ' + esc(c.slice(0,75)) + '</div>';
+    }).join('');
+  }
+  return card('Tech Stack', body, '#6b728f');
+}
+
+function rFooter(meta, agents) {
+  return '<div style="background:#1a1f36;color:#6b728f;font-size:7.5px;padding:6px 20px;display:flex;justify-content:space-between;align-items:center;">'
+    + '<span>' + esc(meta.name) + ' \u00b7 Architecture One-Pager</span>'
+    + '<span>Generated ' + new Date().toISOString().slice(0,10) + ' \u00b7 ' + esc(meta.author) + ' \u00b7 ' + esc(meta.status) + '</span>'
+    + '</div>';
+}
+
+// --- Main renderer ---
+function renderOP(d) {
+  var meta = d.meta;
+  var agents = d.agents;
+  var phases = d.phases;
+  var tech = d.tech;
+  var kpis = d.kpis;
+  var wf = d.wf;
+  var rules = d.rules;
+  var sources = d.sources;
+  var models = d.models;
+  var sev = d.sev;
+  var constraints = d.constraints;
+  var dbOutputs = d.dbOutputs || {};
+
+  // Build middle two-column section per spec: 1.45fr left, 1fr right
+  var midHtml = '<div style="display:grid;grid-template-columns:1.45fr 1fr;gap:9px;padding:9px;align-items:start;">'
+    + rAgents(agents, phases, dbOutputs)
+    + '<div style="display:flex;flex-direction:column;gap:7px;">'
+    + (models.length > 0 ? rModels(models) : '')
+    + (sev ? rSev(sev, agents) : '')
+    + (kpis.length > 0 ? rKPIs(kpis) : '')
+    + '</div>'
+    + '</div>';
+
+  // Bottom 3-column: execution sequence | outputs+constraints | tech stack
+  var bottomParts = [];
+  if (phases.length > 0) bottomParts.push(rPhases(phases, agents));
+  if (wf.length > 0) bottomParts.push(rWorkflows(wf));
+  if (tech.length > 0 || constraints.length > 0) bottomParts.push(rTech(tech, constraints));
+  var bottomHtml = bottomParts.length > 0
+    ? '<div style="display:grid;grid-template-columns:repeat(' + bottomParts.length + ',1fr);gap:9px;padding:0 9px 9px;">' + bottomParts.join('') + '</div>'
+    : '';
+
+  return '<div style="font-family:system-ui,-apple-system,sans-serif;background:#f8f9fc;font-size:11px;line-height:1.4;">'
+    + rHeader(meta)
+    + (sources.length > 0 ? rSources(sources) : '')
+    + midHtml
+    + bottomHtml
+    + rFooter(meta, agents)
+    + '</div>';
+}
+
+// --- Main actions ---
+var lastHTML = '';
+
+function buildHTML() {
+  var cm = document.getElementById('claude-in').value.trim();
+  var pm = document.getElementById('plan-in').value.trim();
+  var sm = document.getElementById('skill-in').value.trim();
+  if (!cm && !pm && !sm) { setStatus('Paste at least one file first.', 'err'); return null; }
+  var d = parse(cm, pm, sm);
+  var body = renderOP(d);
+  var full = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'
+    + '<meta name="viewport" content="width=device-width,initial-scale=1">'
+    + '<title>' + esc(d.meta.name) + ' \u2014 One-Pager</title>'
+    + '<style>*{box-sizing:border-box;margin:0;padding:0}body{background:#f8f9fc}'
+    + '@media print{body{background:#fff}@page{size:A3 landscape;margin:.5cm}}</style>'
+    + '</head><body>' + body + '</body></html>';
+  lastHTML = full;
+  setStatus(d.agents.length + ' agents \u00b7 ' + d.phases.length + ' phases \u00b7 ' + d.wf.length + ' workflows \u00b7 ' + d.tech.length + ' tech items', 'ok');
+  return full;
+}
+
+function openPreview() {
+  try {
+    var full = buildHTML();
+    if (!full) return;
+    var blob = new Blob([full], { type: 'text/html' });
+    var url  = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    document.getElementById('dl-btn').disabled = false;
+  } catch(err) {
+    setStatus('Error: ' + err.message, 'err');
+    console.error(err);
+  }
+}
+
+function downloadHTML() {
+  try {
+    var full = lastHTML || buildHTML();
+    if (!full) return;
+    var blob = new Blob([full], { type: 'text/html' });
+    var url  = URL.createObjectURL(blob);
+    var a    = document.createElement('a');
+    a.href   = url;
+    a.download = 'architecture-one-pager.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch(err) {
+    setStatus('Download error: ' + err.message, 'err');
+    console.error(err);
+  }
+}
+</script>
+<script>
+window.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('claude-in').value = "# Claude Code Project Guide: SOD Compliance System\n\n**Project:** AI-Powered Segregation of Duties (SOD) Compliance System\n**Version:** 1.6\n**Last Updated:** 2026-02-27\n**Primary Language:** Python 3.9+\n**Framework:** FastAPI with MCP (Model Context Protocol)\n\n---\n\n## \ud83c\udfaf Project Overview\n\nThis is an autonomous compliance monitoring system that peforms user access review, sod analysis, risk assessement and reporting across key business systems - NetSuite ERP, Okta, Salesforce, Coupa etc. The system uses Claude Opus 4.6 for intelligent analysis and operates as an MCP server, providing compliance tools to Claude Code and other MCP clients.\n\n### Core Capabilities\n\n1. **Autonomous Data Collection**: Background agent syncs user/role/permission data from NetSuite (daily full sync + hourly incremental)\n2. **AI-Powered Analysis**: Claude Opus 4.6 analyzes 18 SOD rules against user access patterns\n3. **MCP Integration**: 11 tools available via Model Context Protocol for real-time compliance queries\n4. **Knowledge Base**: pgvector-powered semantic search for compliance policies and remediation guidance\n\n### Success Metrics\n\n- \u2705 1,928/1,933 users synced from NetSuite (99.7% coverage)\n- \u2705 18 SOD rules implemented and active\n- \u2705 55x query performance improvement (on-demand \u2192 cached)\n- \u2705 37 MCP tools operational (updated from 11)\n- \u2705 Autonomous agent running 24/7\n- \u2705 **NEW**: Slack bot with multi-turn agentic reasoning (Feb 2026)\n\n### \ud83d\ude80 Latest Enhancement: Multi-Turn Agentic Tool Use (Feb 2026)\n\nThe Slack bot now supports **multi-step reasoning** where Claude can:\n1. Make initial tool calls to gather information\n2. Analyze the results\n3. Make follow-up tool calls based on that analysis\n4. Provide comprehensive recommendations\n\n**Example Impact:**\n- **Before**: User asks \"Can we assign Controller role to Austin?\" \u2192 Bot checks new role only \u2192 Reports \"0 conflicts\" \u274c\n- **After**: Bot gets current roles \u2192 Analyzes ALL roles together \u2192 Reports \"249 conflicts, HIGH risk\" \u2705\n\n**Technical Details:**\n- Multi-turn conversation loop (up to 5 turns)\n- Automatic Slack @mention \u2192 email resolution\n- Complete role combination analysis (not just new role in isolation)\n- File: `compliance-agent/slack_bot_local.py` (lines 242-315)\n\n**See:** `docs/SLACK_INTEGRATION.md` for complete documentation.\n\n### \ud83d\udd2d Latest Enhancement: LangSmith Observability + ChatAnthropic Migration (Feb 2026)\n\nFull distributed tracing is now wired into every LLM call site via LangSmith.\n\n**Tracing coverage:**\n\n| Call site | Mechanism | Trace name |\n|-----------|-----------|-----------|\n| Slack bot main loop | `ChatAnthropic` + `@traceable` | `slack_compliance_query` |\n| Direct Anthropic SDK calls | `@traceable` + `usage_metadata` | `claude.messages.create` |\n| LangChain agents (analyzer, risk_assessor, etc.) | Auto via `LANGCHAIN_TRACING_V2=true` | `RunnableSequence` |\n| `AnthropicProvider.generate/stream` | `@traceable` | `anthropic_provider.generate` |\n\n**Slack bot architecture change:**\n\nThe Slack bot `process_with_claude()` was migrated from `AnthropicClientWrapper` (raw SDK) to `ChatAnthropic` (LangChain). This enables LangSmith to automatically populate `total_cost`, `prompt_tokens`, and `completion_tokens` per trace. A `TokenTrackingCallback` bridges LangChain's callback events to the existing `TokenTracker`.\n\n**DM conversation history:**\n\n`fetch_dm_history()` was added to carry the last 10 messages as context for DM channel requests (Slack DMs have no `thread_ts`, so `conversations_history()` is used instead of `conversations_replies()`).\n\n**Required env vars (add to `.env`):**\n```bash\nLANGSMITH_API_KEY=lsv2_pt_...\nLANGCHAIN_TRACING_V2=true\nLANGCHAIN_PROJECT=compliance-agent\n```\n\n**Verifying traces:** Open smith.langchain.com \u2192 project `compliance-agent`. Each Slack query appears as one `slack_compliance_query` trace with nested LLM call spans showing cost, token counts, and latency.\n\n**See:** `docs/LESSONS_LEARNED.md` Issues #27-30 for detailed root causes and solutions.\n\n---\n\n### \ud83e\udde0 Latest Enhancement: Memory Management \u2014 Phase A + B (Feb 2026)\n\n**Phase A \u2014 Redis TTL Cache** (`slack_bot_local.py`, deployed 2026-02-24):\n\nMCP tool calls are now cached in Redis to eliminate redundant calls within a TTL window.\n\n- Cache key: `mcp:{tool_name}:{md5(arguments)}`\n- TTL map: `get_user_violations=1h`, `get_role_conflicts=24h`, `get_violation_stats=30min`, `analyze_access_request=1h`\n- Mutating tools excluded: `trigger_manual_sync`, `approve_exception`, `request_exception_approval`\n- Feature flag: `USE_MCP_CACHE=false` in `.env` to disable\n- LangSmith: cache hits tagged with `metadata.context_cache_hit=true` and `metadata.cache_tool` \u2014 note: the tag is applied on the ROOT run (not child span) via `_cache_hit_tls` thread-local (fixed commit `424fcf7`, 2026-02-25)\n- Verified: Cache HIT at 0.01s vs MISS at ~50ms in logs\n\n**Phase A bugfix also included:** `handle_dm()` was calling `process_with_claude()` without `thread_history`. Fixed to call `fetch_dm_history()` first. Token impact: 3,485 \u2192 5,494 per follow-up query (expected \u2014 prior context now injected).\n\n**Phase B \u2014 Conversation Summarization** (`slack_bot_local.py` + `models/conversation_summary.py`, deployed 2026-02-24):\n\nAfter each DM exchange, Haiku generates a 2-3 sentence summary stored in Postgres. On the next query from the same user, the 3 most recent summaries are injected into the system message (~150 tokens vs ~2K raw tokens).\n\n- New table: `conversation_summaries` (user_email, channel_id, summary, topics, outcome, expires_at 90d)\n- Write-back: non-blocking `threading.Thread` after each response\n- Retrieval: 3 most recent non-expired summaries per user\n- Feature flag: `USE_CONV_SUMMARIES=false` in `.env` to disable\n- LangSmith: injected summary count tagged as `metadata.context_summaries_injected`\n- Token reduction: ~2,000 raw prior tokens \u2192 ~150 summary tokens per follow-up query\n\n**Required env vars:**\n```bash\nUSE_MCP_CACHE=true          # Phase A (default: true)\nUSE_CONV_SUMMARIES=true     # Phase B (default: true)\nUSE_ANSWER_FEEDBACK=true    # Phase feedback loop (default: true)\nREDIS_URL=redis://localhost:6379/0\nDATABASE_URL=postgresql://...  # already required\n```\n\n**See:** `database/migrations/006_add_conversation_summaries.sql` for schema.\n\n**Phase feedback \u2014 Human Answer Scoring** (`slack_bot_local.py` + `models/answer_feedback.py`, deployed 2026-02-26):\n\nBlock Kit \u2705/\u274c/\ud83d\udd27 buttons appended to every bot response. On click, feedback written non-blocking to Postgres and LangSmith `create_feedback()`. Negative feedback busts the Redis violation cache immediately.\n\n- New table: `answer_feedback` (run_id, signal, correction, tool_called, query_preview, answer_preview)\n- Migration: `database/migrations/007_add_answer_feedback.sql`\n- Model: `models/answer_feedback.py`\n- LangSmith: `human_rating` score (1.0/0.0/0.5) visible in Feedback tab alongside 3 auto-evals\n- Redis: NEGATIVE signal deletes all `mcp:get_user_violations:*` keys\n- Feature flag: `USE_ANSWER_FEEDBACK=false` in `.env` to disable\n\n---\n\n### \u26a1 Latest Enhancement: Haiku/Opus Model Split + LangSmith Evaluators (Feb 2026)\n\n**Haiku for tool dispatch, Opus for synthesis** (`slack_bot_local.py:461`):\n\n```python\nhas_tool_results = any(isinstance(m, ToolMessage) for m in messages)\nactive_model = llm_with_tools if has_tool_results else haiku_with_tools\n```\n\nTool-dispatch turns (decide which MCP tool to call) use `claude-haiku-4-5-20251001` \u2014 fast and cheap.\nOnce tool results arrive, the synthesis turn switches to `claude-opus-4-6` for high-quality reasoning.\n\n**Verified trace `c06830c0`:** `haiku \u2192 call_mcp_tool \u2192 haiku \u2192 call_mcp_tool \u2192 haiku \u2192 opus` | 14.3s | 2 tools\n\n**3 online LangSmith evaluators** fire on every trace:\n- `mcp_tool_called` \u2014 scores 0 if Claude answered without calling any MCP tool\n- `mcp_tool_coverage` \u2014 scores 0 if access-request query skipped `analyze_access_request`\n- `hallucination_heuristic` \u2014 scores 0 if response contains `<tool_call>` XML or ungrounded numeric claims\n\nAll evaluators use 3-layer detection: tool child spans \u2192 XML hallucination \u2192 text grounding markers.\n\n**See:** `docs/LESSONS_LEARNED.md` Issues #31-33 for root causes and solutions.\n\n---\n\n## \ud83c\udfd7\ufe0f Architecture\n\n### Three-Phase System\n\n```\nPhase 1: Data Collection (Autonomous Agent)\n\u251c\u2500\u2500 NetSuite RESTlet API \u2192 Python Connector\n\u251c\u2500\u2500 Scheduled Sync (APScheduler)\n\u2514\u2500\u2500 PostgreSQL Storage\n\nPhase 2: AI Analysis (Claude Opus 4.6)\n\u251c\u2500\u2500 SOD Rule Engine (18 rules)\n\u251c\u2500\u2500 LLM Abstraction Layer (multi-provider)\n\u2514\u2500\u2500 Violation Detection & Severity Scoring\n\nPhase 3: Knowledge Base (pgvector)\n\u251c\u2500\u2500 Policy Documents (chunked, embedded)\n\u251c\u2500\u2500 Semantic Search (OpenAI embeddings)\n\u2514\u2500\u2500 RAG for Remediation Guidance\n```\n\n### Key Components\n\n| Component | File | Purpose |\n|-----------|------|---------|\n| **MCP Server** | `mcp/mcp_server.py` | FastAPI server exposing 11 compliance tools |\n| **Data Collector** | `agents/data_collector.py` | Autonomous agent for scheduled syncing |\n| **SOD Analyzer** | `agents/analyzer.py` | AI-powered violation detection |\n| **NetSuite Connector** | `connectors/netsuite_connector.py` | RESTlet API integration |\n| **Knowledge Agent** | `agents/knowledge_base_agent.py` | pgvector semantic search |\n| **LLM Layer** | `services/llm_service.py` | Multi-provider abstraction (Anthropic/OpenAI/Gemini) |\n| **Tool Router** | `utils/tool_router.py` | Pre-filter that limits which tools Claude sees per query (saves ~8K tokens). Every new MCP tool must be registered here. |\n\n---\n\n## \ud83d\udcc1 Directory Structure\n\n```\ncompliance-agent/\n\u251c\u2500\u2500 agents/              # Autonomous agents (collector, analyzer, knowledge)\n\u251c\u2500\u2500 connectors/          # External system integrations (NetSuite)\n\u251c\u2500\u2500 database/\n\u2502   \u251c\u2500\u2500 migrations/     # Alembic database migrations\n\u2502   \u2514\u2500\u2500 seed_data/      # SOD rules, test data\n\u251c\u2500\u2500 docs/               # Comprehensive documentation\n\u2502   \u251c\u2500\u2500 LESSONS_LEARNED.md       # All 15 issues + solutions (CRITICAL REFERENCE)\n\u2502   \u251c\u2500\u2500 MCP_SERVER_MANAGEMENT.md # Operations guide\n\u2502   \u2514\u2500\u2500 *.md            # Architecture, troubleshooting, user guides\n\u251c\u2500\u2500 mcp/                # Model Context Protocol server\n\u251c\u2500\u2500 models/             # SQLAlchemy ORM models\n\u251c\u2500\u2500 repositories/       # Data access layer\n\u251c\u2500\u2500 scripts/            # Management scripts (restart, status check)\n\u251c\u2500\u2500 services/           # Business logic (NetSuite client, LLM service)\n\u2514\u2500\u2500 tests/              # Test suites\n\nKey Files:\n- .env                  # Environment config (DATABASE_URL, API keys)\n- requirements.txt      # Python dependencies\n- CLAUDE.md            # This file\n```\n\n---\n\n## \ud83d\udd27 Technology Stack\n\n### Core Technologies\n\n- **Python 3.9+**: Primary language\n- **FastAPI**: Web framework for MCP server\n- **SQLAlchemy**: ORM for PostgreSQL\n- **PostgreSQL 14+**: Database with pgvector extension\n- **APScheduler**: Background job scheduling\n- **Alembic**: Database migrations\n\n### External Integrations\n\n- **NetSuite RESTlet API**: User/role/permission data source\n- **Anthropic API (Claude Opus 4.6)**: SOD analysis LLM\n- **OpenAI API**: Embeddings for semantic search\n- **pgvector**: Vector similarity search for RAG\n\n### Key Libraries\n\n```python\nfastapi==0.104.1          # MCP server\nuvicorn==0.24.0           # ASGI server\nsqlalchemy==2.0.23        # ORM\npsycopg2-binary==2.9.9    # PostgreSQL driver\nanthropic==0.8.0          # Claude API client\nopenai==1.6.1             # OpenAI API client\napscheduler==3.10.4       # Job scheduler\npgvector==0.2.4           # Vector search\nalembic==1.13.0           # Migrations\n```\n\n---\n\n## \ud83d\ude80 Getting Started\n\n### Prerequisites\n\n```bash\n# Check Python version (requires 3.9+)\npython3 --version\n\n# Check PostgreSQL (requires 14+ with pgvector)\npsql --version\n\n# Ensure environment variables are set\ncat .env | grep -E \"DATABASE_URL|ANTHROPIC_API_KEY|NETSUITE_\"\n```\n\n### Starting the MCP Server\n\n```bash\n# Option 1: Using restart script (recommended)\n./scripts/restart_mcp.sh\n\n# Option 2: Manual start\npython3 -m mcp.mcp_server > /tmp/mcp_server.log 2>&1 &\n\n# Check status\n./scripts/check_mcp_status.sh\n\n# View logs\ntail -f /tmp/mcp_server.log\n```\n\n### Connecting Claude Desktop (STDIO Bridge)\n\nThe MCP server uses HTTP transport, but Claude Desktop expects STDIO. We use a bridge to connect them:\n\n**Bridge File:** `/Users/prabal.saha/mcp_stdio_http_bridge.py`\n\n```bash\n# Add to Claude Desktop config:\n# ~/Library/Application Support/Claude/claude_desktop_config.json\n\n{\n  \"mcpServers\": {\n    \"compliance-system\": {\n      \"command\": \"python3\",\n      \"args\": [\"/Users/prabal.saha/mcp_stdio_http_bridge.py\"]\n    }\n  }\n}\n\n# Test bridge\necho '{\"jsonrpc\":\"2.0\",\"method\":\"tools/list\",\"params\":{},\"id\":1}' | python3 /Users/prabal.saha/mcp_stdio_http_bridge.py\n\n# Check Claude Desktop logs\ntail -f ~/Library/Logs/Claude/mcp-server-compliance-system.log\n```\n\n**See:** `docs/MCP_STDIO_HTTP_BRIDGE.md` for complete documentation.\n\n### Database Operations\n\n```bash\n# Connect to database\npsql $DATABASE_URL\n\n# Run migrations\nalembic upgrade head\n\n# Rollback migration\nalembic downgrade -1\n\n# Create new migration\nalembic revision --autogenerate -m \"Description\"\n```\n\n---\n\n## \ud83d\udccb Development Guidelines\n\n### Code Conventions\n\n1. **Python Style**: Follow PEP 8, use type hints\n2. **Naming**:\n   - Classes: `PascalCase` (e.g., `DataCollectionAgent`)\n   - Functions/methods: `snake_case` (e.g., `analyze_user`)\n   - Constants: `UPPER_SNAKE_CASE` (e.g., `DEFAULT_PAGE_SIZE`)\n3. **Imports**: Standard library \u2192 Third-party \u2192 Local (separated by blank lines)\n4. **Docstrings**: Use for all public classes/functions\n\n### Database Guidelines\n\n\u26a0\ufe0f **CRITICAL**: See `docs/LESSONS_LEARNED.md` Issues #1, #14 for database pitfalls\n\n1. **Reserved Names**: Never use `metadata` as a column name (SQLAlchemy reserves it)\n2. **Enum Values**: Python enums use UPPERCASE, ensure DB constraints match\n3. **Foreign Keys**: Always verify referential integrity chain before inserting\n4. **Transactions**: Use proper session management, handle rollbacks\n\nExample:\n```python\n# \u2705 GOOD: Enum values match DB constraints\nclass SyncStatus(enum.Enum):\n    PENDING = \"PENDING\"     # DB constraint expects UPPERCASE\n    RUNNING = \"RUNNING\"\n    SUCCESS = \"SUCCESS\"\n\n# \u2705 GOOD: Proper column naming\nclass SyncMetadata(Base):\n    sync_metadata = Column(JSON)  # Avoid 'metadata' (reserved)\n\n# \u2705 GOOD: Foreign key chain\n# sync_metadata \u2190 users\n# compliance_scans \u2192 violations (scan_id FK)\n```\n\n### NetSuite Integration\n\n\u26a0\ufe0f **CRITICAL**: See `docs/LESSONS_LEARNED.md` Issue #13 for pagination bug\n\n1. **Page Size Limit**: NetSuite RESTlet caps at 200 users per request (not 1000!)\n2. **Pagination**: Always use `page_size=200` for user queries\n3. **Error Handling**: NetSuite silently truncates, verify record counts\n4. **Rate Limiting**: Respect API limits (consider delays for large syncs)\n\nExample:\n```python\n# \u2705 GOOD: Correct page size\nresult = self.client.get_all_users_paginated(\n    page_size=200,  # NetSuite's actual limit\n    include_permissions=True\n)\n\n# \u274c BAD: Will silently lose 79.2% of data\nresult = self.client.get_all_users_paginated(\n    page_size=1000,  # NetSuite caps at 200\n    include_permissions=True\n)\n```\n\n### LLM Integration\n\n1. **Model Selection**: Use `claude-opus-4.6` for SOD analysis (most capable)\n2. **Message Format**: Use proper roles (`system`, `user`, `assistant`)\n3. **Error Handling**: LLM calls can fail, implement retries with exponential backoff\n4. **Token Management**: Be mindful of context limits (200K tokens for Opus 4.6)\n\nExample:\n```python\n# \u2705 GOOD: Proper message format\nmessages = [\n    {\"role\": \"system\", \"content\": system_prompt},\n    {\"role\": \"user\", \"content\": user_query}\n]\n\n# \u274c BAD: Wrong key names\nmessages = [\n    {\"type\": \"system\", \"text\": system_prompt}  # Wrong keys\n]\n```\n\n---\n\n## \ud83e\uddea Testing\n\n### Smoke Test Suite\n\n```bash\n# Run all tests\npython3 -m pytest tests/\n\n# Run specific test\npython3 -m pytest tests/test_data_collection.py::test_full_sync\n\n# Run with verbose output\npython3 -m pytest -v tests/\n```\n\n### Manual Testing Commands\n\n```bash\n# Test MCP tools (from Claude Code or MCP client)\nlist_systems\nget_violation_stats\nlist_all_users(limit=10)\n\n# Test data collection\npython3 -c \"from agents.data_collector import DataCollectionAgent; agent = DataCollectionAgent(); agent.full_sync()\"\n\n# Test database connection\npsql $DATABASE_URL -c \"SELECT COUNT(*) FROM users;\"\n\n# Test NetSuite connection\npython3 -c \"from services.netsuite_client import NetSuiteClient; client = NetSuiteClient(); print(client.get_all_users_paginated(page_size=10))\"\n```\n\n---\n\n## \ud83d\udd0d Common Tasks\n\n### 1. Adding a New SOD Rule\n\n1. Add rule to `database/seed_data/sod_rules.json`\n2. Rule format:\n   ```json\n   {\n     \"rule_code\": \"UNIQUE_CODE\",\n     \"rule_name\": \"Descriptive Name\",\n     \"description\": \"What this rule checks\",\n     \"conflicting_permissions\": [\"PERM1\", \"PERM2\"],\n     \"severity\": \"CRITICAL|HIGH|MEDIUM|LOW\",\n     \"risk_category\": \"Financial|Security|Compliance\"\n   }\n   ```\n3. Restart MCP server to load new rule\n4. Trigger sync to apply: `trigger_manual_sync(sync_type=\"full\")`\n\n### 2. Adding a New MCP Tool\n\n1. Add tool function to `mcp/mcp_server.py`\n2. Follow FastAPI route pattern:\n   ```python\n   @app.post(\"/tools/{tool_name}\")\n   async def tool_name(request: ToolRequest) -> ToolResponse:\n       # Implementation\n       pass\n   ```\n3. Add to `TOOLS` list in startup function\n4. **Register in `utils/tool_router.py`** \u2014 add the tool name to the appropriate intent group (or create a new group). Without this step, Claude will never see the tool because the router pre-filters the tool list before each query.\n5. Restart server\n6. Verify with `tools/list` MCP request\n\n### 3. Debugging Data Collection Issues\n\n```bash\n# 1. Check agent status\n./scripts/check_mcp_status.sh\n\n# 2. Check recent logs\ntail -100 /tmp/mcp_server.log | grep -i \"error\\|warning\"\n\n# 3. Check sync history\npsql $DATABASE_URL -c \"SELECT * FROM sync_metadata ORDER BY started_at DESC LIMIT 5;\"\n\n# 4. Check user counts\npsql $DATABASE_URL -c \"SELECT COUNT(*) FROM users;\"\npsql $DATABASE_URL -c \"SELECT COUNT(*) FROM users WHERE is_active = true;\"\n\n# 5. Trigger manual sync\n# From Claude Code: trigger_manual_sync(sync_type=\"full\")\n\n# 6. Check for violations\npsql $DATABASE_URL -c \"SELECT severity, COUNT(*) FROM violations GROUP BY severity;\"\n```\n\n### 4. Database Migration\n\n```bash\n# Create migration after model changes\nalembic revision --autogenerate -m \"Add new column to violations table\"\n\n# Review generated migration in database/migrations/versions/\n\n# Apply migration\nalembic upgrade head\n\n# If issues, rollback\nalembic downgrade -1\n\n# Check current version\nalembic current\n```\n\n---\n\n## \u26a0\ufe0f Critical Issues to Avoid\n\n### **MUST READ**: `docs/LESSONS_LEARNED.md`\n\nThis document contains 15 major issues encountered during development. **Read this before making changes** to avoid repeating mistakes.\n\n### Top 5 Critical Issues\n\n1. **Issue #13**: NetSuite page_size=1000 causes 79.2% data loss (use 200)\n2. **Issue #1**: Never use `metadata` as SQLAlchemy column name (reserved)\n3. **Issue #14**: Python enum values must match DB CHECK constraints (use UPPERCASE)\n4. **Issue #15**: Create `compliance_scans` record before inserting violations\n5. **Issue #9**: Verify repository methods exist before calling (check interfaces)\n\n### Common Pitfalls\n\n```python\n# \u274c WRONG: These will break\nclass MyModel(Base):\n    metadata = Column(JSON)  # SQLAlchemy reserves this\n\nsync.status = \"pending\"  # DB expects \"PENDING\" (uppercase)\n\n# Inserting violation without compliance_scan\nviolation.scan_id = sync.id  # FK references compliance_scans, not sync_metadata\n\n# \u274c WRONG: NetSuite pagination\nget_users(page_size=1000)  # Silently caps at 200, loses data\n\n# \u2705 RIGHT: Correct implementations\nclass MyModel(Base):\n    sync_metadata = Column(JSON)  # Use different name\n\nsync.status = SyncStatus.PENDING  # Use enum (UPPERCASE value)\n\n# Create scan first, then violations\nscan = ComplianceScan(...)\nsession.add(scan)\nsession.commit()\nviolation.scan_id = scan.id  # Now FK is valid\n\nget_users(page_size=200)  # NetSuite's actual limit\n```\n\n---\n\n## \ud83d\udee0\ufe0f Troubleshooting\n\n### Server Won't Start\n\n```bash\n# Check if port 8080 is in use\nlsof -i :8080\n\n# Kill existing process\npkill -f \"mcp.mcp_server\"\n\n# Check Python environment\npython3 -c \"import mcp.mcp_server\"\n\n# Check database connection\npsql $DATABASE_URL -c \"SELECT 1;\"\n\n# Review startup logs\ncat /tmp/mcp_server.log\n```\n\n### Data Collection Not Working\n\n```bash\n# 1. Check agent status\npsql $DATABASE_URL -c \"SELECT * FROM sync_metadata ORDER BY started_at DESC LIMIT 1;\"\n\n# 2. Check for errors in logs\ngrep -i \"error\" /tmp/mcp_server.log | tail -20\n\n# 3. Verify NetSuite credentials\npython3 -c \"from services.netsuite_client import NetSuiteClient; c=NetSuiteClient(); print(c.get_all_users_paginated(page_size=1))\"\n\n# 4. Check scheduled jobs\ngrep -i \"scheduler\\|job\" /tmp/mcp_server.log | tail -10\n```\n\n### Database Issues\n\n```bash\n# Check connection\npsql $DATABASE_URL -c \"\\conninfo\"\n\n# Check table structure\npsql $DATABASE_URL -c \"\\d users\"\n\n# Check for constraint violations\npsql $DATABASE_URL -c \"SELECT conname, contype FROM pg_constraint WHERE conrelid = 'violations'::regclass;\"\n\n# Reset database (\u26a0\ufe0f DESTRUCTIVE)\npsql $DATABASE_URL -c \"DROP SCHEMA public CASCADE; CREATE SCHEMA public;\"\nalembic upgrade head\n```\n\n### MCP Tools Not Working\n\n```bash\n# List available tools\ncurl -X POST http://localhost:8080/mcp \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\",\"params\":{}}'\n\n# Test specific tool\ncurl -X POST http://localhost:8080/mcp \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"list_systems\",\"arguments\":{}}}'\n```\n\n---\n\n## \ud83d\udcda Documentation\n\n### Essential Reading\n\n1. **LESSONS_LEARNED.md**: All 15 issues + root causes + solutions (READ FIRST)\n2. **MCP_SERVER_MANAGEMENT.md**: Server operations, monitoring, troubleshooting\n3. **MCP_STDIO_HTTP_BRIDGE.md**: STDIO-HTTP bridge for Claude Desktop\n4. **ARCHITECTURE.md**: System design, data flow, component interactions\n5. **DEMO_INSTRUCTIONS.md**: Step-by-step demo walkthrough\n\n### Quick Reference\n\n| Topic | Document | Section |\n|-------|----------|---------|\n| Database schema | `ARCHITECTURE.md` | Database Design |\n| SOD rules | `database/seed_data/sod_rules.json` | - |\n| API endpoints | `mcp/mcp_server.py` | FastAPI routes |\n| Server management | `MCP_SERVER_MANAGEMENT.md` | All sections |\n| Claude Desktop bridge | `MCP_STDIO_HTTP_BRIDGE.md` | All sections |\n| Known issues | `LESSONS_LEARNED.md` | Issues #1-15 |\n\n---\n\n## \ud83c\udf93 Project-Specific Knowledge\n\n### SOD (Segregation of Duties) Basics\n\n**Definition**: Security principle that no single person should have permissions that could enable fraud\n\n**Example Violation**: Same user can:\n- Create vendor (Vendor Master Data)\n- Create invoice (AP Processing)\n- Approve payment (AP Approval)\n\u2192 Risk: Could create fake vendor and pay themselves\n\n### 18 Active SOD Rules\n\n| Risk Category | Rule Count | Examples |\n|---------------|------------|----------|\n| Financial | 8 | AP Entry vs Approval, Journal Entry vs Approval |\n| Security | 5 | Admin vs Regular User, Script Dev vs Production |\n| Compliance | 5 | Compliance Officer Independence, Audit Log Access |\n\n### Severity Levels\n\n- **CRITICAL**: Direct fraud risk, immediate remediation required\n- **HIGH**: Significant risk, remediate within 30 days\n- **MEDIUM**: Moderate risk, remediate within 90 days\n- **LOW**: Minor risk, document compensating controls\n\n---\n\n## \ud83d\udd10 Security Considerations\n\n### Sensitive Files (Never Commit)\n\n```bash\n.env                    # API keys, database credentials\n*.log                   # May contain sensitive data\ndatabase/compliance_db/ # Local database files\n__pycache__/           # Compiled Python files\n```\n\n### Environment Variables Required\n\n```bash\n# Database\nDATABASE_URL=\"postgresql://user:pass@localhost:5432/compliance_db\"\n\n# NetSuite\nNETSUITE_ACCOUNT_ID=\"5260239_SB1\"\nNETSUITE_CONSUMER_KEY=\"...\"\nNETSUITE_CONSUMER_SECRET=\"...\"\nNETSUITE_TOKEN_ID=\"...\"\nNETSUITE_TOKEN_SECRET=\"...\"\nNETSUITE_RESTLET_URL=\"https://...\"\n\n# LLM Providers (at least one required)\nANTHROPIC_API_KEY=\"sk-ant-...\"  # For Claude (SOD analysis)\nOPENAI_API_KEY=\"sk-...\"         # For embeddings (knowledge base)\n\n# LangSmith Observability (required for cost/token tracing)\nLANGSMITH_API_KEY=\"lsv2_pt_...\"\nLANGCHAIN_TRACING_V2=true\nLANGCHAIN_PROJECT=compliance-agent\n\n# Slack Bot\nSLACK_BOT_TOKEN=\"xoxb-...\"\nSLACK_APP_TOKEN=\"xapp-...\"\n```\n\n---\n\n## \ud83d\ude80 Deployment\n\n### Production Checklist\n\n- [ ] Environment variables set in production environment\n- [ ] Database migrations applied (`alembic upgrade head`)\n- [ ] PostgreSQL has pgvector extension installed\n- [ ] NetSuite credentials validated\n- [ ] LLM API keys validated\n- [ ] Firewall allows port 8080 access\n- [ ] Log rotation configured for `/tmp/mcp_server.log`\n- [ ] Monitoring alerts set up (use `check_mcp_status.sh`)\n- [ ] Backup strategy for PostgreSQL database\n- [ ] Documentation reviewed by operations team\n\n### Running in Production\n\n```bash\n# Use systemd service (recommended)\n# Create /etc/systemd/system/mcp-server.service\n[Unit]\nDescription=MCP Compliance Server\nAfter=network.target postgresql.service\n\n[Service]\nType=simple\nUser=mcp-user\nWorkingDirectory=/opt/compliance-agent\nEnvironment=\"PATH=/usr/bin:/usr/local/bin\"\nEnvironmentFile=/opt/compliance-agent/.env\nExecStart=/usr/bin/python3 -m mcp.mcp_server\nRestart=always\nRestartSec=10\n\n[Install]\nWantedBy=multi-user.target\n\n# Enable and start\nsudo systemctl enable mcp-server\nsudo systemctl start mcp-server\nsudo systemctl status mcp-server\n```\n\n---\n\n## \ud83d\udcde Support & Resources\n\n### Internal Resources\n\n- **Documentation**: `docs/` directory\n- **Issue Tracker**: `docs/LESSONS_LEARNED.md` (15 documented issues)\n- **Architecture**: `docs/ARCHITECTURE.md`\n- **Operations**: `docs/MCP_SERVER_MANAGEMENT.md`\n\n### External Resources\n\n- **Model Context Protocol**: https://modelcontextprotocol.io\n- **FastAPI Docs**: https://fastapi.tiangolo.com\n- **SQLAlchemy Docs**: https://docs.sqlalchemy.org\n- **Claude API Docs**: https://docs.anthropic.com\n- **NetSuite SuiteScript**: https://docs.oracle.com/en/cloud/saas/netsuite\n\n### Common Questions\n\n**Q: Why is the server running on port 8080?**\nA: Default MCP server port. Change in `mcp/mcp_server.py` if needed.\n\n**Q: How often does data sync?**\nA: Full sync daily at 2:00 AM, incremental sync every hour.\n\n**Q: Can I change the SOD rules?**\nA: Yes, edit `database/seed_data/sod_rules.json` and restart server.\n\n**Q: Why Claude Opus 4.6?**\nA: Most capable model for complex compliance reasoning and context understanding.\n\n**Q: How do I add a new data source besides NetSuite?**\nA: Create new connector in `connectors/`, implement `BaseConnector` interface, register in `data_collector.py`.\n\n---\n\n## \ud83c\udfaf Current Status (2026-02-27)\n\n### \u2705 Completed\n\n- [x] Phase 1: Autonomous data collection (daily + hourly sync)\n- [x] Phase 2: AI-powered SOD analysis (18 rules active)\n- [x] Phase 3: pgvector knowledge base (RAG operational)\n- [x] MCP server with 35 tools\n- [x] Production-ready scripts (restart, status check)\n- [x] Comprehensive documentation (4 major docs)\n- [x] 99.7% user coverage (1,928/1,933 users synced)\n- [x] **NEW**: Slack bot with multi-turn agentic reasoning (Feb 2026)\n- [x] **NEW**: LangSmith distributed tracing \u2014 cost, tokens, latency per query (Feb 2026)\n- [x] **NEW**: DM conversation context \u2014 bot maintains history across messages (Feb 2026)\n- [x] **NEW**: Haiku/Opus model split \u2014 Haiku dispatches tools, Opus synthesizes answers (Feb 2026)\n- [x] **NEW**: 3 online LangSmith evaluators \u2014 hallucination, tool enforcement, coverage (Feb 2026)\n- [x] **NEW**: Phase A Redis TTL cache \u2014 MCP tool call deduplication within TTL window (Feb 2026)\n- [x] **NEW**: Phase B conversation summarization \u2014 Haiku summaries stored in Postgres, injected as prior context (Feb 2026)\n- [x] **NEW**: DM thread_history fix \u2014 handle_dm() now correctly passes prior conversation to Claude (Feb 2026)\n- [x] **NEW**: Fixed LangSmith `context_cache_hit` root-run tagging \u2014 `threading.local()` propagates cache hit flag from child span to root trace (2026-02-26)\n- [x] **NEW**: Angular Configuration Portal Phase 1 \u2014 JWT auth, 16 admin API endpoints, Angular 17 frontend with Dashboard/Violations/Exceptions/SOD Rules/Thresholds/Feature Flags screens (2026-02-26)\n- [x] **NEW**: Feedback loop \u2014 Block Kit buttons on every response; `answer_feedback` Postgres table; LangSmith `human_rating` write-back; Redis cache bust on NEGATIVE signal (2026-02-26)\n- [x] **NEW**: FivetranChat-style formatting \u2014 clean prose responses, no decorative emojis; feedback buttons simplified to \ud83d\udc4e \ud83d\udc4d (2026-02-27)\n- [x] **NEW**: Role risk matrix \u2014 precomputed SOD conflict matrix for all 17 Fivetran roles and 153 role pairs. Tables: `sod_permission_map`, `role_pair_conflicts` (443 rows). Analysis job: `scripts/build_role_risk_matrix.py`. Level-aware: None < View < Create < Edit < Full. (2026-02-27)\n- [x] **NEW**: `get_role_risk_matrix` MCP tool \u2014 queries precomputed matrix with role_name/severity/intra/cross filters. Cached 24h. (2026-02-27)\n- [x] **NEW**: `list_violations` MCP tool \u2014 department/severity filters, roles_only mode, DISTINCT ON deduplication. (2026-02-27)\n- [x] **NEW**: `role_risk` intent group in `utils/tool_router.py` \u2014 routes role-risk queries to `get_role_risk_matrix`. (2026-02-27)\n- [x] **NEW**: McKinsey partner voice in system prompt \u2014 executive language, conclusions first, direct recommendations. (2026-02-27)\n- [x] **NEW**: `_trim_history` fix \u2014 prevents orphaned tool_result blocks (Anthropic API 400) by trimming only at HumanMessage boundaries. (2026-02-27)\n- [x] **NEW**: Response length management \u2014 `MAX_SLACK_RESPONSE_CHARS=2000`, `_trim_response_for_slack()` auto-uploads long responses via `files_upload_v2()`, user-friendly fallback when upload fails (requires `files:write` scope) (2026-02-27)\n- [x] **NEW**: Response length prompt constraints \u2014 `HARD LIMIT` for `get_role_risk_matrix` (3 bullets, 1200 chars max), `GLOBAL RESPONSE LENGTH` rule (1800 chars max for all responses) (2026-02-27)\n- [x] **NEW**: Dynamic capabilities intro \u2014 bot calls `list_systems` when asked \"what can you do\", lists only connected systems, describes cross-system compliance when multiple systems active (2026-02-27)\n- [x] **NEW**: Identity rebrand \u2014 removed \"SOD compliance agent\"; bot is now \"Fivetran's compliance agent\"; SOD is one capability, not the identity; explicit prohibition in system prompt (2026-02-27)\n- [x] **NEW**: Feedback Phase C \u2014 Correction embeddings (pgvector, MiniLM 384-dim) stored on every \u274c Wrong correction; cosine ANN search injects top-3 similar past corrections as few-shot context into every future query; `correction_embeddings` table + ivfflat index; `services/correction_service.py`; backfill via `scripts/embed_corrections.py`; feature flag `USE_CORRECTION_CONTEXT=true` (2026-02-27)\n\n### \ud83d\udea7 Known Issues\n\n- OpenSSL warning (urllib3 v2 with LibreSSL 2.8.3) - cosmetic, non-blocking\n- FastAPI deprecation warnings (on_event \u2192 lifespan) - non-critical\n- Optional LLM packages not installed (OpenAI, Gemini, Cohere) - features work without them\n\n### \ud83d\udda5\ufe0f Latest Enhancement: Angular Configuration Portal \u2014 Phase 1 (Feb 2026)\n\nA full Angular 17 admin portal is now live in `angular-portal/` backed by new FastAPI admin endpoints.\n\n**Backend \u2014 New admin API (`mcp/admin_api.py`):**\n- `POST /auth/login` \u2014 JWT issuance (L3+ NetSuite roles required)\n- `GET /auth/me` \u2014 current user + authority level\n- `GET /admin/system-health` \u2014 integration health check\n- `GET /admin/config` \u2014 all non-secret config items\n- `PATCH /admin/config/thresholds|notifications|scheduling|feature-flags|llm` \u2014 editable config\n- `GET/PATCH /admin/sod-rules` \u2014 view and edit 18 SOD rules\n- `GET/PATCH /admin/violations` \u2014 paginated violations with status updates\n- `GET /admin/exceptions` + `/due-review` \u2014 approved exceptions + overdue list\n- `GET /admin/audit-trail` \u2014 audit log\n- `GET /admin/token-analytics` \u2014 LLM cost/usage summary\n\n**Authority levels (derived from NetSuite roles):**\n- L3 (Director): read-only access\n- L4 (Controller/VP): read + edit thresholds, rules, notifications, scheduling\n- L5 (CFO): full access including feature flags, LLM config\n\n**Frontend \u2014 Angular portal (`angular-portal/`):**\n- Angular 17 + Angular Material (standalone components + signals)\n- JWT stored in-memory only (no localStorage, XSS-safe)\n- Auth guard + level guard for route protection\n- Lazy-loaded routes: Dashboard, Violations, Exceptions, SOD Rules, Thresholds, Feature Flags\n- Dev proxy: `proxy.conf.json` forwards `/auth` + `/admin` to `localhost:8080`\n\n**New dependencies:**\n```bash\npip install \"python-jose[cryptography]>=3.3.0\" \"passlib[bcrypt]>=1.7.4\"\n```\n\n**Required new env vars:**\n```bash\nJWT_SECRET=<long-random-string>         # Required for JWT signing\nADMIN_PORTAL_PASSWORD=<portal-password> # Portal login password (dev)\nJWT_EXPIRE_HOURS=8                      # Optional, default 8h\n```\n\n**Run the portal:**\n```bash\n# Start MCP server (includes new admin routes)\n./scripts/restart_mcp.sh\n\n# Start Angular dev server (with proxy)\ncd angular-portal && ng serve\n# Open http://localhost:4200\n```\n\n**See:** `docs/ANGULAR_UX_PLAN.md` for full spec and remaining phases (2-4).\n\n### \ud83d\udcc8 Future Enhancements\n\nSee `docs/LESSONS_LEARNED.md` \u2192 Technical Debt section for full list.\n\nPriority items:\n1. Angular Portal Phase 2 \u2014 Read-only screens: Audit Trail, Token Analytics\n2. Angular Portal Phase 3 \u2014 Editable config: Notifications, Scheduling, Integrations\n3. Angular Portal Phase 4 \u2014 LLM config, SOD rule severity editing, credential rotation\n4. Migrate FastAPI startup/shutdown to lifespan handlers\n5. Add integration tests for full sync workflow\n6. Implement log rotation for production\n\n---\n\n## \ud83d\udca1 Tips for Claude Code Sessions\n\n### When Starting a New Session\n\n1. Read this file (CLAUDE.md) first\n2. Review `docs/LESSONS_LEARNED.md` for context on past issues\n3. Check current server status: `./scripts/check_mcp_status.sh`\n4. Review recent logs: `tail -50 /tmp/mcp_server.log`\n\n### Before Making Database Changes\n\n1. Check `docs/LESSONS_LEARNED.md` Issues #1, #14, #15\n2. Create Alembic migration: `alembic revision --autogenerate`\n3. Review generated SQL carefully\n4. Test migration on dev database first\n5. Backup production database before applying\n\n### Before Modifying Data Collection\n\n1. Check `docs/LESSONS_LEARNED.md` Issue #13 (NetSuite pagination)\n2. Verify page_size=200 (not 1000)\n3. Test with small dataset first\n4. Monitor sync_metadata table for errors\n5. Verify user counts match NetSuite\n\n### When Debugging\n\n1. Use `./scripts/check_mcp_status.sh` for comprehensive health check\n2. Check logs: `tail -f /tmp/mcp_server.log`\n3. Query database: `psql $DATABASE_URL`\n4. Review relevant documentation in `docs/`\n5. Check if issue is documented in LESSONS_LEARNED.md\n\n---\n\n**Version History:**\n- v1.7 (2026-02-27): Response length management (auto-upload + truncation); dynamic capabilities intro (list_systems-driven); identity rebrand (compliance agent, not SOD agent); HARD LIMIT prompt constraints\n- v1.8 (2026-02-27): Feedback Phase C \u2014 correction embeddings + few-shot injection (correction_embeddings table, CorrectionService, embed_corrections.py backfill)\n- v1.6 (2026-02-27): Role risk matrix (17 roles, 153 pairs, 443 conflict rows); get_role_risk_matrix + list_violations tools; tool_router role_risk intent group; McKinsey partner voice; _trim_history API-400 fix\n- v1.5 (2026-02-27): FivetranChat-style formatting (clean prose, no emoji); feedback buttons \ud83d\udc4e \ud83d\udc4d (commit 948f495)\n- v1.4 (2026-02-26): Feedback loop \u2014 Block Kit buttons, answer_feedback table, LangSmith human_rating, Redis cache bust on NEGATIVE (commit 547c187)\n- v1.3 (2026-02-26): Fixed LangSmith context_cache_hit tagging (threading.local fix); load test script added (/tmp/load_test.py)\n- v1.2 (2026-02-22): Added LangSmith observability section, ChatAnthropic migration notes, DM conversation context, updated env vars and current status\n- v1.1 (2026-02-16): Updated MCP tool count (11\u219235), Slack bot multi-turn agentic tool use\n- v1.0 (2026-02-12): Initial comprehensive guide\n\n**Maintained by:** AI Development Team\n**Last Verified:** 2026-02-27\n";
+  document.getElementById('plan-in').value   = "> **Status: COMPLETE** \u2014 All three phases shipped. See \"Actual Implementation Notes\" sections below.\n> Last updated: 2026-02-27\n\n# Plan: User Feedback Capture for Answer Accuracy\n\n## Context\n\nThe compliance agent answers SOD violation queries via Slack. Accuracy is currently\nmeasured only by 3 automated LangSmith evaluators. There is no human signal \u2014 compliance\nofficers cannot flag wrong answers, and there is no mechanism to improve accuracy from\nreal-world corrections.\n\nThis plan adds a lightweight feedback loop:\n- Block Kit buttons on every bot response (\"\u2705 Correct / \u274c Wrong / \ud83d\udd27 Partial\")\n- Feedback stored in new Postgres table `answer_feedback` with the LangSmith `run_id`\n- Scores written back to LangSmith via `create_feedback()` \u2014 visible alongside auto-evals\n- Negative feedback immediately busts the Redis cache for that user's violation data\n- Feature-flagged: `USE_ANSWER_FEEDBACK=true` in `.env`\n\n---\n\n## Phase A \u2014 Core Feedback Loop (Week 1)\n\n### 1. New migration: `007_add_answer_feedback.sql`\n\n**File:** `compliance-agent/database/migrations/007_add_answer_feedback.sql`\n\n```sql\nCREATE TABLE answer_feedback (\n    id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n    run_id         TEXT,                    -- LangSmith trace ID\n    user_email     TEXT NOT NULL,\n    channel_id     TEXT,\n    message_ts     TEXT,                    -- Slack message ts\n    query_preview  TEXT,                    -- first 200 chars of user query\n    answer_preview TEXT,                    -- first 200 chars of bot answer\n    signal         TEXT NOT NULL CHECK (signal IN ('POSITIVE','NEGATIVE','PARTIAL','UNCLEAR')),\n    correction     TEXT,                    -- free-text (Phase B modal)\n    tool_called    TEXT,                    -- MCP tool that produced the answer\n    created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()\n);\nCREATE INDEX idx_answer_feedback_user   ON answer_feedback (user_email, created_at DESC);\nCREATE INDEX idx_answer_feedback_signal ON answer_feedback (signal, created_at DESC);\nCREATE INDEX idx_answer_feedback_run    ON answer_feedback (run_id);\n```\n\nAlso create `007_add_answer_feedback_rollback.sql`.\n\n---\n\n### 2. New model: `models/answer_feedback.py`\n\nFollow exact pattern of `models/conversation_summary.py`:\n\n```python\nclass AnswerFeedback(Base):\n    __tablename__ = \"answer_feedback\"\n    id             = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)\n    run_id         = Column(String(100))\n    user_email     = Column(String(255), nullable=False, index=True)\n    channel_id     = Column(String(100))\n    message_ts     = Column(String(50))\n    query_preview  = Column(Text)\n    answer_preview = Column(Text)\n    signal         = Column(String(20), nullable=False)  # POSITIVE|NEGATIVE|PARTIAL|UNCLEAR\n    correction     = Column(Text)\n    tool_called    = Column(String(100))\n    created_at     = Column(DateTime, nullable=False, default=datetime.utcnow)\n    __table_args__ = (\n        Index(\"idx_answer_feedback_user\",   \"user_email\", \"created_at\"),\n        Index(\"idx_answer_feedback_signal\", \"signal\",     \"created_at\"),\n        Index(\"idx_answer_feedback_run\",    \"run_id\"),\n    )\n```\n\n---\n\n### 3. Changes to `slack_bot_local.py`\n\n#### 3a. Feature flag + lazy LangSmith client (near other flags, L61)\n\n```python\nUSE_ANSWER_FEEDBACK = os.getenv(\"USE_ANSWER_FEEDBACK\", \"true\").lower() == \"true\"\n\n_langsmith_client = None\ndef _get_langsmith_client():\n    global _langsmith_client\n    if _langsmith_client is None:\n        from langsmith import Client\n        _langsmith_client = Client()\n    return _langsmith_client\n```\n\n#### 3b. Store run_id in thread-local (end of `process_with_claude()`, L754)\n\nIn the existing root_run tagging block \u2014 add one line:\n\n```python\nroot_run = get_current_run_tree()\nif root_run:\n    # existing cache hit tagging ...\n    _cache_hit_tls.run_id = str(root_run.id)   # \u2190 NEW\n```\n\n#### 3c. New helper: `_feedback_blocks()`\n\nEncodes all context into button `value` (pipe-separated) \u2014 no Redis lookup needed:\n\n```python\ndef _feedback_blocks(run_id, user_email, query, answer, tool_called) -> dict:\n    value = \"|\".join([run_id or \"\", user_email or \"\",\n                      (query or \"\")[:100], (answer or \"\")[:100], tool_called or \"\"])\n    return {\n        \"type\": \"actions\",\n        \"block_id\": f\"feedback_{run_id or 'unknown'}\",\n        \"elements\": [\n            {\"type\": \"button\", \"text\": {\"type\": \"plain_text\", \"text\": \"\u2705  Correct\"},\n             \"value\": f\"POSITIVE|{value}\", \"action_id\": \"feedback_button\"},\n            {\"type\": \"button\", \"text\": {\"type\": \"plain_text\", \"text\": \"\u274c  Wrong\"},\n             \"style\": \"danger\",\n             \"value\": f\"NEGATIVE|{value}\", \"action_id\": \"feedback_button\"},\n            {\"type\": \"button\", \"text\": {\"type\": \"plain_text\", \"text\": \"\ud83d\udd27  Partial\"},\n             \"value\": f\"PARTIAL|{value}\", \"action_id\": \"feedback_button\"},\n        ]\n    }\n```\n\n#### 3d. New helper: `_save_feedback()` \u2014 non-blocking, same pattern as `_write_conversation_summary()`\n\n```python\ndef _save_feedback(signal, run_id, user_email, channel_id,\n                   message_ts, query, answer, tool_called):\n    # 1. Write to Postgres answer_feedback table\n    # 2. Write score to LangSmith:\n    #    POSITIVE\u21921.0, NEGATIVE\u21920.0, PARTIAL\u21920.5, UNCLEAR\u21920.3\n    #    _get_langsmith_client().create_feedback(run_id, key=\"human_rating\", score=score)\n    # 3. If NEGATIVE: bust Redis cache\n    #    r.delete(*r.keys(\"mcp:get_user_violations:*\"))\n```\n\n#### 3e. Update `handle_dm()` and `handle_mention()` \u2014 append feedback block\n\nAfter `response = process_with_claude(...)`, before `client.chat_update()`:\n\n```python\nrun_id = getattr(_cache_hit_tls, \"run_id\", None)\ntool_called = getattr(_cache_hit_tls, \"tool\", \"\")\nblocks = format_as_blocks(response)\nif USE_ANSWER_FEEDBACK and run_id:\n    blocks.append(_feedback_blocks(run_id, user_email, message_text, response, tool_called))\nclient.chat_update(channel=channel, ts=thinking_ts, text=response, blocks=blocks)\n```\n\n#### 3f. New Bolt action handler: `@app.action(\"feedback_button\")`\n\n```python\n@app.action(\"feedback_button\")\ndef handle_feedback(ack, body, client):\n    ack()\n    value = body[\"actions\"][0][\"value\"]          # \"SIGNAL|run_id|user_email|...\"\n    signal, run_id, user_email, query, answer, tool_called = value.split(\"|\", 5)\n    channel  = body[\"container\"][\"channel_id\"]\n    msg_ts   = body[\"container\"][\"message_ts\"]\n\n    threading.Thread(\n        target=_save_feedback,\n        args=(signal, run_id, user_email, channel, msg_ts, query, answer, tool_called),\n        daemon=True\n    ).start()\n\n    _replace_feedback_block_with_confirmation(client, body, signal)\n```\n\n#### 3g. New helper: `_replace_feedback_block_with_confirmation()`\n\nReplaces the actions block with a single context block (\"Thanks! Feedback recorded \u2705\")\nso users cannot double-submit and the message looks clean.\n\n> **Actual Implementation:** Built exactly as planned. Migration 007, AnswerFeedback model, _feedback_blocks(), _save_feedback(), handle_feedback() action handler, and _replace_feedback_block_with_confirmation() all implemented with no deviations from the plan.\n\n---\n\n## Phase B \u2014 Correction Modal (Week 2, additive)\n\nOn `\u274c Wrong` click, open a Slack modal (`client.views_open()`) asking\n\"What was the correct answer?\" \u2014 store free-text in `answer_feedback.correction`\nand write as `create_feedback(..., comment=correction)` to LangSmith.\nNo schema change needed (column already exists).\n\n> **Actual Implementation:** Built as planned. Modal opens on \u274c Wrong click, stores free-text correction in answer_feedback.correction, and writes it as a LangSmith feedback comment. No schema change was needed \u2014 the correction column already existed in migration 007.\n\n---\n\n## Phase C \u2014 Feedback \u2192 Accuracy Improvement (Month 2)\n\nStore corrections as pgvector embeddings in `context_catalogue` (existing Phase C plan).\nSemantically similar future queries automatically get the correction injected as few-shot\ncontext \u2014 closing the feedback \u2192 improvement loop without model retraining.\n\n> **Actual Implementation:** Accelerated from Month 2 to same sprint. Built correction_service.py, migration 010 (correction_embeddings table, vector(384), ivfflat index), and embed_corrections.py backfill script. Two critical bugs fixed: BUG-C1 (pgvector CAST syntax \u2014 use `CAST(:param AS vector)` not `:param::vector`) and BUG-C2 (UUID array literal format for SQLAlchemy text()). Phase C injected into process_with_claude() via dynamic_context. USE_CORRECTION_CONTEXT feature flag added.\n\n---\n\n## Files to Create / Modify\n\n| File | Change |\n|------|--------|\n| `database/migrations/007_add_answer_feedback.sql` | New |\n| `database/migrations/007_add_answer_feedback_rollback.sql` | New |\n| `models/answer_feedback.py` | New \u2014 SQLAlchemy model |\n| `slack_bot_local.py` | Modify \u2014 flag, `_feedback_blocks()`, `_save_feedback()`, `handle_feedback()`, `_replace_feedback_block_with_confirmation()`, update `handle_dm()` + `handle_mention()`, `run_id` in thread-local |\n\n---\n\n## `.env` addition\n\n```\nUSE_ANSWER_FEEDBACK=true\n```\n\n---\n\n## Verification\n\n1. Send a compliance question in Slack \u2192 response shows 3 buttons\n2. Click \u2705 \u2192 buttons replaced with \"Thanks! Feedback recorded\"\n3. LangSmith trace \u2192 Feedback tab \u2192 `human_rating: 1.0`\n4. `SELECT * FROM answer_feedback ORDER BY created_at DESC LIMIT 1;`\n5. Click \u274c \u2192 `redis-cli KEYS \"mcp:get_user_violations:*\"` returns 0 (cache busted)\n6. Re-run `python3 /tmp/two_traces.py` \u2192 MISS trace confirms cache was busted\n\n---\n\n## Work Beyond Original Scope\n\nThe following was completed in the same sprint but was not in the original plan:\n\n| Item | Description |\n|------|-------------|\n| 3-Agent QA Cycle | Agent T (smoke test) + Agent U (static QA) ran in parallel \u2192 Agent V (bug fix). Both T and U independently identified BUG-C1. |\n| CLAUDE_MULTI_AGENT.md update | Added Agents T/U/V to roster, Phase 8 QA section, Critical Rules 13 (pgvector CAST) and 14 (UUID array literal). |\n| SKILL.md rewrites | sod-compliance rewritten to v2.0.0 (added Workflow 4: Role Risk Matrix, McKinsey voice rule, Phase C memory docs). employee-onboarding rewritten to v3.0.0 (added scope statement, trigger keywords section, decision tree format). |\n| CLAUDE_MULTI_AGENT_TEMPLATE.md | New reusable 13-part template for writing multi-agent playbooks (compliance-agent/docs/). |\n| SKILL_TEMPLATE.md | New reusable 13-part template for writing skill files (compliance-agent/docs/). Written by 4 parallel agents (Research + Writer A + Writer B + Merge). |\n| PLAN_TEMPLATE.md | New reusable template for writing plan.md files (compliance-agent/docs/). |\n";
+  document.getElementById('skill-in').value  = "---\nname: sod-compliance\ndescription: \"Fivetran's compliance agent workflows \u2014 SOD violation queries, access review (can user X get role Y?), user risk profiles, exception management, compliance reports, role risk matrix, SOD rule lookups, and NetSuite data sync. Use when asked about violations, role conflicts, risk scores, audit readiness, compensating controls, or any access-related compliance question. Requires the compliance MCP server running at localhost:8080.\"\nmetadata:\n  author: Fivetran SysEng\n  version: 2.0.0\n  updated: 2026-02-27\n  compatibility: \"Claude Code, Claude.ai \u2014 requires compliance MCP server at localhost:8080\"\n  mcp-server: compliance-system\n  tools: 37\n  users: 1928\n  sod-rules: 18\n---\n\n# SOD Compliance Skill\n\n## Non-Negotiable Rules\n\nThese apply to every workflow. Violation causes wrong answers or data loss.\n\n**NEVER answer compliance questions from memory.** Every violation count, role name, risk score,\nand conflict must come from a live MCP tool call. Training data is stale and wrong.\n\n**ALWAYS pass `include_existing_roles: true` to `analyze_access_request`.**\nOmitting it analyzes the new role in isolation \u2014 produces false \"0 conflicts\" for users\nwho already hold conflicting roles. This is the single most common silent failure.\n\n**NEVER say \"SOD compliance agent\".** You are Fivetran's compliance agent.\nSOD is one of your capabilities, not your identity.\n\n**Voice:** Senior McKinsey partner. Lead with the conclusion, then evidence.\nDirect recommendations. No hedging. Replace \"dangerous\" with \"high-risk\",\n\"violator\" with \"affected user\".\n\n---\n\n## Before Any Workflow: MCP Health Check\n\nIf any tool call returns a connection error or timeout:\n\n```\nThe compliance MCP server is offline.\nRestart: cd compliance-agent && python3 -m mcp.mcp_server > /tmp/mcp_server.log 2>&1 &\nVerify:  curl -s http://localhost:8080/health\n```\n\n---\n\n## Workflow 1: Access Review\n\n**Trigger phrases:** \"Can user X get role Y?\", \"assign role\", \"would this create a conflict\",\n\"is it safe to give\", \"access request\", \"onboard with role\"\n\n**Steps:**\n1. `initialize_session` \u2014 load compliance context\n2. `get_user_violations(user_identifier=<name or email>)` \u2014 get canonical user ID + current roles\n3. `analyze_access_request(user_id=<id>, requested_role=<role>, include_existing_roles=true)`\n4. If CRITICAL or HIGH conflicts: `get_compensating_controls(violation_id=<id>)` for each\n5. Respond with verdict first: **APPROVED / CONDITIONAL / DENIED**\n   - List each conflict: severity, two clashing permissions, fraud risk\n   - For CRITICAL: recommend rejection, name the fraud scenario\n   - For HIGH: list compensating controls required to proceed\n\n**Key rule:** Step 3 must always include `include_existing_roles: true`.\nWithout it, the analysis only checks the new role \u2014 misses all existing role combinations.\n\n---\n\n## Workflow 2: Violation Query\n\n**Trigger phrases:** \"show me violations\", \"how many critical\", \"Finance violations\",\n\"open violations\", \"violations by department\", \"CRITICAL violations\"\n\n**Steps:**\n1. `get_violation_stats` \u2014 summary counts by severity and department (good for overview first)\n2. `list_violations(severity=<CRITICAL|HIGH|MEDIUM|LOW>, department=<name>, limit=20)`\n3. `get_violation_details(violation_id=<id>)` \u2014 for specific violations needing full context\n4. Group results by severity. For each: user name, conflicting role pair, risk score, days open.\n\n**Tool selection:**\n- Overview first \u2192 `get_violation_stats`\n- Specific list \u2192 `list_violations` with filters\n- Deep dive \u2192 `get_violation_details`\n- Role-level view \u2192 `get_role_risk_matrix` (precomputed, faster for role analysis)\n\n---\n\n## Workflow 3: User Risk Profile\n\n**Trigger phrases:** \"what is X's compliance status\", \"risk profile for\", \"check user\",\n\"violations for\", \"is [name] compliant\"\n\n**Steps:**\n1. `get_user_violations(user_identifier=<name or email>)`\n   Returns: current roles, all violations, risk score (0\u2013100), severity breakdown\n2. `get_violation_details(violation_id=<id>)` for each CRITICAL or HIGH violation\n3. Respond: overall risk tier \u2192 violation count by severity \u2192 top conflicting role pairs \u2192 next action\n\n**Risk tiers:** score 75\u2013100 = High \u00b7 40\u201374 = Medium \u00b7 1\u201339 = Low \u00b7 0 = Compliant\n**Next action by severity:** CRITICAL \u2192 immediate remediation \u00b7 HIGH \u2192 30-day plan \u00b7\nMEDIUM \u2192 90-day plan \u00b7 LOW \u2192 document compensating control\n\n---\n\n## Workflow 4: Role Risk Matrix\n\n**Trigger phrases:** \"role risk matrix\", \"which roles conflict\", \"show me role conflicts\",\n\"role combination risks\", \"all conflicts for [role]\", \"high-risk roles\"\n\n**Steps:**\n1. `get_role_risk_matrix()` \u2014 full precomputed matrix (17 Fivetran roles, 153 pairs, 443 conflicts)\n   Optional filters: `role_name=<name>`, `severity=CRITICAL|HIGH|MEDIUM|LOW`, `limit=50`\n2. Present as summary: total conflicts \u2192 breakdown by severity \u2192 top 3 most conflicted roles\n3. For specific role detail: call with `role_name=<role>` to scope the matrix\n\n**Response constraint:** Max 3 bullet points, 1,200 characters. Do not list individual\npermission pairs. Lead with the business risk, not the technical detail.\n\n**When to use vs `list_violations`:**\n- \"Show me which roles are risky\" \u2192 `get_role_risk_matrix` (precomputed, faster)\n- \"Show me current open violations\" \u2192 `list_violations` (live data, user-specific)\n\n---\n\n## Workflow 5: Exception Management\n\n**Trigger phrases:** \"request an exception\", \"approve exception\", \"list exceptions\",\n\"exception for [user]\", \"exception EX-\", \"override the violation\"\n\n**Requesting an exception:**\n1. `get_user_violations(user_identifier=<user>)` \u2192 confirm violation exists, get `violation_id`\n2. `check_my_approval_authority` \u2192 verify requestor has authority for this severity\n3. `request_exception_approval(violation_id=<id>, business_justification=<text>, compensating_controls=<text>, expiry_date=<ISO date>)`\n   - `business_justification` is required \u2014 ask user if not provided\n   - Default expiry: 90 days from today\n4. Return the exception ID\n\n**Listing exceptions:** `list_active_exceptions()` \u2014 filter by user or department\n\n**Approving a pending exception:**\n1. `get_exception_details(exception_id=<id>)` \u2014 review the justification\n2. `approve_exception(exception_id=<id>, approval_notes=<notes>)`\n\n---\n\n## Workflow 6: Compliance Report\n\n**Trigger phrases:** \"generate a report\", \"executive summary\", \"compliance status\",\n\"audit report\", \"department breakdown\", \"weekly report\"\n\n**Steps:**\n1. `get_violation_stats` \u2014 current counts by severity and department\n2. `get_org_risk_assessment` \u2014 org-wide risk scores\n3. `generate_compliance_report(report_type=<type>, audience=<audience>)`\n   - `report_type`: executive_summary | detailed_analysis | department_report | audit_report\n   - `audience`: executives | compliance_team | auditors | department_heads\n4. For executive audience: lead with compliance rate %, then top 3 action items\n\n---\n\n## Workflow 7: SOD Rule Lookup\n\n**Trigger phrases:** \"what SOD rules cover\", \"which rule applies to\", \"AP conflict rules\",\n\"show me rule\", \"explain the rule for\"\n\n**Steps:**\n1. `list_sod_rules` \u2014 all 18 rules with severity (good for overview)\n2. `query_sod_rules(keyword=<term>)` \u2014 keyword search across rules\n3. `get_sod_rule_details(rule_code=<code>)` \u2014 full detail: conflicting permissions, scenarios, controls\n\nSee `references/sod-rules.md` for the full rule table \u2014 useful for quickly identifying\nwhich rule applies without a tool call.\n\n---\n\n## Workflow 8: Remediation\n\n**Trigger phrases:** \"fix the violation\", \"remove the role\", \"schedule a review\",\n\"notify the manager\", \"create a ticket\", \"remediate\"\n\n**Steps:**\n1. `get_violation_details(violation_id=<id>)` \u2014 confirm violation and get current state\n2. Choose action based on user intent:\n   - Role removal: `remediate_violation(violation_id=<id>, action=\"remove_role\", role_to_remove=<role>)`\n   - Schedule review: `schedule_review(violation_id=<id>, review_date=<ISO date>)`\n   - Notify manager: `notify_manager(user_id=<id>, violation_id=<id>)`\n   - Create Jira ticket: `create_remediation_ticket(violation_id=<id>, ticket_system=\"jira\")`\n3. Confirm action. State resolution timeline: CRITICAL \u2192 immediate \u00b7 HIGH \u2192 30 days \u00b7 MEDIUM \u2192 90 days\n\n---\n\n## Workflow 9: NetSuite Sync\n\n**Trigger phrases:** \"sync from NetSuite\", \"refresh data\", \"latest data\", \"run a sync\",\n\"data is stale\"\n\n**Steps:**\n1. `get_sync_status` \u2014 check last sync time and whether one is in progress\n2. If sync running: report progress and ETA\n3. If not running: `trigger_manual_sync(sync_type=\"incremental\")` for recent changes,\n   `sync_type=\"full\"` for complete refresh\n4. Report: sync triggered \u00b7 full ~5 min \u00b7 incremental ~1 min \u00b7 how to check again\n\n---\n\n## Observability\n\nThree LangSmith evaluators run automatically on every trace:\n\n| Evaluator | Fails when |\n|-----------|-----------|\n| `mcp_tool_called` | Agent answered without calling any MCP tool |\n| `mcp_tool_coverage` | Access-request query skipped `analyze_access_request` |\n| `hallucination_heuristic` | Response contains `<tool_call>` XML or ungrounded numbers |\n\n**Score = 0 on `mcp_tool_called`:** MCP server may be down, or `call_mcp_tool()` is missing\nthe `@traceable(run_type=\"tool\")` decorator \u2014 evaluators cannot detect tool calls without it.\n\n**Score = 0 on `mcp_tool_coverage`:** `analyze_access_request` was not called on an\naccess-review query. Always include it \u2014 never substitute with `get_user_violations` alone.\n\n**Score = 0 on `hallucination_heuristic`:** Response stated specific numbers (violation counts,\nrisk scores) without grounding in tool results. All numbers must come from tool output, never training data.\n\n---\n\n## Memory and Accuracy\n\nThe bot runs three active memory/accuracy layers:\n\n**Redis TTL cache (Phase A):** MCP tool results cached per tool. Violations: 1h \u00b7 Stats: 30min \u00b7\nRole matrix: 24h. Mutating tools (sync, approve) never cached.\nObservable in LangSmith: `metadata.context_cache_hit = true`\n\n**Conversation summaries (Phase B):** After each exchange, Haiku writes a 2-3 sentence summary\nto Postgres. The 3 most recent summaries are injected into the next query as prior context.\nObservable in LangSmith: `metadata.context_summaries_injected = N`\n\n**Correction embeddings (Phase C):** When a user submits a correction via the \u274c feedback modal,\nthe query + correction is embedded (MiniLM, 384-dim) and stored. On future similar queries\n(cosine similarity > 0.70), the correction is injected as a few-shot example before Claude answers.\nThis means accuracy improves over time as compliance officers correct wrong answers.\nObservable in LangSmith: `metadata.corrections_injected = N`\n\n---\n\n## Examples\n\n### Example 1: Access review \u2014 role assignment decision\n\nUser: \"Can we give Austin Chen the Controller role?\"\n\n```\n1. initialize_session\n2. get_user_violations(user_identifier=\"Austin Chen\")\n   \u2192 user_id=u-4421, current roles: [AP Processor, Employee Center]\n3. analyze_access_request(user_id=\"u-4421\", requested_role=\"Controller\", include_existing_roles=true)\n   \u2192 249 conflicts, 3 CRITICAL\n4. get_compensating_controls for each CRITICAL conflict\n```\n\nResponse: \"DENIED. Assigning Controller to Austin Chen creates 249 SOD conflicts, including 3 CRITICAL risks: AP Entry vs AP Approval, Create Vendor vs Approve Vendor, and Journal Entry vs Journal Approval. Each represents a direct fraud pathway \u2014 a single user could create, approve, and pay fictitious invoices without a second approver. If this access is genuinely required for business continuity, a CFO-level exception with documented compensating controls is the only viable path.\"\n\n---\n\n### Example 2: Violation query \u2014 department summary\n\nUser: \"How many violations does Finance have?\"\n\n```\n1. get_violation_stats \u2192 Finance: 28 violations\n2. list_violations(department=\"Finance\", severity=\"CRITICAL\") \u2192 3 CRITICAL\n```\n\nResponse: \"Finance carries 28 open violations: 3 CRITICAL, 8 HIGH, 12 MEDIUM, 5 LOW. The 3 CRITICAL violations all involve AP Entry + AP Approval conflicts \u2014 the highest-priority remediation action for the CFO this quarter.\"\n\n---\n\n### Example 3: Exception approval\n\nUser: \"Approve exception EX-2024-001\"\n\n```\n1. get_exception_details(exception_id=\"EX-2024-001\")\n   \u2192 AP conflict for Finance Controller, justified by quarterly close coverage\n2. check_my_approval_authority \u2192 L4 confirmed\n3. approve_exception(exception_id=\"EX-2024-001\", approval_notes=\"Business necessity confirmed; monthly reconciliation review serves as compensating control\")\n```\n\nResponse: \"Exception EX-2024-001 approved. Valid 90 days (expires 2026-05-28). Compensating control documented in LangSmith trace.\"\n\n---\n\n## Troubleshooting\n\n| Error | Cause | Fix |\n|-------|-------|-----|\n| Connection refused / tool timeout | MCP server not running | `cd compliance-agent && python3 -m mcp.mcp_server > /tmp/mcp_server.log 2>&1 &` |\n| \"User not found\" | Name doesn't match NetSuite record exactly | Use email, or `list_all_users(search=<partial name>)` |\n| \"0 conflicts\" on access review | `include_existing_roles` omitted | Always pass `include_existing_roles: true` |\n| \"Insufficient approval authority\" | Session user cannot approve at this severity | `check_my_approval_authority`, then escalate |\n| Stale violation data | NetSuite sync overdue | `get_sync_status` \u2192 `trigger_manual_sync(sync_type=\"incremental\")` |\n| Evaluator scores = 0 / AttributeError | Evaluator tried to read S3-stored LLM outputs | Use `child_run.run_type == \"tool\"` \u2014 never parse `outputs.generations` in evaluator code |\n| `<tool_call>` XML in response | `process_with_claude()` called before `llm.bind_tools()` ran | Always test via the Slack bot, not standalone scripts |\n| Role risk matrix returns empty | `role_pair_conflicts` table not populated | Run `scripts/build_role_risk_matrix.py` to rebuild |\n";
+  setTimeout(function() { openPreview(); }, 200);
+});
+</script>
+</body>
+</html>

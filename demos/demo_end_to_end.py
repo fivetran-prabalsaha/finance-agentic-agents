@@ -14,8 +14,8 @@ Demonstrates the complete workflow:
 
 import os
 import sys
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -23,15 +23,15 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 # Set database URL
 os.environ['DATABASE_URL'] = 'postgresql://compliance_user:compliance_pass@localhost:5432/compliance_db'
 
-from models.database_config import DatabaseConfig
-from repositories.user_repository import UserRepository
-from repositories.role_repository import RoleRepository
-from repositories.violation_repository import ViolationRepository
-from repositories.sod_rule_repository import SODRuleRepository
-from services.netsuite_client import NetSuiteClient
+from agents.knowledge_base_pgvector import create_knowledge_base
 from agents.orchestrator import create_orchestrator
-from agents.knowledge_base import create_knowledge_base
 from agents.risk_assessor import create_risk_assessor
+from models.database_config import DatabaseConfig
+from repositories.role_repository import RoleRepository
+from repositories.sod_rule_repository import SODRuleRepository
+from repositories.user_repository import UserRepository
+from repositories.violation_repository import ViolationRepository
+from services.netsuite_client import NetSuiteClient
 from utils.token_tracker import get_global_tracker, reset_global_tracker
 
 
@@ -56,9 +56,9 @@ def main():
     token_tracker = get_global_tracker()
     reset_global_tracker()
 
-    print_header("END-TO-END AGENTIC WORKFLOW COMPLIANCE SYSTEM DEMO")
+    print_header("END-TO-END AGENTIC COMPLIANCE SYSTEM DEMO")
     print("This demo demonstrates the complete compliance run by agents :")
-    print("  • Data collection from NetSuite")
+    print("  • Data collection from SaaS platform (NetSuite)")
     print("  • SOD violation detection")
     print("  • Risk assessment and scoring")
     print("  • Knowledge base queries")
@@ -119,7 +119,7 @@ def main():
     print("   2. Robin Turner (robin.turner@fivetran.com)")
 
     from agents.data_collector import DataCollectionAgent
-    data_collector = DataCollectionAgent(netsuite_client=netsuite_client)
+    DataCollectionAgent(netsuite_client=netsuite_client)
 
     # Fetch specific users by email
     target_emails = [
@@ -190,7 +190,7 @@ def main():
         print(f"✅ Stored {stored_count} user record(s) in database")
         session.close()
     else:
-        print(f"❌ No users found!")
+        print("❌ No users found!")
         return
 
     # ========================================================================
@@ -214,9 +214,9 @@ def main():
         sod_rule_repo=sod_rule_repo
     )
 
-    print(f"✅ Analysis Agent initialized")
+    print("✅ Analysis Agent initialized")
     print(f"   SOD Rules Loaded: {len(analyzer.sod_rules)}")
-    print(f"   Model: claude-opus-4.6")
+    print("   Model: claude-opus-4.6")
 
     print("\n🔍 Running SOD analysis on all users...")
     print("   (Checking 17 SOD rules across all users)")
@@ -240,7 +240,7 @@ def main():
     if analysis_result['success']:
         stats = analysis_result['stats']
         print("\n✅ Analysis Complete!")
-        print(f"\n📊 Results:")
+        print("\n📊 Results:")
         print(f"   Users Analyzed: {stats['users_analyzed']}")
         print(f"   Total Violations: {stats['violations_detected']}")
         print(f"   • Critical: {stats['critical_violations']}")
@@ -333,8 +333,8 @@ def main():
                     if len(violations) > 3:
                         print(f"\n      ... and {len(violations) - 3} more violations")
                 else:
-                    print(f"\n   ✅ No SOD violations detected")
-                    print(f"   💡 User's role assignments comply with all SOD rules")
+                    print("\n   ✅ No SOD violations detected")
+                    print("   💡 User's role assignments comply with all SOD rules")
 
         print("\n" + "="*80)
 
@@ -377,20 +377,20 @@ def main():
         print(f"\n🎯 Organization Risk Level: {risk_result['organization_risk_level']}")
         print(f"   Risk Score: {risk_result['organization_risk_score']}/100")
 
-        print(f"\n📊 User Risk Distribution:")
+        print("\n📊 User Risk Distribution:")
         risk_dist = risk_result['risk_distribution']
         print(f"   Critical: {risk_dist['CRITICAL']} users")
         print(f"   High:     {risk_dist['HIGH']} users")
         print(f"   Medium:   {risk_dist['MEDIUM']} users")
         print(f"   Low:      {risk_dist['LOW']} users")
 
-        print(f"\n💡 Recommendations:")
+        print("\n💡 Recommendations:")
         for rec in risk_result['recommendations']:
             print(f"   {rec}")
 
         # Show high-risk users
         if risk_result['high_risk_users']:
-            print(f"\n⚠️  High-Risk Users:")
+            print("\n⚠️  High-Risk Users:")
             for i, user in enumerate(risk_result['high_risk_users'][:3], 1):
                 print(f"   {i}. {user['email']}")
                 print(f"      Risk Score: {user['risk_score']}/100")
@@ -404,23 +404,25 @@ def main():
     print("Creating Knowledge Base Agent...")
     db_config = DatabaseConfig()
     session = db_config.get_session()
-    role_repo = RoleRepository(session)
-    kb = create_knowledge_base(role_repo=role_repo)
+    sod_rule_repo = SODRuleRepository(session)
+    kb = create_knowledge_base(session=session, sod_rule_repo=sod_rule_repo)
 
-    print("✅ Knowledge Base initialized")
-    print(f"   Total Rules: {len(kb.sod_rules)}")
-    print(f"   Embeddings Created: {len(kb.rule_embeddings)}")
-    print(f"   Model: sentence-transformers/all-MiniLM-L6-v2")
+    # Get stats from pgvector
+    stats = kb.get_knowledge_base_stats()
+
+    print("✅ Knowledge Base initialized (pgvector)")
+    print(f"   Total Rules: {stats['total_rules']}")
+    print(f"   Rules with Embeddings: {stats['rules_with_embeddings']}")
+    print(f"   Provider: {stats['embedding_provider']}")
+    print(f"   Dimension: {stats['embedding_dimension']}")
 
     # Semantic search
     print("\n🔍 Performing semantic search...")
     query = "financial approval conflicts"
     print(f"   Query: \"{query}\"")
 
-    db_config = DatabaseConfig()
-    session = db_config.get_session()
-    role_repo = RoleRepository(session)
-    kb = create_knowledge_base(role_repo=role_repo)
+    sod_rule_repo = SODRuleRepository(session)
+    kb = create_knowledge_base(session=session, sod_rule_repo=sod_rule_repo)
 
     results = kb.search_similar_rules(
         query=query,
@@ -430,27 +432,25 @@ def main():
 
     print(f"\n✅ Found {len(results)} similar rules:")
     for i, result in enumerate(results, 1):
-        rule = result['rule']
-        similarity = result['similarity']
-        print(f"\n   {i}. {rule['rule_name']} (Similarity: {similarity:.2f})")
-        print(f"      Type: {rule['rule_type']}")
-        print(f"      Severity: {rule['severity']}")
-        print(f"      Description: {rule['description'][:80]}...")
+        rule_name = result.get('rule_name', 'Unknown')
+        similarity = result.get('similarity', 0)
+        rule_type = result.get('category', 'Unknown')
+        severity = result.get('severity', 'Unknown')
+        description = result.get('description', 'No description')[:80]
+        print(f"\n   {i}. {rule_name} (Similarity: {similarity:.2f})")
+        print(f"      Type: {rule_type}")
+        print(f"      Severity: {severity}")
+        print(f"      Description: {description}...")
 
     # Get knowledge base stats
-    db_config = DatabaseConfig()
-    session = db_config.get_session()
-    role_repo = RoleRepository(session)
-    kb = create_knowledge_base(role_repo=role_repo)
     stats = kb.get_knowledge_base_stats()
 
-    print(f"\n📊 Knowledge Base Statistics:")
-    print(f"   Rules by Type:")
-    for rule_type, count in stats['rules_by_type'].items():
-        print(f"      {rule_type}: {count}")
-    print(f"   Rules by Severity:")
-    for severity, count in stats['rules_by_severity'].items():
-        print(f"      {severity}: {count}")
+    print("\n📊 Knowledge Base Statistics:")
+    print(f"   Total Rules: {stats['total_rules']}")
+    print(f"   Rules with Embeddings: {stats['rules_with_embeddings']}")
+    print(f"   Violations Embedded: {stats['total_violations_embedded']}")
+    print(f"   Provider: {stats['embedding_provider']}")
+    print(f"   Dimension: {stats['embedding_dimension']}")
 
     # ========================================================================
     # STEP 6: Notification System
@@ -472,7 +472,7 @@ def main():
     print("✅ Notification Agent initialized")
     print(f"   Email: {'Enabled' if notifier.email_enabled else 'Disabled (no API key)'}")
     print(f"   Slack: {'Enabled' if notifier.slack_enabled else 'Disabled (no webhook)'}")
-    print(f"   Console: Enabled (fallback)")
+    print("   Console: Enabled (fallback)")
 
     print("\n📧 Testing notification system...")
     print("   (Using console output as demonstration)")
@@ -490,13 +490,13 @@ def main():
     if critical_violations:
         sample_violation = critical_violations[0]
 
-        print(f"\n📋 Sample Notification:")
-        print(f"   To: compliance@company.com")
+        print("\n📋 Sample Notification:")
+        print("   To: compliance@company.com")
         print(f"   Subject: 🚨 SOD Violation Detected: {sample_violation.title}")
         print(f"   User: {sample_violation.user.email if sample_violation.user else 'Unknown'}")
         print(f"   Severity: {sample_violation.severity.value}")
         print(f"   Risk Score: {sample_violation.risk_score}/100")
-        print(f"   Status: Ready to send via Email/Slack")
+        print("   Status: Ready to send via Email/Slack")
     else:
         print("   ℹ️  No critical violations to demonstrate")
 
@@ -529,7 +529,7 @@ def main():
     violation_repo = ViolationRepository(session)
     sod_rule_repo = SODRuleRepository(session)
 
-    orchestrator = create_orchestrator(
+    create_orchestrator(
         netsuite_client=netsuite_client,
         user_repo=user_repo,
         role_repo=role_repo,
@@ -665,7 +665,7 @@ def main():
             for v in sorted_violators
         ]
 
-    print(f"\n📊 Report Summary:")
+    print("\n📊 Report Summary:")
     print(f"   Users Analyzed:    {scan_summary['users_analyzed']}")
     print(f"   Total Violations:  {scan_summary['total_violations']}")
     print(f"   Compliance Rate:   {scan_summary['compliance_rate']:.1f}%")
@@ -717,7 +717,7 @@ def main():
         print(f"   Estimated Annual Cost*:     ${summary['total_cost'] * 365:.2f}")
         print("\n   * Based on daily scan with similar data volume")
 
-   
+
 
 
 if __name__ == '__main__':

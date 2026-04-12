@@ -1,0 +1,639 @@
+{
+  "version": "1.1",
+  "description": "Library of compensating controls for SOD violations",
+  "last_updated": "2026-02-12",
+
+  "cost_disclaimer": {
+    "note": "All cost estimates are APPROXIMATE and vary by organization size, existing infrastructure, and implementation approach",
+    "what_costs_include": [
+      "System configuration and workflow setup",
+      "Monitoring tool licenses (if applicable)",
+      "Staff time for reviews and approvals (opportunity cost)",
+      "Audit time (internal or external)",
+      "Documentation and policy maintenance"
+    ],
+    "what_costs_exclude": [
+      "NetSuite base subscription",
+      "Existing staff salaries",
+      "One-time implementation costs (shown separately as implementation_hours)",
+      "Third-party consulting (unless specifically noted)"
+    ],
+    "typical_variance": "Actual costs may range from 50% to 200% of estimates depending on organizational factors"
+  },
+
+  "controls": {
+    "segregated_workflows": {
+      "control_id": "CTRL-001",
+      "name": "Segregated Approval Workflows",
+      "type": "PREVENTIVE",
+      "category": "Workflow Controls",
+      "description": "System automatically routes transactions for approval by a different user than the creator",
+
+      "implementation": {
+        "platform": "NetSuite",
+        "method": "Workflow Rules",
+        "configuration": "IF transaction.creator = current_approver THEN route_to = manager ELSE allow_approval",
+        "technical_details": "NetSuite workflow customization with conditional approval routing based on creator field"
+      },
+
+      "effectiveness": {
+        "risk_reduction_percentage": 70,
+        "rating": "HIGH"
+      },
+
+      "costs": {
+        "implementation_cost": "MEDIUM",
+        "implementation_hours": 8,
+        "ongoing_maintenance": "LOW",
+        "annual_cost_estimate": "$5,000"
+      },
+
+      "audit_trail": {
+        "logging_required": true,
+        "log_details": "Transaction ID, Creator, Original Approver, Routed Approver, Routing Reason, Timestamp"
+      },
+
+      "applicable_to": {
+        "violation_types": ["maker_checker", "transaction_entry_approval"],
+        "severity_levels": ["HIGH", "CRITICAL"]
+      }
+    },
+
+    "dual_approval_workflow": {
+      "control_id": "CTRL-002",
+      "name": "Dual Approval Workflow",
+      "type": "PREVENTIVE",
+      "category": "Workflow Controls",
+      "description": "All transactions above specified threshold require approval from two different authorized individuals",
+
+      "implementation": {
+        "platform": "NetSuite",
+        "method": "Approval Hierarchy",
+        "configuration": "IF transaction.amount > threshold THEN require_approvals = 2 AND approver1 != approver2",
+        "threshold_examples": {
+          "payments": "$10,000",
+          "journal_entries": "$25,000",
+          "revenue_recognition": "$50,000",
+          "vendor_bills": "$15,000"
+        }
+      },
+
+      "effectiveness": {
+        "risk_reduction_percentage": 60,
+        "rating": "HIGH"
+      },
+
+      "costs": {
+        "implementation_cost": "MEDIUM",
+        "implementation_hours": 12,
+        "ongoing_maintenance": "LOW",
+        "annual_cost_estimate": "$8,000"
+      },
+
+      "audit_trail": {
+        "logging_required": true,
+        "log_details": "Transaction ID, Amount, Approver 1, Approver 2, Approval Timestamps, Comments"
+      },
+
+      "applicable_to": {
+        "violation_types": ["payment_segregation", "high_value_transactions"],
+        "severity_levels": ["HIGH", "CRITICAL"]
+      }
+    },
+
+    "transaction_limits": {
+      "control_id": "CTRL-003",
+      "name": "Transaction Amount Limits",
+      "type": "PREVENTIVE",
+      "category": "System Controls",
+      "description": "System-enforced maximum transaction amounts per user or role",
+
+      "implementation": {
+        "platform": "NetSuite",
+        "method": "Role Configuration",
+        "configuration": "Set max_transaction_amount in role permissions",
+        "limit_examples": {
+          "manager_level": "$100,000",
+          "director_level": "$250,000",
+          "analyst_level": "$25,000"
+        }
+      },
+
+      "effectiveness": {
+        "risk_reduction_percentage": 40,
+        "rating": "MEDIUM"
+      },
+
+      "costs": {
+        "implementation_cost": "LOW",
+        "implementation_hours": 2,
+        "ongoing_maintenance": "LOW",
+        "annual_cost_estimate": "$1,000"
+      },
+
+      "audit_trail": {
+        "logging_required": true,
+        "log_details": "Transaction ID, Amount, Limit, User, Timestamp, Approval if exceeded"
+      },
+
+      "applicable_to": {
+        "violation_types": ["payment_segregation", "all_financial_transactions"],
+        "severity_levels": ["MEDIUM", "HIGH", "CRITICAL"]
+      }
+    },
+
+    "real_time_monitoring": {
+      "control_id": "CTRL-004",
+      "name": "Real-Time Transaction Monitoring",
+      "type": "DETECTIVE",
+      "category": "Monitoring Controls",
+      "description": "Automated system monitors transactions in real-time and generates alerts for suspicious patterns",
+
+      "implementation": {
+        "platform": "Compliance Dashboard",
+        "method": "Automated Rules Engine",
+        "alert_triggers": [
+          "Same user creates and approves transaction",
+          "Transaction amount exceeds normal pattern (>2x average)",
+          "After-hours transaction processing (outside 8am-6pm)",
+          "Weekend transaction processing",
+          "Multiple transactions to same vendor in short timeframe",
+          "Void and reissue pattern",
+          "Sequential transaction numbers with gaps",
+          "Transactions to vendors not in approved vendor list"
+        ],
+        "alert_recipients": ["compliance@fivetran.com", "manager@fivetran.com", "internal.audit@fivetran.com"]
+      },
+
+      "effectiveness": {
+        "risk_reduction_percentage": 50,
+        "rating": "HIGH"
+      },
+
+      "costs": {
+        "implementation_cost": "HIGH",
+        "implementation_hours": 40,
+        "ongoing_maintenance": "MEDIUM",
+        "annual_cost_estimate": "$25,000"
+      },
+
+      "audit_trail": {
+        "logging_required": true,
+        "log_details": "Alert ID, Trigger Rule, Transaction Details, User, Timestamp, Alert Recipients, Response Actions"
+      },
+
+      "applicable_to": {
+        "violation_types": ["all_sod_violations"],
+        "severity_levels": ["MEDIUM", "HIGH", "CRITICAL"]
+      }
+    },
+
+    "manager_approval": {
+      "control_id": "CTRL-005",
+      "name": "Manager Pre-Approval",
+      "type": "PREVENTIVE",
+      "category": "Human Controls",
+      "description": "Direct manager must approve access request or transaction before processing",
+
+      "implementation": {
+        "platform": "Access Management System",
+        "method": "Approval Workflow",
+        "process": "Request → Manager Review → Manager Approval → Implementation"
+      },
+
+      "effectiveness": {
+        "risk_reduction_percentage": 30,
+        "rating": "MEDIUM"
+      },
+
+      "costs": {
+        "implementation_cost": "LOW",
+        "implementation_hours": 4,
+        "ongoing_maintenance": "LOW",
+        "annual_cost_estimate": "$2,000"
+      },
+
+      "audit_trail": {
+        "logging_required": true,
+        "log_details": "Request ID, Requestor, Manager, Approval Decision, Justification, Timestamp"
+      },
+
+      "applicable_to": {
+        "violation_types": ["all_violations"],
+        "severity_levels": ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+      }
+    },
+
+    "manager_review": {
+      "control_id": "CTRL-006",
+      "name": "Periodic Manager Review",
+      "type": "DETECTIVE",
+      "category": "Human Controls",
+      "description": "Direct manager conducts periodic review of all high-risk transactions",
+
+      "implementation": {
+        "platform": "Manual Process",
+        "method": "Scheduled Review",
+        "frequencies": {
+          "critical_violations": "Weekly",
+          "high_violations": "Bi-weekly",
+          "medium_violations": "Monthly"
+        },
+        "deliverable": "Manager sign-off attestation with findings"
+      },
+
+      "effectiveness": {
+        "risk_reduction_percentage": 35,
+        "rating": "MEDIUM"
+      },
+
+      "costs": {
+        "implementation_cost": "LOW",
+        "implementation_hours": 2,
+        "ongoing_maintenance": "MEDIUM",
+        "annual_cost_estimate": "$10,000 (manager time)"
+      },
+
+      "audit_trail": {
+        "logging_required": true,
+        "log_details": "Review Period, Manager, Transactions Reviewed, Findings, Exceptions, Sign-off Date"
+      },
+
+      "applicable_to": {
+        "violation_types": ["all_violations"],
+        "severity_levels": ["MEDIUM", "HIGH", "CRITICAL"]
+      }
+    },
+
+    "increased_audit_frequency": {
+      "control_id": "CTRL-007",
+      "name": "Increased Audit Review Frequency",
+      "type": "DETECTIVE",
+      "category": "Audit Controls",
+      "description": "Internal audit conducts more frequent reviews of transactions with SOD conflicts",
+
+      "implementation": {
+        "platform": "Internal Audit Program",
+        "method": "Scheduled Audit",
+        "frequency": "Monthly or Quarterly based on risk",
+        "scope": "All transactions created and processed by users with SOD conflicts"
+      },
+
+      "effectiveness": {
+        "risk_reduction_percentage": 40,
+        "rating": "MEDIUM"
+      },
+
+      "costs": {
+        "implementation_cost": "MEDIUM",
+        "implementation_hours": 8,
+        "ongoing_maintenance": "HIGH",
+        "annual_cost_estimate": "$50,000 (audit team time)"
+      },
+
+      "audit_trail": {
+        "logging_required": true,
+        "log_details": "Audit Period, Auditor, Sample Size, Findings, Exceptions, Recommendations, Management Response"
+      },
+
+      "applicable_to": {
+        "violation_types": ["all_violations"],
+        "severity_levels": ["HIGH", "CRITICAL"]
+      }
+    },
+
+    "quarterly_audit_review": {
+      "control_id": "CTRL-008",
+      "name": "Quarterly Audit Committee Review",
+      "type": "DETECTIVE",
+      "category": "Governance Controls",
+      "description": "Audit committee reviews all SOD exceptions and compensating controls quarterly",
+
+      "implementation": {
+        "platform": "Board Governance",
+        "method": "Quarterly Meeting Agenda Item",
+        "deliverable": "Audit committee minutes documenting review and approval"
+      },
+
+      "effectiveness": {
+        "risk_reduction_percentage": 30,
+        "rating": "MEDIUM"
+      },
+
+      "costs": {
+        "implementation_cost": "LOW",
+        "implementation_hours": 4,
+        "ongoing_maintenance": "MEDIUM",
+        "annual_cost_estimate": "$20,000 (preparation and board time)"
+      },
+
+      "audit_trail": {
+        "logging_required": true,
+        "log_details": "Meeting Date, Attendees, SOD Exceptions Reviewed, Decisions, Action Items"
+      },
+
+      "applicable_to": {
+        "violation_types": ["executive_level_violations"],
+        "severity_levels": ["CRITICAL"]
+      }
+    },
+
+    "ceo_approval": {
+      "control_id": "CTRL-009",
+      "name": "CEO/CFO Executive Approval",
+      "type": "PREVENTIVE",
+      "category": "Governance Controls",
+      "description": "Executive-level approval required for high-risk access combinations",
+
+      "implementation": {
+        "platform": "Access Management System",
+        "method": "Escalated Approval Workflow",
+        "process": "Request → Manager → CFO/CEO → Risk Committee → Implementation"
+      },
+
+      "effectiveness": {
+        "risk_reduction_percentage": 50,
+        "rating": "HIGH"
+      },
+
+      "costs": {
+        "implementation_cost": "LOW",
+        "implementation_hours": 2,
+        "ongoing_maintenance": "LOW",
+        "annual_cost_estimate": "$3,000"
+      },
+
+      "audit_trail": {
+        "logging_required": true,
+        "log_details": "Request ID, Requestor, Executive Approver, Justification, Decision, Conditions, Timestamp"
+      },
+
+      "applicable_to": {
+        "violation_types": ["executive_violations", "critical_violations"],
+        "severity_levels": ["CRITICAL"]
+      }
+    },
+
+    "separate_accounts": {
+      "control_id": "CTRL-010",
+      "name": "Separate User Accounts by Function",
+      "type": "PREVENTIVE",
+      "category": "Access Controls",
+      "description": "User has separate accounts for different functions (e.g., admin account vs. operational account)",
+
+      "implementation": {
+        "platform": "NetSuite",
+        "method": "Multiple User Accounts",
+        "example": "john.smith@fivetran.com (operational), john.smith.admin@fivetran.com (admin)"
+      },
+
+      "effectiveness": {
+        "risk_reduction_percentage": 80,
+        "rating": "HIGH"
+      },
+
+      "costs": {
+        "implementation_cost": "LOW",
+        "implementation_hours": 1,
+        "ongoing_maintenance": "LOW",
+        "annual_cost_estimate": "$500 (additional license)"
+      },
+
+      "audit_trail": {
+        "logging_required": true,
+        "log_details": "User ID, Account Purpose, Active Sessions, Login History"
+      },
+
+      "applicable_to": {
+        "violation_types": ["admin_operational_conflicts"],
+        "severity_levels": ["HIGH", "CRITICAL"]
+      },
+
+      "limitations": "May not be practical for all users; primarily for IT administrators"
+    },
+
+    "change_management": {
+      "control_id": "CTRL-011",
+      "name": "Formal Change Management Process",
+      "type": "PREVENTIVE",
+      "category": "Process Controls",
+      "description": "All system changes follow formal change management with approvals and testing",
+
+      "implementation": {
+        "platform": "ITIL/Change Management System",
+        "method": "Change Request Workflow",
+        "process": "Request → Impact Analysis → Approval → Testing → Implementation → Review"
+      },
+
+      "effectiveness": {
+        "risk_reduction_percentage": 50,
+        "rating": "HIGH"
+      },
+
+      "costs": {
+        "implementation_cost": "MEDIUM",
+        "implementation_hours": 20,
+        "ongoing_maintenance": "MEDIUM",
+        "annual_cost_estimate": "$15,000"
+      },
+
+      "audit_trail": {
+        "logging_required": true,
+        "log_details": "Change ID, Description, Requestor, Approver, Testing Results, Implementation Date, Rollback Plan"
+      },
+
+      "applicable_to": {
+        "violation_types": ["developer_access"],
+        "severity_levels": ["HIGH"]
+      }
+    },
+
+    "peer_review": {
+      "control_id": "CTRL-012",
+      "name": "Mandatory Peer Code Review",
+      "type": "DETECTIVE",
+      "category": "Process Controls",
+      "description": "All code changes and configurations reviewed by peer before deployment",
+
+      "implementation": {
+        "platform": "Version Control System",
+        "method": "Pull Request Review",
+        "requirement": "Minimum 1 peer approval required"
+      },
+
+      "effectiveness": {
+        "risk_reduction_percentage": 45,
+        "rating": "MEDIUM"
+      },
+
+      "costs": {
+        "implementation_cost": "LOW",
+        "implementation_hours": 4,
+        "ongoing_maintenance": "LOW",
+        "annual_cost_estimate": "$8,000 (developer time)"
+      },
+
+      "audit_trail": {
+        "logging_required": true,
+        "log_details": "Change ID, Author, Reviewer, Review Comments, Approval Timestamp"
+      },
+
+      "applicable_to": {
+        "violation_types": ["developer_access"],
+        "severity_levels": ["MEDIUM", "HIGH"]
+      }
+    }
+  },
+
+  "control_packages": {
+    "low_risk_package": {
+      "package_id": "PKG-001",
+      "name": "Low Risk Control Package",
+      "description": "Minimal controls for low-risk SOD violations",
+      "applicable_severity": ["LOW", "MEDIUM"],
+
+      "included_controls": [
+        "manager_approval",
+        "transaction_limits"
+      ],
+
+      "total_risk_reduction": 70,
+      "estimated_annual_cost": "$3,000",
+      "implementation_time_hours": 6
+    },
+
+    "medium_risk_package": {
+      "package_id": "PKG-002",
+      "name": "Medium Risk Control Package (Standard)",
+      "description": "Standard controls for medium-risk SOD violations - Practical for mid-sized organizations",
+      "applicable_severity": ["MEDIUM", "HIGH"],
+
+      "included_controls": [
+        "manager_approval",
+        "transaction_limits",
+        "manager_review",
+        "increased_audit_frequency"
+      ],
+
+      "total_risk_reduction": 80,
+      "estimated_annual_cost": "$15,000",
+      "estimated_annual_cost_note": "ESTIMATE ONLY - Typical range: $10K-25K. Primarily manager review time and audit costs. Minimal tooling required.",
+      "implementation_time_hours": 16
+    },
+
+    "high_risk_package": {
+      "package_id": "PKG-003",
+      "name": "High Risk Control Package",
+      "description": "Comprehensive controls for high-risk SOD violations",
+      "applicable_severity": ["HIGH"],
+
+      "included_controls": [
+        "dual_approval_workflow",
+        "segregated_workflows",
+        "transaction_limits",
+        "real_time_monitoring",
+        "manager_review",
+        "increased_audit_frequency"
+      ],
+
+      "total_risk_reduction": 85,
+      "estimated_annual_cost": "$45,000",
+      "implementation_time_hours": 70
+    },
+
+    "critical_risk_package": {
+      "package_id": "PKG-004",
+      "name": "Critical Risk Control Package (Enterprise-Grade)",
+      "description": "Maximum controls for critical SOD violations - Full SOX-compliant control environment",
+      "applicable_severity": ["CRITICAL"],
+
+      "included_controls": [
+        "ceo_approval",
+        "dual_approval_workflow",
+        "segregated_workflows",
+        "transaction_limits",
+        "real_time_monitoring",
+        "manager_review",
+        "increased_audit_frequency",
+        "quarterly_audit_review"
+      ],
+
+      "total_risk_reduction": 90,
+      "estimated_annual_cost": "$100,000",
+      "estimated_annual_cost_note": "ESTIMATE ONLY - Typical range: $50K-150K depending on transaction volume, existing tools, and organizational size. Includes monitoring tools, manager review time, audit costs, and board oversight.",
+      "implementation_time_hours": 90,
+
+      "additional_requirements": {
+        "approval_level": "CEO or Audit Committee",
+        "review_frequency": "Monthly",
+        "attestation_required": true,
+        "audit_review_required": true
+      }
+    },
+
+    "executive_access_package": {
+      "package_id": "PKG-005",
+      "name": "Executive Access Control Package",
+      "description": "Special controls for executive-level access (Controller, CFO, etc.)",
+      "applicable_severity": ["CRITICAL"],
+      "applicable_roles": ["Controller", "CFO", "VP Finance"],
+
+      "included_controls": [
+        "ceo_approval",
+        "dual_approval_workflow",
+        "real_time_monitoring",
+        "manager_review",
+        "quarterly_audit_review"
+      ],
+
+      "total_risk_reduction": 85,
+      "estimated_annual_cost": "$80,000",
+      "implementation_time_hours": 70,
+
+      "additional_requirements": {
+        "approval_level": "Board of Directors or Audit Committee",
+        "review_frequency": "Monthly",
+        "attestation_required": true,
+        "external_audit_review": true,
+        "documentation": "Full business justification and risk acceptance form required"
+      }
+    },
+
+    "developer_access_package": {
+      "package_id": "PKG-006",
+      "name": "Developer/IT Access Control Package",
+      "description": "Special controls for IT/developer access to production systems",
+      "applicable_severity": ["HIGH", "CRITICAL"],
+      "applicable_roles": ["Developer", "System Administrator"],
+
+      "included_controls": [
+        "manager_approval",
+        "change_management",
+        "peer_review",
+        "separate_accounts",
+        "real_time_monitoring"
+      ],
+
+      "total_risk_reduction": 85,
+      "estimated_annual_cost": "$30,000",
+      "implementation_time_hours": 45,
+
+      "additional_requirements": {
+        "approval_level": "IT Director",
+        "production_access_restrictions": "Emergency use only with documented justification",
+        "all_changes_logged": true
+      }
+    }
+  },
+
+  "effectiveness_calculations": {
+    "risk_reduction_formula": "Residual Risk = Inherent Risk * (1 - Total Risk Reduction %)",
+    "total_risk_reduction": "Sum of individual control risk reductions (capped at 95%)",
+    "residual_risk_scoring": {
+      "0-20": "LOW",
+      "21-50": "MEDIUM",
+      "51-75": "HIGH",
+      "76-100": "CRITICAL"
+    }
+  }
+}

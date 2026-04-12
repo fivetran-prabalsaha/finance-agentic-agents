@@ -5,11 +5,13 @@ Provides authenticated access to NetSuite RESTlet endpoints
 with automatic OAuth signature generation.
 """
 
-import os
 import logging
-from typing import Dict, Any, Optional
-from requests_oauthlib import OAuth1Session
+import os
+from datetime import datetime
+from typing import Any
+
 from dotenv import load_dotenv
+from requests_oauthlib import OAuth1Session
 
 load_dotenv()
 
@@ -21,12 +23,12 @@ class NetSuiteClient:
 
     def __init__(
         self,
-        consumer_key: Optional[str] = None,
-        consumer_secret: Optional[str] = None,
-        token_id: Optional[str] = None,
-        token_secret: Optional[str] = None,
-        realm: Optional[str] = None,
-        restlet_url: Optional[str] = None
+        consumer_key: str | None = None,
+        consumer_secret: str | None = None,
+        token_id: str | None = None,
+        token_secret: str | None = None,
+        realm: str | None = None,
+        restlet_url: str | None = None
     ):
         """
         Initialize NetSuite client with OAuth 1.0a credentials
@@ -65,13 +67,14 @@ class NetSuiteClient:
     def get_users_and_roles(
         self,
         status: str = 'ACTIVE',
-        subsidiary: Optional[str] = None,
-        department: Optional[str] = None,
+        subsidiary: str | None = None,
+        department: str | None = None,
         limit: int = 1000,
         offset: int = 0,
         include_permissions: bool = True,
-        include_inactive: bool = False
-    ) -> Dict[str, Any]:
+        include_inactive: bool = False,
+        last_modified_after: datetime | None = None
+    ) -> dict[str, Any]:
         """
         Fetch users and their roles from NetSuite
 
@@ -83,6 +86,7 @@ class NetSuiteClient:
             offset: Pagination offset
             include_permissions: Include detailed role permissions
             include_inactive: Include inactive users in results
+            last_modified_after: Only return users modified after this datetime (incremental sync)
 
         Returns:
             Dict with 'success', 'data', and optional 'error' keys
@@ -101,6 +105,9 @@ class NetSuiteClient:
 
         if department:
             payload['department'] = department
+
+        if last_modified_after:
+            payload['lastModifiedDate'] = last_modified_after.strftime('%m/%d/%Y %H:%M:%S')
 
         try:
             logger.info(f"Fetching users: limit={limit}, offset={offset}, status={status}")
@@ -135,8 +142,9 @@ class NetSuiteClient:
         self,
         include_permissions: bool = True,
         status: str = 'ACTIVE',
-        page_size: int = 1000
-    ) -> Dict[str, Any]:
+        page_size: int = 1000,
+        last_modified_after: datetime | None = None
+    ) -> dict[str, Any]:
         """
         Fetch all users with automatic pagination
 
@@ -144,6 +152,7 @@ class NetSuiteClient:
             include_permissions: Include detailed role permissions
             status: Filter by status
             page_size: Number of users per page
+            last_modified_after: Only return users modified after this datetime (incremental sync)
 
         Returns:
             Dict with all users combined from multiple pages
@@ -159,7 +168,8 @@ class NetSuiteClient:
                 status=status,
                 limit=page_size,
                 offset=offset,
-                include_permissions=include_permissions
+                include_permissions=include_permissions,
+                last_modified_after=last_modified_after
             )
 
             if not result.get('success'):
@@ -193,7 +203,7 @@ class NetSuiteClient:
             }
         }
 
-    def get_user_by_email(self, email: str, include_permissions: bool = True) -> Optional[Dict[str, Any]]:
+    def get_user_by_email(self, email: str, include_permissions: bool = True) -> dict[str, Any] | None:
         """
         Find a specific user by email address
 
@@ -230,8 +240,8 @@ class NetSuiteClient:
         search_type: str = 'both',
         include_permissions: bool = True,
         include_inactive: bool = False,
-        search_restlet_url: Optional[str] = None
-    ) -> Dict[str, Any]:
+        search_restlet_url: str | None = None
+    ) -> dict[str, Any]:
         """
         Search for specific users by name or email using dedicated search RESTlet
 

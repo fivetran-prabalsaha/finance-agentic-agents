@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1 Pager Generator</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: #f5f6fa; color: #1a1f36; min-height: 100vh; display: flex; flex-direction: column; }
+
+  header { background: #1a1f36; color: #fff; padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; }
+  .header-left { display: flex; align-items: center; gap: 1.25rem; }
+  header h1 { font-size: 1.1rem; font-weight: 700; }
+  header p { font-size: 0.78rem; color: #a8b0cc; margin-top: 0.15rem; }
+  .back-link { color: #a5b4fc; font-size: 0.82rem; text-decoration: none; white-space: nowrap; }
+  .back-link:hover { color: #fff; }
+
+  main { max-width: 900px; margin: 0 auto; padding: 2rem 1.5rem; width: 100%; flex: 1; }
+
+  .file-block { border: 1px solid #e4e6f0; border-radius: 8px; overflow: hidden; margin-bottom: 1rem; background: #fff; }
+  .file-hdr { display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 0.9rem; background: #f8f9fc; cursor: pointer; user-select: none; border-bottom: 1px solid #e4e6f0; }
+  .file-hdr:hover { background: #f0f2ff; }
+  .file-label { font-size: 0.85rem; font-weight: 700; }
+  .file-hint { font-size: 0.72rem; color: #8a93b2; flex: 1; }
+  .toggle-ic { font-size: 0.65rem; color: #8a93b2; transition: transform 0.15s; }
+  .file-body textarea { width: 100%; border: none; outline: none; resize: vertical; font-size: 0.75rem; font-family: 'SFMono-Regular', Consolas, monospace; line-height: 1.5; padding: 0.75rem; color: #2d3a52; background: #fff; min-height: 120px; display: block; }
+  .file-body.collapsed { display: none; }
+
+  .actions { display: flex; gap: 0.75rem; margin-top: 0.5rem; }
+  .btn-gen { background: #f59e0b; color: #1a1f36; border: none; padding: 0.7rem 1.75rem; border-radius: 7px; font-size: 0.95rem; font-weight: 700; cursor: pointer; transition: background 0.15s; }
+  .btn-gen:hover { background: #d97706; }
+  .btn-dl  { background: #5865f2; color: #fff; border: none; padding: 0.7rem 1.5rem; border-radius: 7px; font-size: 0.92rem; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+  .btn-dl:hover { background: #4752c4; }
+  .btn-dl:disabled { background: #a8b0cc; cursor: not-allowed; }
+  .btn-clear { background: #f0f2ff; color: #5865f2; border: 1px solid #c7d0ff; padding: 0.7rem 1rem; border-radius: 7px; font-size: 0.88rem; font-weight: 600; cursor: pointer; }
+  .btn-clear:hover { background: #e0e4ff; }
+
+  .status { margin-top: 0.85rem; font-size: 0.82rem; color: #6b728f; min-height: 1.2rem; }
+  .status.ok  { color: #10b981; }
+  .status.err { color: #dc2626; }
+
+  .tip { background: #f0f2ff; border: 1px solid #c7d0ff; border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1.5rem; font-size: 0.82rem; color: #4a5078; line-height: 1.6; }
+  .tip strong { color: #5865f2; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <a href="index.html" class="back-link">&larr; Back</a>
+    <div>
+      <h1>1 Pager Generator</h1>
+      <p>Paste CLAUDE.md &rarr; shareable architecture one-pager</p>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="tip">
+    <strong>How it works:</strong> Paste your <strong>CLAUDE.md</strong> below, then click <strong>Generate &amp; Open</strong> &mdash; the one-pager opens in a new tab. Use <strong>Download HTML</strong> to save a standalone file.
+  </div>
+
+  <div class="file-block">
+    <div class="file-hdr" onclick="toggle('claude')">
+      <span class="file-label">&#x1F4CB; CLAUDE.md</span>
+      <span class="file-hint">Agents &middot; tech stack &middot; critical rules &middot; model routing</span>
+      <span class="toggle-ic" id="claude-ic">&#x25BC;</span>
+    </div>
+    <div class="file-body" id="claude-body">
+      <textarea id="claude-in" rows="10" placeholder="Paste CLAUDE.md content here..."></textarea>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn-gen" onclick="openPreview()">&#x26A1; Generate &amp; Open</button>
+    <button class="btn-dl" id="dl-btn" onclick="downloadHTML()" disabled>&#x2B07; Download HTML</button>
+    <button class="btn-clear" onclick="clearAll()">Clear</button>
+  </div>
+  <div class="status" id="status"></div>
+</main>
+
+<script>
+// --- UI helpers ---
+function toggle(name) {
+  var body = document.getElementById(name + '-body');
+  var ic   = document.getElementById(name + '-ic');
+  var collapsed = body.classList.toggle('collapsed');
+  ic.style.transform = collapsed ? 'rotate(-90deg)' : '';
+}
+
+function clearAll() {
+  ['claude-in'].forEach(function(id) { document.getElementById(id).value = ''; });
+  document.getElementById('dl-btn').disabled = true;
+  setStatus('', '');
+  lastHTML = '';
+}
+
+function setStatus(msg, type) {
+  var el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = 'status' + (type ? ' ' + type : '');
+}
+
+// --- Utility helpers ---
+function fm(text, patterns) {
+  if (!text) return null;
+  for (var i = 0; i < patterns.length; i++) {
+    var m = text.match(patterns[i]);
+    if (m) return (m[1] !== undefined ? m[1] : m[0]).trim();
+  }
+  return null;
+}
+
+function bullets(text, max) {
+  var out = [];
+  var lines = (text || '').split('\n');
+  for (var i = 0; i < lines.length; i++) {
+    var m = lines[i].match(/^\s*[-\u2022*\u2713]\s+(.+)/);
+    if (m && out.length < max) out.push(m[1].replace(/\*\*/g,'').replace(/\*/g,'').trim());
+  }
+  return out;
+}
+
+function numbered(text, max) {
+  var out = [];
+  var lines = (text || '').split('\n');
+  for (var i = 0; i < lines.length; i++) {
+    var m = lines[i].match(/^\s*\d+\.\s+(.+)/);
+    if (m && out.length < max) out.push(m[1].replace(/\*\*/g,'').trim());
+  }
+  return out;
+}
+
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function stripCodeBlocks(text) {
+  return (text || '').replace(/```[\s\S]+?```/g,' ').replace(/`[^`\n]+`/g,' ');
+}
+
+// --- Parsers ---
+function parse(cm, pm, sm) {
+  return {
+    meta:        parseMeta(cm, pm),
+    agents:      parseAgents(cm),
+    phases:      parsePhases(cm, pm),
+    tech:        parseTech(cm, pm),
+    kpis:        parseKPIs(cm, pm),
+    wf:          parseWorkflows(sm),
+    rules:       parseRules(cm, sm),
+    sources:     parseSources(cm, pm, sm),
+    models:      parseModels(cm),
+    sev:         parseSev(cm, sm),
+    constraints: parseConstraints(cm, pm, sm),
+    dbOutputs:   parseDBOutputsByPhase(cm, pm),
+  };
+}
+
+function parseMeta(cm, pm) {
+  var all = (cm||'') + '\n' + (pm||'');
+  return {
+    name:   fm(all,[/\*\*Project:\*\*\s*(.+)/,/^#\s+(?:Plan:\s*)?(.+)/m,/^##\s+(.+)/m]) || 'Untitled Project',
+    ver:    fm(all,[/\*\*Version:\*\*\s*(.+)/,/version[:\s]+v?([\d.]+)/i,/\bv(\d+\.\d+[\d.]*)\b/]) || '',
+    date:   fm(all,[/\*\*Last Updated:\*\*\s*(.+)/,/Date:\s*(\d{4}-\d{2}-\d{2})/i,/(\d{4}-\d{2}-\d{2})/]) || new Date().toISOString().slice(0,10),
+    author: fm(all,[/\*\*Author:\*\*\s*(.+)/,/Author:\s*(.+)/i,/Maintained by:?\s*(.+)/i]) || '',
+    status: fm(all,[/\*\*Status:\*\*\s*(.+)/,/Status:\s*(DRAFT|IN PROGRESS|COMPLETE|REVIEW|APPROVED|PRODUCTION)/i]) || 'DRAFT',
+    desc:   (fm(all,[/\*\*Purpose:\*\*\s*(.{20,250})/,/##\s*(?:Goal|Objective|Overview|Context)[^\n]*\n+([^\n#]{20,})/i]) || '').slice(0,200),
+  };
+}
+
+function parseAgents(cm) {
+  if (!cm) return [];
+  var out = [];
+
+  // Strategy 0: ### Agent Pipeline Visual markdown table (recon CLAUDE.md structured metadata)
+  // Columns: | ID | Display Name | Phase | Color | Traceable | Parallel | Duty 1 | Duty 2 | Duty 3 |
+  var agentTableM = cm.match(/###\s*Agent Pipeline Visual[\s\S]*?\n\|[^\n]+\|\n\|[-| :]+\|\n((?:\|.+\|\n?)+)/);
+  if (agentTableM) {
+    var agentRows = agentTableM[1].trim().split('\n');
+    for (var ar = 0; ar < agentRows.length; ar++) {
+      var aCells = agentRows[ar].split('|').map(function(c){ return c.trim(); }).filter(Boolean);
+      if (aCells.length < 3 || /^[-:]+$/.test(aCells[0])) continue;
+      var agId = aCells[0].toUpperCase();
+      var agName = aCells[1] || agId;
+      var agPhase = aCells[2] ? (parseInt(aCells[2]) || null) : null;
+      var agParallel = aCells[5] ? /yes/i.test(aCells[5]) : false;
+      var duties = aCells.slice(6).filter(function(d){ return d && d !== '—' && d !== '-'; });
+      out.push({
+        letter: agId, name: agName,
+        phase: agPhase, parallel: agParallel,
+        buls: duties.slice(0, 3), tables: [],
+      });
+    }
+  }
+
+  // Strategy 0b: ### QA Gate Visual table — add gate agents (G1–G4)
+  var gateTableM = cm.match(/###\s*QA Gate Visual[\s\S]*?\n\|[^\n]+\|\n\|[-| :]+\|\n((?:\|.+\|\n?)+)/);
+  if (gateTableM) {
+    var gateRows = gateTableM[1].trim().split('\n');
+    for (var gr = 0; gr < gateRows.length; gr++) {
+      var gCells = gateRows[gr].split('|').map(function(c){ return c.trim(); }).filter(Boolean);
+      if (gCells.length < 2 || /^[-:]+$/.test(gCells[0])) continue;
+      var gId = gCells[0].toUpperCase(); // G1, G2, G3, G4
+      var gName = gCells[1] || gId;
+      var gChecks = gCells.slice(2).filter(function(c){ return c && c !== '—'; }).slice(0, 3);
+      // Phase: G1→1, G2→2, G3→3, G4→4 (numeric part of gate ID)
+      var gPhaseNum = parseInt(gId.replace(/\D/g,'')) || null;
+      out.push({
+        letter: gId, name: gName,
+        phase: gPhaseNum, parallel: false,
+        buls: gChecks, tables: [],
+        isGate: true,
+      });
+    }
+  }
+
+  if (out.length > 0) return out;
+
+  // Strategy 1: ## Agent X — Name headings (fallback for older CLAUDE.md formats)
+  var parts = cm.split(/\n(?=#{2,4}\s*Agent\s+[A-Z]\b)/i);
+  for (var i = 0; i < parts.length; i++) {
+    var p = parts[i];
+    var hm = p.match(/^#{2,4}\s*Agent\s+([A-Z])\s*[—\u2014\u2013:-]?\s*(.+)/i);
+    if (!hm) continue;
+    var letter = hm[1].toUpperCase();
+    var name   = hm[2].trim().replace(/\*\*/g,'').split('\n')[0].trim();
+    var phM    = p.match(/Phase\s+(\d+)/i);
+    var tableMatches = [];
+    var re = /`([a-z_]+(?:_[a-z]+)+)`/g, tm;
+    while ((tm = re.exec(p)) !== null) tableMatches.push(tm[1]);
+    var tables = tableMatches.filter(function(v,j,a){ return a.indexOf(v)===j; }).slice(0,5);
+    out.push({
+      letter: letter, name: name,
+      phase: phM ? parseInt(phM[1]) : null,
+      parallel: /parallel/i.test(p),
+      buls: bullets(p, 4), tables: tables,
+    });
+  }
+
+  // Strategy 2: Component/Agent tables (last resort)
+  if (out.length === 0) {
+    var usedLetters = {};
+    var letterIdx = 0;
+    var letters = 'ABCDEFGHIJKLMNOP';
+    var rowRe = /\|\s*\*?\*?\s*([A-Z][^|*\n]{2,40}?)\s*\*?\*?\s*\|\s*(?:`[^`\n]*`)?\s*(?:\||\s)\s*([^|\n]{8,100})\s*\|/g;
+    var rowM;
+    while ((rowM = rowRe.exec(cm)) !== null && out.length < 9) {
+      var rawName = rowM[1].trim();
+      var rawDesc = rowM[2].trim().replace(/\*\*/g,'').replace(/\*/g,'');
+      if (/^[-\s]+$/.test(rawName)) continue;
+      if (/^(component|file|purpose|name|agent|key|library|tool)/i.test(rawName)) continue;
+      if (rawName.length < 3 || rawDesc.length < 8) continue;
+      if (!usedLetters[rawName]) {
+        usedLetters[rawName] = letters[letterIdx++] || String.fromCharCode(65 + out.length);
+        out.push({
+          letter: usedLetters[rawName],
+          name: rawName.replace(/^\*+|\*+$/g,'').trim(),
+          phase: null, parallel: false,
+          buls: [rawDesc.slice(0,80)], tables: [],
+        });
+      }
+    }
+  }
+
+  return out;
+}
+
+function parsePhases(cm, pm) {
+  var all = (cm||'') + '\n' + (pm||'');
+  var map = {};
+  var re = /(?:##\s+)?Phase\s+([A-Z\d]+)[:\s\u2014\u2013-]+([^\n]*)/gi, m;
+  while ((m = re.exec(all)) !== null) {
+    var key = m[1].toUpperCase();
+    var n = /^\d+$/.test(key) ? parseInt(key) : key.charCodeAt(0) - 64;
+    var name = m[2].trim().replace(/\*\*/g,'').split('(')[0].trim();
+    if (!map[n] && name.length > 1) map[n] = { num: n, label: m[1], name: name };
+  }
+  return Object.keys(map).map(function(k){ return map[k]; })
+    .sort(function(a,b){ return a.num-b.num; }).slice(0,8);
+}
+
+function parseTech(cm, pm) {
+  var text = (cm||'') + '\n' + (pm||'');
+  var tech = [];
+  // Strategy 0: "Stack: item1 · item2 · ..." inline line (recon CLAUDE.md format)
+  var stackLineM = text.match(/^Stack:\s*([^\n]+)/im);
+  if (stackLineM) {
+    var stackItems = stackLineM[1].split(/\s*[\u00b7\u2022]\s*/);
+    for (var si = 0; si < stackItems.length; si++) {
+      var sItem = stackItems[si].trim();
+      if (!sItem) continue;
+      var sParens = sItem.match(/^(.+?)\s*\((.+)\)$/);
+      if (sParens) {
+        tech.push({ name: sParens[1].trim(), desc: sParens[2].trim() });
+      } else {
+        tech.push({ name: sItem, desc: '' });
+      }
+    }
+    if (tech.length > 0) return tech.slice(0, 14);
+  }
+  var secM = text.match(/(?:##[#]?\s+)?(?:Tech(?:nology)?\s+Stack|Core Technologies|Key Libraries)[^\n]*\n([\s\S]+?)(?=\n##|\n---|\n\*\*\*|$)/i);
+  if (secM) {
+    var sec = secM[1];
+    var rows = sec.match(/\|([^|\n]+)\|([^|\n]+)\|?([^|\n]*)\|?/g) || [];
+    for (var i = 0; i < rows.length; i++) {
+      var cells = rows[i].split('|').map(function(c){ return c.trim().replace(/\*\*/g,''); }).filter(Boolean);
+      if (cells.length >= 2 && cells[0].indexOf('---') === -1 && cells[0].toLowerCase().indexOf('component') === -1 && cells[0].toLowerCase().indexOf('library') === -1) {
+        tech.push({ name: cells[0].replace(/`/g,''), desc: cells[cells.length-1].replace(/`/g,'') });
+      }
+    }
+    if (tech.length === 0) {
+      var cb = sec.match(/```[\s\S]+?```/);
+      if (cb) {
+        var lines = cb[0].split('\n');
+        for (var j = 0; j < lines.length; j++) {
+          var lm = lines[j].match(/^([a-zA-Z][\w-]+)==([\d.]+)/);
+          if (lm) tech.push({ name: lm[1], desc: 'v'+lm[2] });
+        }
+      }
+    }
+    if (tech.length === 0) {
+      var bms = sec.match(/[-*]\s+\*\*([^*]+)\*\*[:\s]+(.+)/g) || [];
+      for (var k = 0; k < bms.length; k++) {
+        var bm = bms[k].match(/\*\*([^*]+)\*\*[:\s]+(.+)/);
+        if (bm) tech.push({ name: bm[1].trim(), desc: bm[2].trim() });
+      }
+    }
+  }
+  return tech.slice(0,14);
+}
+
+function parseKPIs(cm, pm) {
+  var all = (cm||'') + '\n' + (pm||'');
+  var kpis = [];
+
+  // Strategy 0: ### KPIs markdown table (recon CLAUDE.md structured metadata)
+  var kpiTableM = all.match(/###\s*KPIs?\s*\n\|[^\n]+\|\n\|[-| :]+\|\n((?:\|.+\|\n?)+)/i);
+  if (kpiTableM) {
+    var kpiRows = kpiTableM[1].trim().split('\n');
+    for (var kr = 0; kr < kpiRows.length && kpis.length < 6; kr++) {
+      var kCells = kpiRows[kr].split('|').map(function(c){ return c.trim(); }).filter(Boolean);
+      if (kCells.length >= 2 && !/^[-:]+$/.test(kCells[0])) {
+        kpis.push({ label: kCells[0], value: kCells[1] });
+      }
+    }
+    if (kpis.length > 0) return kpis;
+  }
+
+  // Strategy 1: check-mark success metrics lines — fixed regex to use unicode code points
+  var checkRe = /[\u2705\u2714\u2611]\s+(.+)/g, cm2;
+  while ((cm2 = checkRe.exec(all)) !== null && kpis.length < 6) {
+    var line = cm2[1].replace(/\*\*/g,'').replace(/\[x\]/gi,'').trim();
+    // Fixed: leading number pattern per spec
+    var nm = line.match(/^([\d,]+(?:\/[\d,]+)?(?:\.\d+)?[%x]?(?:\s*(?:K|M|users?|rules?|tools?|x))?)\s+(.+)/);
+    if (nm) {
+      kpis.push({ value: nm[1].trim(), label: nm[2].trim().slice(0,40) });
+    } else {
+      // Try parenthetical patterns like (99.7% coverage)
+      var pm2 = line.match(/\(([≥≤<>]?[\d.]+[%x]?\+?)\s+([^)]+)\)/);
+      if (pm2) kpis.push({ value: pm2[1].trim(), label: pm2[2].trim().slice(0,40) });
+    }
+  }
+
+  // Strategy 2: dedicated KPI section
+  if (kpis.length < 2) {
+    var secM = all.match(/(?:KPI|Success Metric|Target KPI|Key Metric|Success Criteria)s?[^\n]*\n([\s\S]+?)(?=\n##|$)/i);
+    if (secM) {
+      var lines = secM[1].split('\n');
+      for (var i = 0; i < lines.length; i++) {
+        var m1 = lines[i].match(/[-\u2022*]\s*([≥≤<>]?[\d]+(?:\.\d+)?[%x]?(?:\s*(?:hrs?|hours?|days?|min))?)\s+(.{5,50})/i);
+        if (m1 && kpis.length < 6) { kpis.push({ value: m1[1].trim(), label: m1[2].trim() }); continue; }
+        var m2 = lines[i].match(/[-\u2022*]?\s*(.{5,40}?):\s*([≥≤<>]?[\d]+(?:\.\d+)?[%x]?(?:\s*(?:hrs?|hours?|days?|min))?)/i);
+        if (m2 && /\d/.test(m2[2]) && kpis.length < 6) kpis.push({ value: m2[2].trim(), label: m2[1].trim() });
+      }
+    }
+  }
+
+  return kpis.slice(0,6);
+}
+
+function parseWorkflows(sm) {
+  if (!sm) return [];
+  var out = [];
+  var parts = sm.split(/\n(?=#{2,3}\s*Workflow\s+\d+)/i);
+  for (var i = 0; i < parts.length; i++) {
+    var p = parts[i];
+    var hm = p.match(/^#{2,3}\s*Workflow\s+(\d+)[:\s\u2014\u2013-]*(.+)/i);
+    if (!hm) continue;
+    out.push({
+      num: parseInt(hm[1]),
+      name: hm[2].trim().replace(/\*\*/g,'').replace(/[()]/g,'').trim(),
+      when: (fm(p,[/Use when:\s*(.{10,})/i, /Trigger(?:\s+phrases?)?:\s*(.{10,})/i]) || '').slice(0,80),
+      steps: bullets(p, 3),
+    });
+  }
+  return out.slice(0,8);
+}
+
+function parseRules(cm, sm) {
+  var all = (cm||'') + '\n' + (sm||'');
+
+  // Strategy 0: markdown table format | # | Rule | Impact | (recon CLAUDE.md)
+  var tableSecM = all.match(/(?:Critical Rules?)[^\n]*\n\|[^\n]+\|\n\|[-| :]+\|\n((?:\|.+\|\n?)+)/i);
+  if (tableSecM) {
+    var tableRules = [];
+    var ruleRows = tableSecM[1].trim().split('\n');
+    for (var rr = 0; rr < ruleRows.length && tableRules.length < 8; rr++) {
+      var rCells = ruleRows[rr].split('|').map(function(c){ return c.trim(); }).filter(Boolean);
+      // Columns: | # | Rule | Impact if violated |
+      if (rCells.length >= 2 && !/^[-:]+$/.test(rCells[0]) && !/^#/.test(rCells[0])) {
+        var ruleText = rCells[1] || rCells[0];
+        if (ruleText.length > 5) tableRules.push(ruleText.slice(0, 90));
+      }
+    }
+    if (tableRules.length > 0) return tableRules;
+  }
+
+  // Strategy 1: section with numbered or bullet list (fallback)
+  var secM = all.match(/(?:Critical Rules?|Non-Negotiable Rules?|MUST READ|Important Rules?)[^\n]*\n([\s\S]+?)(?=\n##|$)/i);
+  if (!secM) return [];
+  var r1 = numbered(secM[1], 8);
+  var r2 = bullets(secM[1], 8);
+  return r1.concat(r2).slice(0, 8);
+}
+
+function parseSources(cm, pm, sm) {
+  var all = (cm||'') + '\n' + (pm||'') + '\n' + (sm||'');
+  var known = [
+    { name:'Salesforce CPQ', pat:/salesforce\s+cpq/i,       color:'#0070d2' },
+    { name:'NetSuite ERP',   pat:/netsuite/i,                color:'#2eb67d' },
+    { name:'Ironclad',       pat:/ironclad/i,                color:'#6366f1' },
+    { name:'Okta',           pat:/okta/i,                    color:'#007dc1' },
+    { name:'Workday',        pat:/workday/i,                  color:'#f5821f' },
+    { name:'Salesforce',     pat:/salesforce(?!\s+cpq)/i,    color:'#0070d2' },
+    { name:'Jira',           pat:/jira/i,                    color:'#0052cc' },
+    { name:'Coupa',          pat:/coupa/i,                   color:'#ee3124' },
+    { name:'Stripe',         pat:/stripe/i,                  color:'#635bff' },
+    { name:'PostgreSQL',     pat:/postgres(?:ql)?/i,         color:'#336791' },
+    { name:'Slack',          pat:/slack/i,                   color:'#4a154b' },
+    { name:'LangSmith',      pat:/langsmith/i,               color:'#ef6c00' },
+  ];
+  var found = [];
+  for (var i = 0; i < known.length; i++) {
+    if (!known[i].pat.test(all)) continue;
+    // Skip generic "Salesforce" if "Salesforce CPQ" already added
+    if (known[i].name === 'Salesforce' && found.some(function(f){ return f.name === 'Salesforce CPQ'; })) continue;
+    // Skip internal systems that are not data sources (PostgreSQL, LangSmith, Slack)
+    if (known[i].name === 'PostgreSQL' && found.length >= 3) continue;
+    if (known[i].name === 'Slack'      && found.length >= 3) continue;
+    if (known[i].name === 'LangSmith'  && found.length >= 3) continue;
+
+    // Extract nearby context (500 chars after the source name mention)
+    var srcEscaped = known[i].name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    var ctxRe = new RegExp(srcEscaped + '([\\s\\S]{0,500})', 'i');
+    var ctxM = all.match(ctxRe);
+    var ctx = ctxM ? ctxM[0] : '';
+
+    // 1. Auth method + API version
+    var authStr = 'Token-Based Auth';
+    var authM = ctx.match(/(OAuth\s*[\d.]+|Bearer\s*Token|Token.Based\s*Auth|API\s*Key|RESTlet|SuiteQL|JWT)/i);
+    if (authM) authStr = authM[1].trim();
+    var apiStr = 'REST API';
+    var verM = ctx.match(/REST\s*API\s*v?([\d.]+)/i);
+    if (verM) apiStr = 'REST API v' + verM[1];
+    else if (/RESTlet/i.test(ctx)) apiStr = 'RESTlet API';
+    else if (/SuiteQL/i.test(ctx)) apiStr = 'SuiteQL';
+    else if (/GraphQL/i.test(ctx)) apiStr = 'GraphQL API';
+
+    // Build 4-5 bullet strings
+    var buls = [];
+
+    // Bullet 1: Auth + API
+    buls.push(authStr + ' \u00b7 ' + apiStr);
+
+    // Bullet 2: Key objects synced
+    var objNames = [];
+    var objPatterns = [
+      /(?:sync(?:s|ed|ing)?|fetch(?:es|ed|ing)?|pull(?:s|ed|ing)?)\s+([A-Za-z_/,\s]{5,60}?)(?:\s+from|\s+via|\s+data|\n|$)/i,
+      /objects?:\s*([A-Za-z_,\s/]{5,60})/i,
+      /(Users?|Roles?|Permissions?|Invoices?|Vendors?|Journals?|Quotes?|Contacts?)[,\s/]*(Users?|Roles?|Permissions?|Invoices?|Vendors?|Journals?|Quotes?|Contacts?)?/i,
+    ];
+    for (var oi = 0; oi < objPatterns.length; oi++) {
+      var om = ctx.match(objPatterns[oi]);
+      if (om && om[1]) { objNames.push(om[1].trim().replace(/\s+/g,' ').slice(0,50)); break; }
+    }
+    if (objNames.length === 0) objNames.push('Users / Roles / Permissions');
+    buls.push('Objects: ' + objNames[0]);
+
+    // Bullet 3: Pagination
+    var pageM = ctx.match(/page[_\s]?size[:\s=]+(\d+)/i);
+    if (pageM) {
+      buls.push('Pagination: page_size=' + pageM[1]);
+    } else {
+      buls.push('Pagination: cursor-based');
+    }
+
+    // Bullet 4: Sync schedule
+    var schedM = ctx.match(/(daily\s+full\s+sync|hourly\s+incremental|incremental\s+sync|daily\s+sync|real.?time|webhook|scheduled)/i);
+    if (schedM) {
+      buls.push('Schedule: ' + schedM[1].trim().replace(/\s+/g,' '));
+    } else {
+      buls.push('Schedule: daily sync');
+    }
+
+    // Bullet 5: Coverage/count if found
+    var covM = ctx.match(/([\d,]+)\s*\/\s*([\d,]+)\s+([a-z]+)\s+synced/i);
+    if (covM) {
+      buls.push(covM[1] + '/' + covM[2] + ' ' + covM[3] + ' synced');
+    } else {
+      var pctM = ctx.match(/([\d.]+%)\s+coverage/i);
+      if (pctM) buls.push('Coverage: ' + pctM[1]);
+    }
+
+    found.push({
+      name: known[i].name,
+      color: known[i].color,
+      auth: authStr + ' \u00b7 ' + apiStr,
+      bullets: buls,
+    });
+    if (found.length >= 5) break;
+  }
+  return found;
+}
+
+function parseModels(cm) {
+  if (!cm) return [];
+  var out = [];
+
+  // Strategy 0: ### Cost Model markdown table (recon CLAUDE.md structured metadata)
+  // Columns: | Tier | Model | Est. per run | Use cases |
+  var costTableM = cm.match(/###\s*Cost Model\s*\n\|[^\n]+\|\n\|[-| :]+\|\n((?:\|.+\|\n?)+)/i);
+  if (costTableM) {
+    var costRows = costTableM[1].trim().split('\n');
+    for (var cr = 0; cr < costRows.length; cr++) {
+      var cCells = costRows[cr].split('|').map(function(c){ return c.trim(); }).filter(Boolean);
+      if (cCells.length < 3 || /^[-:]+$/.test(cCells[0])) continue;
+      var tier = cCells[0], model = cCells[1], cost = cCells[2];
+      var usecases = cCells[3] || '';
+      var color = /haiku/i.test(model) ? '#f59e0b'
+                : /opus/i.test(model)  ? '#7c3aed'
+                : /sonnet/i.test(model)? '#3b82f6'
+                : '#10b981';
+      out.push({
+        name:    model || tier,
+        role:    tier,
+        cost:    cost,
+        color:   color,
+        bullets: usecases ? usecases.split(/\s*[·\u00b7]\s*/).slice(0, 3) : [],
+      });
+    }
+    if (out.length > 0) return out;
+  }
+
+  // Strategy 1: keyword detection (fallback for other CLAUDE.md formats)
+  if (/deterministic|no.llm|free/i.test(cm)) {
+    out.push({ name:'No LLM', role:'Deterministic (free)', cost:'~$0.00/run', color:'#10b981',
+      bullets:['Rule-based processing only','No API costs incurred','Instant deterministic results'] });
+  }
+  if (/haiku/i.test(cm)) {
+    var haikuCtx = ''; var hm = cm.match(/haiku[\s\S]{0,400}/i); if (hm) haikuCtx = hm[0];
+    var haikuBuls = [];
+    if (/dispatch|tool\s+call|routing/i.test(haikuCtx)) haikuBuls.push('Tool dispatch and intent routing');
+    if (/fast|cheap|high.vol/i.test(haikuCtx)) haikuBuls.push('High-volume, low-latency calls');
+    if (/summar/i.test(haikuCtx)) haikuBuls.push('Conversation summarization');
+    if (haikuBuls.length === 0) haikuBuls = ['Fast, high-volume dispatch','Low-cost processing','Routing and classification'];
+    out.push({ name:'Claude Haiku', role:'Fast / High-volume dispatch', cost:'~$0.15/1M tok', color:'#f59e0b', bullets:haikuBuls });
+  }
+  if (/sonnet/i.test(cm) && !/opus/i.test(cm)) {
+    out.push({ name:'Claude Sonnet', role:'Balanced reasoning', cost:'~$3/1M tok', color:'#3b82f6',
+      bullets:['Balanced speed and quality','Complex multi-step analysis','Mid-tier cost efficiency'] });
+  }
+  if (/opus/i.test(cm)) {
+    var opusCtx = ''; var om = cm.match(/opus[\s\S]{0,400}/i); if (om) opusCtx = om[0];
+    var opusBuls = [];
+    if (/synthes|reasoning|analys/i.test(opusCtx)) opusBuls.push('Deep reasoning and synthesis');
+    if (/sod|compliance|violation/i.test(opusCtx)) opusBuls.push('SOD / compliance analysis');
+    if (/200k|context|long/i.test(opusCtx)) opusBuls.push('200K token context window');
+    if (opusBuls.length === 0) opusBuls = ['Deep reasoning on complex queries','High-quality synthesis','Largest context window'];
+    out.push({ name:'Claude Opus', role:'Smart / Deep reasoning', cost:'~$15/1M tok', color:'#7c3aed', bullets:opusBuls });
+  }
+  return out;
+}
+
+function parseSev(cm, sm) {
+  var cmClean = stripCodeBlocks(cm || '');
+  var smClean = stripCodeBlocks(sm || '');
+  var all = cmClean + '\n' + smClean;
+  if (!/CRITICAL|HIGH|MEDIUM|LOW/i.test(all)) return null;
+
+  var defaults = {
+    critical: 'Direct fraud risk, immediate remediation required',
+    high:     'Significant risk, remediate within 30 days',
+    medium:   'Moderate risk, remediate within 90 days',
+    low:      'Minor risk, document compensating controls',
+  };
+
+  function extractSev(level, def) {
+    var p1 = new RegExp('[-*]\\s+\\*\\*' + level + '\\*\\*[:\\s]+([^\\n]{10,90})', 'i');
+    var p2 = new RegExp('\\|\\s*\\*?\\*?' + level + '\\*?\\*?\\s*\\|\\s*([^|\\n]{10,90})', 'i');
+    var p3 = new RegExp('^[\\s>*-]*' + level + '[:\\u2014\\u2013]+\\s*([^\\n.]{10,80})', 'im');
+    var result = fm(all, [p1, p2, p3]) || def;
+    return result.replace(/\*\*/g,'').replace(/\|/g,'').trim().slice(0,75);
+  }
+
+  return {
+    critical: extractSev('CRITICAL', defaults.critical),
+    high:     extractSev('HIGH',     defaults.high),
+    medium:   extractSev('MEDIUM',   defaults.medium),
+    low:      extractSev('LOW',      defaults.low),
+  };
+}
+
+function parseConstraints(cm, pm, sm) {
+  var all = (pm||'') + '\n' + (sm||'') + '\n' + (cm||'');
+  var secM = all.match(/(?:Hard Constraint|Non-Negotiable|Important Constraint)[^\n]*\n([\s\S]+?)(?=\n##|$)/i);
+  if (!secM) return [];
+  return bullets(secM[1],4).concat(numbered(secM[1],4)).slice(0,4);
+}
+
+function parseDBOutputsByPhase(cm, pm) {
+  var all = (cm||'') + '\n' + (pm||'');
+  var result = {};
+
+  // Find all Phase mentions and nearby backtick snake_case table names
+  // Split into segments by phase headings
+  var phaseRe = /Phase\s+(\d+)/gi;
+  var segments = [];
+  var lastIdx = 0;
+  var lastPhase = null;
+  var pm2;
+
+  // Collect all phase positions
+  var phasePositions = [];
+  var tempRe = /Phase\s+(\d+)/gi;
+  var tempM;
+  while ((tempM = tempRe.exec(all)) !== null) {
+    phasePositions.push({ idx: tempM.index, num: parseInt(tempM[1]) });
+  }
+
+  // For each phase, gather text until the next phase or end, then extract table names
+  for (var pi = 0; pi < phasePositions.length; pi++) {
+    var startIdx = phasePositions[pi].idx;
+    var endIdx = pi + 1 < phasePositions.length ? phasePositions[pi + 1].idx : all.length;
+    var phNum = phasePositions[pi].num;
+    var chunk = all.slice(startIdx, Math.min(startIdx + 1000, endIdx));
+
+    // Find backtick-wrapped snake_case identifiers
+    var tableRe = /`([a-z][a-z0-9]*(?:_[a-z0-9]+)+)`/g;
+    var tm2;
+    var tables = [];
+    while ((tm2 = tableRe.exec(chunk)) !== null) {
+      var tname = tm2[1];
+      // Filter out common non-table names (file paths, config keys, etc.)
+      if (/\.py$|\.js$|\.md$|\.sql$|\.json$|\.sh$/.test(tname)) continue;
+      if (/^[a-z]+_[a-z]+/.test(tname) && tname.length >= 5 && tables.indexOf(tname) === -1) {
+        tables.push(tname);
+      }
+    }
+
+    if (tables.length > 0) {
+      if (!result[phNum]) result[phNum] = [];
+      for (var ti = 0; ti < tables.length; ti++) {
+        if (result[phNum].indexOf(tables[ti]) === -1) {
+          result[phNum].push(tables[ti]);
+        }
+      }
+    }
+  }
+
+  // Also scan for explicit "Phase N Output" or "Phase N Tables" sections
+  var outputSecRe = /Phase\s+(\d+)\s+(?:Output|Tables?|Schema)[^\n]*\n([\s\S]{0,600}?)(?=\nPhase\s+\d+|\n##|$)/gi;
+  var osm;
+  while ((osm = outputSecRe.exec(all)) !== null) {
+    var phN = parseInt(osm[1]);
+    var secText = osm[2];
+    var tRe2 = /`([a-z][a-z0-9]*(?:_[a-z0-9]+)+)`/g;
+    var tm3;
+    while ((tm3 = tRe2.exec(secText)) !== null) {
+      if (!result[phN]) result[phN] = [];
+      if (result[phN].indexOf(tm3[1]) === -1) result[phN].push(tm3[1]);
+    }
+  }
+
+  return result;
+}
+
+// --- Render helpers ---
+var ACOLS = ['#1d4ed8','#0891b2','#7c3aed','#ea580c','#16a34a','#dc2626','#d97706','#6b21a8','#065f46'];
+var PCOLS = ['#1d4ed8','#0891b2','#7c3aed','#ea580c','#16a34a','#dc2626','#d97706','#0f766e'];
+var CHIP_COLS = ['#1d4ed8','#0891b2','#7c3aed','#ea580c','#16a34a'];
+function aCol(l) { return ACOLS[(l.charCodeAt(0)-65) % ACOLS.length]; }
+function pCol(n) { return PCOLS[((n||1)-1) % PCOLS.length]; }
+
+function sectLabel(title, color) {
+  return '<div style="font-size:7.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:' + (color||'#6b728f') + ';margin-bottom:6px;border-bottom:2px solid ' + (color||'#e4e6f0') + ';padding-bottom:3px;">' + esc(title) + '</div>';
+}
+
+function card(title, body, accent) {
+  var ac = accent || '#e4e6f0';
+  var titleHtml = title ? sectLabel(title, ac) : '';
+  return '<div style="background:#fff;border-radius:8px;padding:10px 12px;box-shadow:0 1px 4px rgba(26,31,54,0.08);border-top:3px solid ' + ac + ';">' + titleHtml + body + '</div>';
+}
+
+function rHeader(meta) {
+  var verBadge = meta.ver
+    ? '<div style="background:#3b82f6;color:#fff;display:inline-block;padding:3px 11px;border-radius:99px;font-size:9px;font-weight:700;">v' + esc(meta.ver) + ' \u00b7 ' + esc(meta.date) + '</div>'
+    : '<div style="color:#8892b0;font-size:9px;">' + esc(meta.date) + '</div>';
+  var authorLine = meta.author
+    ? '<div style="font-size:8.5px;color:#8892b0;margin-top:4px;">Author: ' + esc(meta.author) + ' \u00b7 Status: ' + esc(meta.status) + '</div>'
+    : '<div style="font-size:8.5px;color:#8892b0;margin-top:4px;">Status: ' + esc(meta.status) + '</div>';
+  var descLine = meta.desc
+    ? '<div style="font-size:9px;color:#a8b0cc;margin-top:3px;max-width:600px;">' + esc(meta.desc.slice(0,180)) + '</div>'
+    : '';
+  return '<div style="background:#1a1f36;color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;">'
+    + '<div><div style="font-size:18px;font-weight:800;letter-spacing:-.02em;">' + esc(meta.name) + '</div>' + descLine + '</div>'
+    + '<div style="text-align:right;flex-shrink:0;margin-left:16px;">' + verBadge + authorLine + '</div>'
+    + '</div>';
+}
+
+function rSources(sources) {
+  var items = sources.map(function(s) {
+    var bulsHtml = '';
+    if (s.bullets && s.bullets.length) {
+      bulsHtml = s.bullets.map(function(b) {
+        return '<div style="font-size:8px;color:#8a93b2;padding:1px 0;">\u203a ' + esc(b.slice(0,80)) + '</div>';
+      }).join('');
+    } else {
+      bulsHtml = '<div style="font-size:7.5px;color:#8a93b2;margin-top:2px;">' + esc(s.auth || '') + '</div>';
+    }
+    return '<div style="flex:1;min-width:0;background:#fff;border-radius:7px;padding:9px 11px;box-shadow:0 1px 3px rgba(26,31,54,0.07);">'
+      + '<div style="font-size:9.5px;font-weight:700;color:' + s.color + ';padding-bottom:5px;margin-bottom:5px;border-bottom:1px solid #eef0f8;">' + esc(s.name) + '</div>'
+      + '<div style="font-size:7.5px;color:#4a5078;font-weight:600;margin-bottom:3px;">' + esc(s.auth || '') + '</div>'
+      + bulsHtml
+      + '</div>';
+  }).join('');
+  return '<div style="display:flex;gap:8px;padding:8px 10px;background:#eaecf4;border-bottom:1px solid #d8dce8;">' + items + '</div>';
+}
+
+function rAgents(agents, phases, dbOutputs) {
+  var dbOut = dbOutputs || {};
+
+  // Group agents by phase
+  var phaseMap = {};
+  var noPhase = [];
+  agents.forEach(function(a) {
+    if (a.phase !== null) {
+      if (!phaseMap[a.phase]) phaseMap[a.phase] = [];
+      phaseMap[a.phase].push(a);
+    } else {
+      noPhase.push(a);
+    }
+  });
+  var hasPhases = Object.keys(phaseMap).length > 0;
+
+  function agentCard(a) {
+    var gateBorder = a.isGate ? 'border: 1.5px dashed #f59e0b;' : '';
+    // Phase tag
+    var pTag = a.phase !== null
+      ? '<span style="background:' + pCol(a.phase) + ';color:#fff;font-size:6.5px;padding:1px 5px;border-radius:3px;font-weight:600;margin-left:auto;white-space:nowrap;">Phase ' + a.phase + '</span>'
+      : '';
+    // Parallel badge
+    var parTag = a.parallel
+      ? '<span style="border:1px solid #c7d0ff;color:#5865f2;font-size:6px;padding:1px 4px;border-radius:3px;margin-left:3px;">parallel</span>'
+      : '';
+    var buls = a.buls.map(function(b) {
+      return '<div style="color:#4a5078;font-size:8px;padding:1px 0 1px 2px;">\u203a ' + esc(b.slice(0,85)) + '</div>';
+    }).join('');
+    var tbls = a.tables.length
+      ? '<div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:3px;">' + a.tables.map(function(t) {
+          return '<span style="background:#f0f2ff;color:#5865f2;font-size:7px;padding:1px 5px;border-radius:3px;font-family:monospace;">' + esc(t) + '</span>';
+        }).join('') + '</div>'
+      : '';
+    // Agent card header: circle + name + phase tag + parallel badge in one flex row
+    return '<div style="background:#fff;border-radius:7px;padding:7px 9px;margin-bottom:5px;box-shadow:0 1px 3px rgba(26,31,54,0.07);' + gateBorder + '">'
+      + '<div style="display:flex;align-items:center;gap:5px;margin-bottom:3px;">'
+      + '<div style="background:' + aCol(a.letter) + ';color:#fff;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:9px;flex-shrink:0;">' + esc(a.letter) + '</div>'
+      + '<div style="font-weight:700;font-size:9.5px;color:#1a1f36;">' + esc(a.name.slice(0,40)) + '</div>'
+      + pTag + parTag
+      + '</div>' + buls + tbls + '</div>';
+  }
+
+  function dbSection(phaseNum) {
+    var tables = dbOut[phaseNum];
+    if (!tables || tables.length === 0) return '';
+    var chips = tables.map(function(t, idx) {
+      var chipColor = CHIP_COLS[idx % CHIP_COLS.length];
+      return '<span style="background:' + chipColor + ';color:#fff;font-size:7px;padding:2px 7px;border-radius:99px;font-family:monospace;font-weight:600;">' + esc(t) + '</span>';
+    }).join('');
+    return '<div style="background:#eef0f8;border-radius:5px;padding:5px 8px;margin:5px 0;">'
+      + '<div style="font-size:6.5px;font-weight:800;color:#6b728f;text-transform:uppercase;letter-spacing:.07em;">POSTGRESQL \u2014 PHASE ' + phaseNum + ' OUTPUT</div>'
+      + '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;">' + chips + '</div>'
+      + '</div>';
+  }
+
+  var rows = '';
+  if (hasPhases) {
+    var phNums = Object.keys(phaseMap).map(Number).sort(function(a,b){return a-b;});
+    phNums.forEach(function(pn) {
+      var ph = phases.filter(function(p){ return p.num === pn; })[0];
+      var phName = ph ? ph.name : 'Phase ' + pn;
+      var parCount = phaseMap[pn].filter(function(a){ return a.parallel; }).length;
+      rows += '<div style="display:flex;align-items:center;gap:5px;margin:6px 0 4px;">'
+        + '<span style="background:' + pCol(pn) + ';color:#fff;font-size:7px;font-weight:700;padding:2px 7px;border-radius:3px;white-space:nowrap;">Phase ' + pn + '</span>'
+        + '<span style="font-size:8px;color:#4a5078;font-weight:600;">' + esc(phName.slice(0,35)) + '</span>'
+        + (parCount > 0 ? '<span style="border:1px solid #e4e6f0;color:#6b728f;font-size:6.5px;padding:1px 4px;border-radius:3px;margin-left:auto;">' + parCount + ' parallel</span>' : '')
+        + '</div>';
+      phaseMap[pn].forEach(function(a) { rows += agentCard(a); });
+      // Insert DB output bar after this phase group
+      rows += dbSection(pn);
+    });
+    noPhase.forEach(function(a) { rows += agentCard(a); });
+  } else {
+    agents.forEach(function(a) { rows += agentCard(a); });
+  }
+
+  // Compute phase range label
+  var phKeys = Object.keys(phaseMap).map(Number).sort(function(a,b){return a-b;});
+  var phLabel = phKeys.length > 1 ? 'PHASES ' + phKeys[0] + '\u2013' + phKeys[phKeys.length-1] : (phKeys.length === 1 ? 'PHASE ' + phKeys[0] : '');
+  var headerLabel = phLabel ? 'AGENT PIPELINE \u2014 ' + phLabel : 'AGENT PIPELINE';
+
+  return '<div>'
+    + '<div style="font-size:7.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:#6b728f;margin-bottom:6px;border-bottom:2px solid #e4e6f0;padding-bottom:3px;">' + headerLabel + '</div>'
+    + rows + '</div>';
+}
+
+function rModels(models) {
+  var rows = models.map(function(m) {
+    var bulsHtml = '';
+    if (m.bullets && m.bullets.length) {
+      bulsHtml = m.bullets.slice(0,3).map(function(b) {
+        return '<div style="font-size:7.5px;color:#4a5078;padding:1px 0;">\u203a ' + esc(b.slice(0,75)) + '</div>';
+      }).join('');
+    }
+    return '<div style="margin-bottom:5px;padding:7px 9px;background:#f8f9fc;border-radius:6px;border-left:3px solid ' + m.color + ';">'
+      + '<div style="font-weight:700;font-size:9px;color:' + m.color + ';">' + esc(m.name) + ' \u2014 ' + esc(m.role) + '</div>'
+      + '<div style="font-size:7.5px;color:#8a93b2;margin-top:1px;margin-bottom:' + (bulsHtml ? '3px' : '0') + ';">' + esc(m.cost) + '</div>'
+      + bulsHtml
+      + '</div>';
+  }).join('');
+  return card('Claude Model Routing', rows, '#7c3aed');
+}
+
+function rSev(sev, agents) {
+  // Check if any agent handles severity (look for agent with 'sev' or 'risk' in name, or common severity-handling agents)
+  var sevAgentLetter = '';
+  if (agents && agents.length) {
+    for (var i = 0; i < agents.length; i++) {
+      var a = agents[i];
+      if (/risk|sev|analyz|assess/i.test(a.name)) {
+        sevAgentLetter = a.letter;
+        break;
+      }
+    }
+  }
+  var title = sevAgentLetter ? 'SEVERITY MATRIX (AGENT ' + sevAgentLetter + ')' : 'Severity Matrix';
+
+  var lvls = [
+    {label:'CRITICAL', desc:sev.critical, color:'#dc2626'},
+    {label:'HIGH',     desc:sev.high,     color:'#ea580c'},
+    {label:'MEDIUM',   desc:sev.medium,   color:'#d97706'},
+    {label:'LOW',      desc:sev.low,      color:'#16a34a'},
+  ];
+  var rows = lvls.map(function(l) {
+    return '<div style="display:flex;align-items:flex-start;gap:5px;margin-bottom:4px;">'
+      + '<span style="background:' + l.color + ';color:#fff;font-size:6.5px;font-weight:700;padding:2px 5px;border-radius:3px;min-width:52px;text-align:center;flex-shrink:0;margin-top:1px;">' + l.label + '</span>'
+      + '<span style="font-size:8.5px;color:#4a5078;">' + esc(l.desc) + '</span>'
+      + '</div>';
+  }).join('');
+  return card(title, rows, '#ea580c');
+}
+
+function rKPIs(kpis) {
+  var cols = kpis.length <= 2 ? 1 : 2;
+  var items = kpis.slice(0,6).map(function(k) {
+    return '<div style="text-align:center;padding:6px 4px;background:#f8f9fc;border-radius:6px;">'
+      + '<div style="font-size:16px;font-weight:800;color:#1a1f36;line-height:1;">' + esc(k.value) + '</div>'
+      + '<div style="font-size:7px;color:#6b728f;margin-top:3px;line-height:1.3;">' + esc(k.label.slice(0,40)) + '</div>'
+      + '</div>';
+  }).join('');
+  return card('Target KPIs', '<div style="display:grid;grid-template-columns:repeat(' + cols + ',1fr);gap:4px;">' + items + '</div>', '#10b981');
+}
+
+function rRules(rules) {
+  var rows = rules.map(function(r, i) {
+    return '<div style="font-size:8px;color:#4a5078;padding:3px 0;border-bottom:1px solid #f0f2ff;">'
+      + '<span style="color:#dc2626;font-weight:700;">' + (i+1) + '.</span> ' + esc(r.slice(0,85)) + '</div>';
+  }).join('');
+  return card('Critical Rules', rows, '#dc2626');
+}
+
+function rPhases(phases, agents) {
+  var rows = phases.map(function(p) {
+    var ags = agents.filter(function(a){ return a.phase === p.num; }).map(function(a) {
+      return '<span style="background:' + aCol(a.letter) + ';color:#fff;border-radius:50%;width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center;font-size:6px;font-weight:700;">' + esc(a.letter) + '</span>';
+    }).join('');
+    return '<div style="display:flex;align-items:center;gap:5px;padding:3px 0;border-bottom:1px solid #f0f2ff;">'
+      + '<span style="background:' + pCol(p.num) + ';color:#fff;font-size:7px;font-weight:700;padding:2px 6px;border-radius:3px;white-space:nowrap;">' + esc(p.label || ('Phase ' + p.num)) + '</span>'
+      + '<span style="font-size:8.5px;color:#4a5078;flex:1;">' + esc(p.name.slice(0,45)) + '</span>'
+      + (ags ? '<div style="display:flex;gap:2px;flex-shrink:0;">' + ags + '</div>' : '')
+      + '</div>';
+  }).join('');
+  return card('Execution Sequence', rows, '#1d4ed8');
+}
+
+function rWorkflows(wf) {
+  var rows = wf.map(function(w) {
+    var whenLine = w.when ? '<div style="font-size:7.5px;color:#8a93b2;margin:2px 0 1px;">When: ' + esc(w.when.slice(0,80)) + '</div>' : '';
+    var stepLines = w.steps.slice(0,3).map(function(s) {
+      return '<div style="font-size:8px;color:#4a5078;padding:1px 0;">\u203a ' + esc(s.slice(0,65)) + '</div>';
+    }).join('');
+    return '<div style="margin-bottom:6px;padding-bottom:5px;border-bottom:1px solid #f0f2ff;">'
+      + '<div style="font-weight:700;font-size:9px;color:#1a1f36;">Workflow ' + w.num + ': ' + esc(w.name.slice(0,35)) + '</div>'
+      + whenLine + stepLines + '</div>';
+  }).join('');
+  return card('Outputs &amp; Constraints', rows, '#0891b2');
+}
+
+function rTech(tech, constraints) {
+  var body = '';
+  if (tech.length > 0) {
+    body += tech.slice(0,12).map(function(t) {
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid #f0f2ff;">'
+        + '<span style="font-size:8.5px;color:#1a1f36;font-weight:600;">&bull; ' + esc(t.name.slice(0,22)) + '</span>'
+        + '<span style="font-size:7.5px;color:#6b728f;text-align:right;">' + esc(t.desc.slice(0,28)) + '</span>'
+        + '</div>';
+    }).join('');
+  }
+  if (constraints.length > 0) {
+    body += '<div style="font-size:7px;font-weight:800;color:#dc2626;text-transform:uppercase;letter-spacing:.05em;margin:7px 0 3px;">Hard Constraints</div>';
+    body += constraints.map(function(c) {
+      return '<div style="font-size:7.5px;color:#4a5078;padding:2px 0;">\u26a0 ' + esc(c.slice(0,75)) + '</div>';
+    }).join('');
+  }
+  return card('Tech Stack', body, '#6b728f');
+}
+
+function rFooter(meta, agents) {
+  return '<div style="background:#1a1f36;color:#6b728f;font-size:7.5px;padding:6px 20px;display:flex;justify-content:space-between;align-items:center;">'
+    + '<span>' + esc(meta.name) + ' \u00b7 Architecture One-Pager</span>'
+    + '<span>Generated ' + new Date().toISOString().slice(0,10) + ' \u00b7 ' + esc(meta.author) + ' \u00b7 ' + esc(meta.status) + '</span>'
+    + '</div>';
+}
+
+// --- Main renderer ---
+function renderOP(d) {
+  var meta = d.meta;
+  var agents = d.agents;
+  var phases = d.phases;
+  var tech = d.tech;
+  var kpis = d.kpis;
+  var wf = d.wf;
+  var rules = d.rules;
+  var sources = d.sources;
+  var models = d.models;
+  var sev = d.sev;
+  var constraints = d.constraints;
+  var dbOutputs = d.dbOutputs || {};
+
+  // Build middle two-column section per spec: 1.45fr left, 1fr right
+  var midHtml = '<div style="display:grid;grid-template-columns:1.45fr 1fr;gap:9px;padding:9px;align-items:start;">'
+    + rAgents(agents, phases, dbOutputs)
+    + '<div style="display:flex;flex-direction:column;gap:7px;">'
+    + (models.length > 0 ? rModels(models) : '')
+    + (sev ? rSev(sev, agents) : '')
+    + (kpis.length > 0 ? rKPIs(kpis) : '')
+    + (rules.length > 0 ? rRules(rules) : '')
+    + '</div>'
+    + '</div>';
+
+  // Bottom 3-column: execution sequence | outputs+constraints | tech stack
+  var bottomParts = [];
+  if (phases.length > 0) bottomParts.push(rPhases(phases, agents));
+  if (wf.length > 0) bottomParts.push(rWorkflows(wf));
+  if (tech.length > 0 || constraints.length > 0) bottomParts.push(rTech(tech, constraints));
+  var bottomHtml = bottomParts.length > 0
+    ? '<div style="display:grid;grid-template-columns:repeat(' + bottomParts.length + ',1fr);gap:9px;padding:0 9px 9px;">' + bottomParts.join('') + '</div>'
+    : '';
+
+  return '<div style="font-family:system-ui,-apple-system,sans-serif;background:#f8f9fc;font-size:11px;line-height:1.4;">'
+    + rHeader(meta)
+    + (sources.length > 0 ? rSources(sources) : '')
+    + midHtml
+    + bottomHtml
+    + rFooter(meta, agents)
+    + '</div>';
+}
+
+// --- Main actions ---
+var lastHTML = '';
+
+function buildHTML() {
+  var cm = document.getElementById('claude-in').value.trim();
+  if (!cm) { setStatus('Paste CLAUDE.md first.', 'err'); return null; }
+  var d = parse(cm, '', '');
+  var body = renderOP(d);
+  var full = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'
+    + '<meta name="viewport" content="width=device-width,initial-scale=1">'
+    + '<title>' + esc(d.meta.name) + ' \u2014 One-Pager</title>'
+    + '<style>*{box-sizing:border-box;margin:0;padding:0}body{background:#f8f9fc}'
+    + '@media print{body{background:#fff}@page{size:A3 landscape;margin:.5cm}}</style>'
+    + '</head><body>' + body + '</body></html>';
+  lastHTML = full;
+  setStatus(d.agents.length + ' agents \u00b7 ' + d.phases.length + ' phases \u00b7 ' + d.wf.length + ' workflows \u00b7 ' + d.tech.length + ' tech items', 'ok');
+  return full;
+}
+
+function openPreview() {
+  try {
+    var full = buildHTML();
+    if (!full) return;
+    var blob = new Blob([full], { type: 'text/html' });
+    var url  = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    document.getElementById('dl-btn').disabled = false;
+  } catch(err) {
+    setStatus('Error: ' + err.message, 'err');
+    console.error(err);
+  }
+}
+
+function downloadHTML() {
+  try {
+    var full = lastHTML || buildHTML();
+    if (!full) return;
+    var blob = new Blob([full], { type: 'text/html' });
+    var url  = URL.createObjectURL(blob);
+    var a    = document.createElement('a');
+    a.href   = url;
+    a.download = 'architecture-one-pager.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch(err) {
+    setStatus('Download error: ' + err.message, 'err');
+    console.error(err);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('claude-in').value = [
+    '# Workday Agent — CLAUDE.md',
+    '',
+    '**Version:** 1.0.0 | **Updated:** 2026-03-04 | **Team:** Your Name',
+    '',
+    '## System at a Glance',
+    '',
+    'Calls the Workday RAAS API to answer people-analytics queries (headcount, geography breakdowns, employee vs contingent worker splits) via a Slack bot.',
+    '',
+    '**Tech stack:** Python 3.9, FastAPI, Slack Bolt (Socket Mode), Claude Haiku 4.5 + Claude Opus 4.6, httpx',
+    '',
+    '**Data flow:**',
+    '```',
+    'Slack DM / Channel Mention  →  Slack Bot (Socket Mode)',
+    'Slack Bot                   →  Claude Haiku 4.5 (tool-dispatch turn)',
+    'Claude Haiku                →  API Tool Call (one tool, POST /tools/call)',
+    'FastAPI :8081               →  Workday RAAS (basic auth, single HTTP request)',
+    'Tool Result                 →  Claude Opus 4.6 (synthesis turn, adaptive thinking, streaming)',
+    'Claude Opus                 →  Slack Response (≤ 2000 chars)',
+    '```',
+    '',
+    '---',
+    '',
+    '## Workday RAAS Endpoint',
+    '',
+    '```',
+    'https://&lt;host&gt;.myworkday.com/ccx/service/customreport2',
+    '    /&lt;your-tenant&gt;/&lt;your-isu&gt;/&lt;Your_Report_Name&gt;?format=json',
+    '```',
+    '',
+    '**Auth:** HTTP Basic — `&lt;your-username&gt;` / `<password>`',
+    '',
+    '**Response fields per record:**',
+    '| Field | Example |',
+    '|---|---|',
+    '| `Location_Address_-_Country` | `"United States of America"` |',
+    '| `Worker` | `"Alex Savin"` |',
+    '| `Worker_Type` | `"Employee"` or `"Contingent Worker"` |',
+    '| `location` | `"USA - Remote - LA"` |',
+    '',
+    '**No pagination** — the endpoint returns all ~1,665 records in a single response. Do not pass `page` or `page_size` params (causes 500).',
+    '',
+    '---',
+    '',
+    '## Agent Roster',
+    '',
+    '| ID | Agent | File | Role |',
+    '|----|-------|------|------|',
+    '| A | Data Collector | `agents/data_collector.py` | Fetches Workday RAAS, filters, aggregates |',
+    '| B | Environment Setup | `agents/environment_setup.py` | Validates `.env` vars and pip deps |',
+    '| C | API Server | `api/server.py` | FastAPI on :8081, exposes tools |',
+    '| — | MCP Server | `mcp/mcp_server.py` | JSON-RPC STDIO bridge to FastAPI |',
+    '| — | Slack Bot | `bot.py` | Two-turn pipeline: Haiku dispatch + Opus synthesis |',
+    '',
+    '---',
+    '',
+    '## Registered Tools',
+    '',
+    "Every tool must be `@register`'d in `utils/tool_router.py` or Claude will never see it.",
+    '',
+    '| Tool | Description |',
+    '|---|---|',
+    '| `get_worker_information` | Full records, optional `geography` + `worker_type` filter |',
+    '| `get_headcount_by_geography` | Single count for a country/location |',
+    '| `get_headcount_all_countries` | Breakdown by country, sorted descending |',
+    '| `list_countries` | All 24 countries present in workforce |',
+    '',
+    '---',
+    '',
+    '## Environment Variables',
+    '',
+    '```bash',
+    '# Workday RAAS',
+    'WORKDAY_BASE_URL=https://&lt;host&gt;.myworkday.com/ccx/service/customreport2',
+    'WORKDAY_TENANT=&lt;your-tenant&gt;',
+    'WORKDAY_ISU=&lt;your-isu&gt;',
+    'WORKDAY_REPORT=&lt;Your_Report_Name&gt;',
+    'WORKDAY_USERNAME=&lt;your-username&gt;',
+    'WORKDAY_PASSWORD=<your-password>',
+    '',
+    '# LLM',
+    'ANTHROPIC_API_KEY=sk-ant-...',
+    '',
+    '# Slack',
+    'SLACK_BOT_TOKEN=xoxb-...',
+    'SLACK_APP_TOKEN=xapp-...',
+    'SLACK_SIGNING_SECRET=...',
+    '',
+    '# Server',
+    'API_PORT=8081',
+    'API_HOST=0.0.0.0',
+    '```',
+    '',
+    '---',
+    '',
+    '## Starting Order',
+    '',
+    '```bash',
+    '# Phase 0 — env validation (blocks everything else)',
+    'python3 agents/environment_setup.py',
+    '',
+    '# Phase 1 — API server (background)',
+    'python3 -m uvicorn api.server:app --host 0.0.0.0 --port 8081',
+    '',
+    '# Verify health',
+    'curl -s http://localhost:8081/health   # → {"status":"ok"}',
+    '',
+    '# Phase 3 — Slack bot (foreground)',
+    'python3 bot.py',
+    '',
+    '# Or all at once:',
+    './start.sh',
+    '```',
+    '',
+    '---',
+    '',
+    '## Critical Rules',
+    '',
+    '| Rule | Why |',
+    '|---|---|',
+    "| Never pass `page` or `page_size` to RAAS | Workday returns 500; all records come in one response |",
+    "| Register every tool in `utils/tool_router.py` | Claude's tool list is built from this registry |",
+    '| Always use `tool_choice: {"type": "any"}` in Haiku dispatch turn | Forces a tool call; prevents hallucinated answers |',
+    '| Port 8080 is taken by another local service | Use 8081 (`API_PORT=8081`) |',
+    '| `.env` is gitignored | Never commit credentials |',
+    '',
+    '---',
+    '',
+    '## Anti-Patterns',
+    '',
+    '| What NOT to do | Consequence | Correct approach |',
+    '|---|---|---|',
+    '| Pass `page_size` or `page` params to RAAS | HTTP 500 from Workday | Call with `?format=json` only |',
+    '| Answer people queries without calling a tool | Claude may hallucinate headcount | Enforce `tool_choice: {"type": "any"}` |',
+    '| Read `Worker_Type` with wrong casing | Filter silently returns 0 | Values are `"Employee"` and `"Contingent Worker"` |',
+    '| Run on port 8080 | Conflicts with compliance-mcp-server | Use port 8081 |',
+    '',
+    '---',
+    '',
+    '## Verified Smoke Tests',
+    '',
+    '| Query | Tool Dispatched | Answer |',
+    '|---|---|---|',
+    '| "how many employees in India?" | `get_headcount_by_geography` | 313 employees |',
+    '| "headcount breakdown by country" | `get_headcount_all_countries` | 24 countries, 1,665 total |',
+    '| "employees vs contingent workers" | `get_worker_information` | 1,554 employees / 111 contingent |',
+    '',
+    '---',
+    '',
+    '## File Structure',
+    '',
+    '```',
+    'workday-agent/',
+    '├── agents/',
+    '│   ├── data_collector.py      # Agent A — Workday RAAS tools',
+    '│   └── environment_setup.py   # Agent B — env validation',
+    '├── api/',
+    '│   └── server.py              # Agent C — FastAPI :8081',
+    '├── mcp/',
+    '│   └── mcp_server.py          # JSON-RPC STDIO bridge',
+    '├── utils/',
+    '│   └── tool_router.py         # Tool registry (must register all tools here)',
+    '├── bot.py                     # Slack bot + two-turn Claude pipeline',
+    '├── start.sh                   # Ordered startup script',
+    '├── requirements.txt',
+    '├── .env                       # Local credentials (gitignored)',
+    '├── .env.example               # Template',
+    '└── .gitignore',
+    '```',
+  ].join('\n');
+});
+</script>
+</body>
+</html>

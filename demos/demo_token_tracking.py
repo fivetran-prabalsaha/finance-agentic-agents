@@ -5,20 +5,13 @@ Token Tracking Demo
 Demonstrates token usage tracking and cost calculation
 """
 
-import os
 import sys
 from pathlib import Path
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from utils.token_tracker import (
-    TokenTracker,
-    TokenUsage,
-    calculate_cost,
-    format_tokens,
-    format_cost
-)
+from utils.token_tracker import TokenTracker, format_cost, format_tokens
 
 
 def print_header(title: str):
@@ -124,17 +117,17 @@ def demo_token_tracking():
     summary = tracker.get_summary()
     total_cost = summary['total_cost']
 
-    print(f"💰 Based on this demo run:")
+    print("💰 Based on this demo run:")
     print(f"   Demo Cost:              {format_cost(total_cost)}")
-    print(f"\n📊 Scaling Estimates:")
+    print("\n📊 Scaling Estimates:")
     print(f"   10 users/day:           {format_cost(total_cost * 10)} per day")
     print(f"   100 users/day:          {format_cost(total_cost * 100)} per day")
     print(f"   500 users/day:          {format_cost(total_cost * 500)} per day")
-    print(f"\n📅 Monthly Estimates (30 days):")
+    print("\n📅 Monthly Estimates (30 days):")
     print(f"   10 users/day:           {format_cost(total_cost * 10 * 30)} per month")
     print(f"   100 users/day:          {format_cost(total_cost * 100 * 30)} per month")
     print(f"   500 users/day:          {format_cost(total_cost * 500 * 30)} per month")
-    print(f"\n📆 Annual Estimates (365 days):")
+    print("\n📆 Annual Estimates (365 days):")
     print(f"   10 users/day:           {format_cost(total_cost * 10 * 365)} per year")
     print(f"   100 users/day:          {format_cost(total_cost * 100 * 365)} per year")
     print(f"   500 users/day:          {format_cost(total_cost * 500 * 365)} per year")

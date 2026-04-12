@@ -5,12 +5,13 @@ Handles all database operations for Violation model
 """
 
 import logging
-from typing import List, Optional, Dict, Any
 from datetime import datetime
-from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import and_, desc
+from typing import Any
 
-from models.database import Violation, ViolationSeverity, ViolationStatus, User, SODRule
+from sqlalchemy import and_, desc
+from sqlalchemy.orm import Session, joinedload
+
+from models.database import Violation, ViolationSeverity, ViolationStatus
 
 logger = logging.getLogger(__name__)
 
@@ -27,12 +28,12 @@ class ViolationRepository:
         """
         self.session = session
 
-    def create_violation(self, violation_data: Dict[str, Any]) -> Violation:
+    def create_violation(self, violation_data: dict[str, Any]) -> Violation:
         """
         Create a new violation
 
         Args:
-            violation_data: Dictionary with violation fields
+            violation_data: Dictionary with violation fields (including optional 'embedding')
 
         Returns:
             Created Violation object
@@ -48,6 +49,7 @@ class ViolationRepository:
             description=violation_data.get('description'),
             conflicting_roles=violation_data.get('conflicting_roles', []),
             conflicting_permissions=violation_data.get('conflicting_permissions', []),
+            embedding=violation_data.get('embedding'),  # NEW: Support for pgvector embeddings
             violation_metadata=violation_data.get('violation_metadata', {})
         )
 
@@ -55,10 +57,10 @@ class ViolationRepository:
         self.session.commit()
         self.session.refresh(violation)
 
-        logger.info(f"Created violation: {violation.title} (severity: {violation.severity})")
+        logger.info(f"Created violation: {violation.title} (severity: {violation.severity}, embedded: {violation.embedding is not None})")
         return violation
 
-    def get_violation_by_id(self, violation_id: str) -> Optional[Violation]:
+    def get_violation_by_id(self, violation_id: str) -> Violation | None:
         """
         Get violation by UUID
 
@@ -81,8 +83,8 @@ class ViolationRepository:
     def get_violations_by_user(
         self,
         user_id: str,
-        status: Optional[ViolationStatus] = None
-    ) -> List[Violation]:
+        status: ViolationStatus | None = None
+    ) -> list[Violation]:
         """
         Get all violations for a user
 
@@ -106,10 +108,10 @@ class ViolationRepository:
 
     def get_open_violations(
         self,
-        severity: Optional[ViolationSeverity] = None,
+        severity: ViolationSeverity | None = None,
         min_risk_score: float = 0.0,
         limit: int = 100
-    ) -> List[Violation]:
+    ) -> list[Violation]:
         """
         Get open violations with optional filters
 
@@ -138,7 +140,7 @@ class ViolationRepository:
 
         return query.order_by(desc(Violation.risk_score)).limit(limit).all()
 
-    def get_critical_violations(self, limit: int = 50) -> List[Violation]:
+    def get_critical_violations(self, limit: int = 50) -> list[Violation]:
         """
         Get critical open violations
 
@@ -157,9 +159,9 @@ class ViolationRepository:
         self,
         violation_id: str,
         resolved_by: str,
-        resolution_notes: Optional[str] = None,
+        resolution_notes: str | None = None,
         status: ViolationStatus = ViolationStatus.RESOLVED
-    ) -> Optional[Violation]:
+    ) -> Violation | None:
         """
         Resolve a violation
 
@@ -189,7 +191,7 @@ class ViolationRepository:
         logger.info(f"Resolved violation {violation_id} with status {status}")
         return violation
 
-    def bulk_create_violations(self, violations_data: List[Dict[str, Any]]) -> int:
+    def bulk_create_violations(self, violations_data: list[dict[str, Any]]) -> int:
         """
         Bulk create violations
 
@@ -211,7 +213,7 @@ class ViolationRepository:
         logger.info(f"Bulk created {count}/{len(violations_data)} violations")
         return count
 
-    def get_violations_by_scan(self, scan_id: str) -> List[Violation]:
+    def get_violations_by_scan(self, scan_id: str) -> list[Violation]:
         """
         Get all violations from a specific scan
 
@@ -232,7 +234,7 @@ class ViolationRepository:
             .all()
         )
 
-    def get_violation_summary(self) -> Dict[str, Any]:
+    def get_violation_summary(self) -> dict[str, Any]:
         """
         Get summary statistics for violations
 
@@ -282,7 +284,7 @@ class ViolationRepository:
         self,
         min_risk_score: float = 70.0,
         status: ViolationStatus = ViolationStatus.OPEN
-    ) -> List[Violation]:
+    ) -> list[Violation]:
         """
         Get high-risk violations
 
@@ -307,7 +309,7 @@ class ViolationRepository:
             .all()
         )
 
-    def get_violations_by_rule(self, rule_id: str) -> List[Violation]:
+    def get_violations_by_rule(self, rule_id: str) -> list[Violation]:
         """
         Get all violations for a specific SOD rule
 
@@ -325,7 +327,7 @@ class ViolationRepository:
             .all()
         )
 
-    def update_risk_score(self, violation_id: str, new_risk_score: float) -> Optional[Violation]:
+    def update_risk_score(self, violation_id: str, new_risk_score: float) -> Violation | None:
         """
         Update the risk score of a violation
 
@@ -347,3 +349,43 @@ class ViolationRepository:
 
         logger.info(f"Updated risk score for violation {violation_id}: {new_risk_score}")
         return violation
+
+    def update_embedding(self, violation_id: str, embedding: list[float]) -> Violation | None:
+        """
+        Update the embedding of a violation (Step 8: Violation Embedding)
+
+        Args:
+            violation_id: Violation UUID
+            embedding: Vector embedding
+
+        Returns:
+            Updated Violation object
+        """
+        violation = self.get_violation_by_id(violation_id)
+
+        if not violation:
+            return None
+
+        violation.embedding = embedding
+        self.session.commit()
+        self.session.refresh(violation)
+
+        logger.info(f"Updated embedding for violation {violation_id}")
+        return violation
+
+    def get_violations_without_embeddings(self, limit: int = 100) -> list[Violation]:
+        """
+        Get violations that don't have embeddings yet (for backfilling)
+
+        Args:
+            limit: Maximum number of violations to return
+
+        Returns:
+            List of Violation objects without embeddings
+        """
+        return (
+            self.session.query(Violation)
+            .filter(Violation.embedding.is_(None))
+            .limit(limit)
+            .all()
+        )

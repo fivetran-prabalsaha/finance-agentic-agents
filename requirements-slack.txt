@@ -1,0 +1,5 @@
+# Additional requirements for Slack Bot integration
+# Install with: pip install -r requirements-slack.txt
+
+slack-bolt>=1.18.0
+python-dotenv>=1.0.0

@@ -5,15 +5,16 @@ Initialize Database - Create tables and setup
 Creates all database tables and optionally loads seed data
 """
 
+import logging
 import os
 import sys
-import logging
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from models.database_config import get_db_config, init_database, enable_pgvector
 from dotenv import load_dotenv
+
+from models.database_config import enable_pgvector, get_db_config, init_database
 
 # Configure logging
 logging.basicConfig(

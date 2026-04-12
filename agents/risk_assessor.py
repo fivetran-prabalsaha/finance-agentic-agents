@@ -10,20 +10,21 @@ This agent is responsible for:
 """
 
 import logging
-from typing import Dict, Any, List, Optional, Tuple
-from datetime import datetime, timedelta
-from collections import defaultdict
-from sqlalchemy import func, and_, desc
+import os
+from datetime import datetime
+from typing import Any
+
 from langchain_anthropic import ChatAnthropic
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers import JsonOutputParser
 
 from models.database import (
-    Violation, ViolationSeverity, ViolationStatus,
-    User, ComplianceScan, AuditTrail
+    User,
+    Violation,
+    ViolationSeverity,
+    ViolationStatus,
 )
-from repositories.violation_repository import ViolationRepository
 from repositories.user_repository import UserRepository
+from repositories.violation_repository import ViolationRepository
+from utils.langchain_callback import TokenTrackingCallback
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +48,13 @@ class RiskAssessmentAgent:
         """
         self.violation_repo = violation_repo
         self.user_repo = user_repo
-        self.llm = ChatAnthropic(model=llm_model, temperature=0)
+        self._token_callback = TokenTrackingCallback(agent_name="risk_assessor", operation="risk_scoring")
+        self.llm = ChatAnthropic(
+            model=llm_model,
+            temperature=0,
+            max_tokens=1024,
+            callbacks=[self._token_callback]
+        )
 
         logger.info(f"Risk Assessment Agent initialized with model: {llm_model}")
 
@@ -55,7 +62,7 @@ class RiskAssessmentAgent:
         self,
         user_id: str,
         include_historical: bool = True
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Calculate comprehensive risk score for a user
 
@@ -132,7 +139,7 @@ class RiskAssessmentAgent:
     def _calculate_base_risk_score(
         self,
         user: User,
-        violations: List[Violation]
+        violations: list[Violation]
     ) -> float:
         """Calculate base risk score from current state"""
         score = 0
@@ -188,7 +195,7 @@ class RiskAssessmentAgent:
 
         return min(repeat_penalty + slow_resolution_penalty, 20)
 
-    def _analyze_violation_trend(self, user_id: str) -> Dict[str, Any]:
+    def _analyze_violation_trend(self, user_id: str) -> dict[str, Any]:
         """
         Analyze violation trends over time
 
@@ -241,8 +248,8 @@ class RiskAssessmentAgent:
     def _assess_business_impact(
         self,
         user: User,
-        violations: List[Violation]
-    ) -> Dict[str, Any]:
+        violations: list[Violation]
+    ) -> dict[str, Any]:
         """
         Assess potential business impact of user's violations
 
@@ -306,7 +313,7 @@ class RiskAssessmentAgent:
     def _determine_risk_level(
         self,
         risk_score: float,
-        violations: List[Violation]
+        violations: list[Violation]
     ) -> str:
         """Determine risk level category"""
         critical_count = sum(1 for v in violations if v.severity == ViolationSeverity.CRITICAL)
@@ -320,7 +327,7 @@ class RiskAssessmentAgent:
         else:
             return 'LOW'
 
-    def assess_organization_risk(self) -> Dict[str, Any]:
+    def assess_organization_risk(self) -> dict[str, Any]:
         """
         Assess overall organization-wide risk
 
@@ -345,7 +352,8 @@ class RiskAssessmentAgent:
 
         high_risk_users = []
 
-        for user in all_users[:100]:  # Sample for performance
+        batch_size = int(os.getenv('RISK_ASSESSMENT_BATCH_SIZE', '0')) or len(all_users)
+        for user in all_users[:batch_size]:
             risk_result = self.calculate_user_risk_score(
                 str(user.id),
                 include_historical=False  # Skip for performance
@@ -403,9 +411,9 @@ class RiskAssessmentAgent:
     def _generate_org_recommendations(
         self,
         risk_level: str,
-        risk_distribution: Dict[str, int],
-        violation_summary: Dict[str, Any]
-    ) -> List[str]:
+        risk_distribution: dict[str, int],
+        violation_summary: dict[str, Any]
+    ) -> list[str]:
         """Generate organization-level recommendations"""
         recommendations = []
 
@@ -437,7 +445,7 @@ class RiskAssessmentAgent:
         self,
         user_id: str,
         days_ahead: int = 30
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Predict future risk based on current trends
 
@@ -513,8 +521,8 @@ class RiskAssessmentAgent:
 
     def compare_user_risks(
         self,
-        user_ids: List[str]
-    ) -> Dict[str, Any]:
+        user_ids: list[str]
+    ) -> dict[str, Any]:
         """
         Compare risk scores across multiple users
 

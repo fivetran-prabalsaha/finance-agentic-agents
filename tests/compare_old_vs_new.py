@@ -12,8 +12,7 @@ Usage:
 
 import os
 import sys
-from datetime import datetime
-from typing import Dict, Any
+from typing import Any
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -33,7 +32,7 @@ class PerformanceComparison:
         print(f" {title}")
         print("=" * 80 + "\n")
 
-    def calculate_old_governance(self, num_users: int) -> Dict[str, Any]:
+    def calculate_old_governance(self, num_users: int) -> dict[str, Any]:
         """
         Calculate ESTIMATED governance usage for OLD implementation
         (Cannot actually run old version, so we estimate based on code analysis)
@@ -62,7 +61,7 @@ class PerformanceComparison:
             'max_users_before_failure': int(5000 / (per_user_search + 1))
         }
 
-    def fetch_with_new_implementation(self, num_users: int) -> Dict[str, Any]:
+    def fetch_with_new_implementation(self, num_users: int) -> dict[str, Any]:
         """Fetch users using NEW optimized implementation"""
         print(f"Fetching {num_users} users with NEW implementation...")
 
@@ -131,7 +130,7 @@ class PerformanceComparison:
 
             # Display OLD stats
             print("📊 OLD IMPLEMENTATION (v1.0) - ESTIMATED:")
-            print(f"   Method:                Individual searches")
+            print("   Method:                Individual searches")
             print(f"   Users Processed:       {old_stats['users_processed']}")
             print(f"   Estimated Units:       {old_stats['estimated_units']}")
             print(f"   Units Per User:        {old_stats['units_per_user']}")
@@ -139,9 +138,9 @@ class PerformanceComparison:
             print(f"   Max Before Failure:    ~{old_stats['max_users_before_failure']} users")
 
             if old_stats['estimated_units'] > 5000:
-                print(f"   ⚠️  STATUS:              WOULD FAIL (exceeds 5000 unit limit)")
+                print("   ⚠️  STATUS:              WOULD FAIL (exceeds 5000 unit limit)")
             else:
-                print(f"   ✅ STATUS:              Would succeed")
+                print("   ✅ STATUS:              Would succeed")
 
             # Display NEW stats
             if new_stats:
@@ -149,7 +148,7 @@ class PerformanceComparison:
                 if 'error' in new_stats:
                     print(f"   ❌ ERROR:              {new_stats['error']}")
                 else:
-                    print(f"   Method:                Batch SuiteQL queries")
+                    print("   Method:                Batch SuiteQL queries")
                     print(f"   Users Processed:       {new_stats['users_processed']}")
                     print(f"   Actual Units Used:     {new_stats['actual_units']}")
                     print(f"   Units Per User:        {new_stats['units_per_user']}")
@@ -162,7 +161,7 @@ class PerformanceComparison:
                         for warning in new_stats['warnings']:
                             print(f"      - {warning}")
                     else:
-                        print(f"   ✅ STATUS:              No warnings")
+                        print("   ✅ STATUS:              No warnings")
 
                     # Calculate improvement
                     print("\n📈 IMPROVEMENT ANALYSIS:")
@@ -174,7 +173,7 @@ class PerformanceComparison:
                         print(f"   Governance Reduction:  {improvement:.1f}x better")
                         print(f"   Units Saved:           {old_units - new_units} units")
                     else:
-                        print(f"   ⚠️  Could not calculate improvement")
+                        print("   ⚠️  Could not calculate improvement")
 
                     old_time = old_stats['estimated_time_seconds']
                     new_time = new_stats['actual_time_seconds']

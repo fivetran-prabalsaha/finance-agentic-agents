@@ -9,16 +9,17 @@ Tests:
 4. High-risk user identification
 """
 
+import logging
 import os
 import sys
-import logging
 from datetime import datetime
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from agents.data_collector import DataCollectionAgent
 from dotenv import load_dotenv
+
+from agents.data_collector import DataCollectionAgent
 
 # Load environment
 load_dotenv()
@@ -73,7 +74,7 @@ def test_fetch_users():
         print(f"  Execution time: {metadata['execution_time_seconds']:.2f}s")
 
         if users:
-            print(f"\nSample user:")
+            print("\nSample user:")
             user = users[0]
             print(f"  Name: {user['name']}")
             print(f"  Email: {user['email']}")
@@ -116,7 +117,7 @@ def test_fetch_with_permissions():
         # Show detailed user
         if users:
             user = users[0]
-            print(f"\nDetailed sample user:")
+            print("\nDetailed sample user:")
             print(f"  Name: {user['name']}")
             print(f"  Roles: {user['roles_count']}")
 
@@ -126,7 +127,7 @@ def test_fetch_with_permissions():
                 print(f"    Permissions: {len(role.get('permissions', []))}")
 
                 if role.get('permissions'):
-                    print(f"    Sample permissions:")
+                    print("    Sample permissions:")
                     for perm in role['permissions'][:5]:
                         print(f"      - {perm['permission']}: {perm['level']}")
 
@@ -149,7 +150,7 @@ def test_find_specific_user():
     )
 
     if user:
-        print(f"\n✓ Found user!")
+        print("\n✓ Found user!")
         print(f"  Name: {user['name']}")
         print(f"  Email: {user['email']}")
         print(f"  Status: {user['status']}")
@@ -157,7 +158,7 @@ def test_find_specific_user():
         print(f"  Roles: {user['roles_count']}")
 
         if user.get('roles'):
-            print(f"\n  Role details:")
+            print("\n  Role details:")
             for role in user['roles']:
                 perm_count = len(role.get('permissions', []))
                 print(f"    • {role['role_name']}: {perm_count} permissions")
@@ -187,12 +188,12 @@ def test_high_risk_users():
     users = result['data']['users']
     high_risk = agent.get_high_risk_users(users, min_roles=3)
 
-    print(f"\n✓ Analysis complete")
+    print("\n✓ Analysis complete")
     print(f"  Total users analyzed: {len(users)}")
     print(f"  High-risk users (3+ roles): {len(high_risk)}")
 
     if high_risk:
-        print(f"\n  Top 5 high-risk users:")
+        print("\n  Top 5 high-risk users:")
         for user in high_risk[:5]:
             print(f"    • {user['name']} ({user['email']}): {user['roles_count']} roles")
             print(f"      Roles: {', '.join(user['roles'][:3])}")
@@ -228,24 +229,24 @@ def test_claude_analysis():
     analysis = analysis_result['analysis']
     stats = analysis_result['raw_stats']
 
-    print(f"\n✓ Analysis complete!")
+    print("\n✓ Analysis complete!")
 
-    print(f"\nStatistics:")
+    print("\nStatistics:")
     print(f"  Total users: {stats['total_users']}")
     print(f"  Users with multiple roles: {stats['users_with_multiple_roles']}")
     print(f"  Users with no roles: {stats['users_with_no_roles']}")
     print(f"  Unique roles: {stats['unique_roles']}")
 
-    print(f"\nClaude's Summary:")
+    print("\nClaude's Summary:")
     print(f"  {analysis.get('summary', 'N/A')}")
 
     if analysis.get('concerns'):
-        print(f"\nKey Concerns:")
+        print("\nKey Concerns:")
         for concern in analysis['concerns']:
             print(f"  • {concern}")
 
     if analysis.get('recommendations'):
-        print(f"\nRecommendations:")
+        print("\nRecommendations:")
         for rec in analysis['recommendations']:
             print(f"  • {rec}")
 

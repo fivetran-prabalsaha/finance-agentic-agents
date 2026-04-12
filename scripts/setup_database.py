@@ -12,10 +12,9 @@ from pathlib import Path
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from sqlalchemy import create_engine, text
-from sqlalchemy.exc import ProgrammingError, OperationalError
 import psycopg2
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
+
 
 def print_step(step_num, message):
     """Print formatted step"""
@@ -130,10 +129,9 @@ def initialize_schema():
     os.environ['DATABASE_URL'] = 'postgresql://compliance_user:compliance_pass@localhost:5432/compliance_db'
 
     try:
-        from models.database_config import DatabaseConfig, Base
+        from models.database_config import Base, DatabaseConfig
 
         print("📝 Loading database models...")
-        from models import database  # Import to register all models
 
         print(f"✅ Models loaded: {len(Base.metadata.tables)} tables")
 
@@ -177,21 +175,21 @@ def verify_database():
             # Get session and verify tables
             session = db_config.get_session()
 
-            from repositories.user_repository import UserRepository
             from repositories.role_repository import RoleRepository
+            from repositories.user_repository import UserRepository
             from repositories.violation_repository import ViolationRepository
 
             user_repo = UserRepository(session)
             role_repo = RoleRepository(session)
-            violation_repo = ViolationRepository(session)
+            ViolationRepository(session)
 
             user_count = user_repo.get_user_count()
             role_count = role_repo.get_role_count()
 
-            print(f"\n📊 Database Statistics:")
+            print("\n📊 Database Statistics:")
             print(f"   • Users: {user_count}")
             print(f"   • Roles: {role_count}")
-            print(f"   • Violations: 0 (no analysis run yet)")
+            print("   • Violations: 0 (no analysis run yet)")
 
             session.close()
 

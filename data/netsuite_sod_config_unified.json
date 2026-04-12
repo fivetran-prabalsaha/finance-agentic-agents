@@ -1,0 +1,461 @@
+{
+  "version": "2.0",
+  "description": "Unified SOD configuration with level-based analysis and resolution strategies",
+  "last_updated": "2026-02-12",
+
+  "role_filter": {
+    "role_name_prefix": "Fivetran",
+    "exclude_suffixes": ["OLD", "DEPRECATED", "TEST"],
+    "custom_roles_only": false,
+    "comment": "Analyzes all roles starting with 'Fivetran' regardless of custom vs standard"
+  },
+
+  "permission_levels": {
+    "0": {"name": "None", "description": "No access", "risk_multiplier": 0.0},
+    "1": {"name": "View", "description": "Read-only access", "risk_multiplier": 0.3},
+    "2": {"name": "Create", "description": "Can create new records", "risk_multiplier": 0.7},
+    "3": {"name": "Edit", "description": "Can modify existing records", "risk_multiplier": 0.8},
+    "4": {"name": "Full", "description": "Full control (create, edit, delete)", "risk_multiplier": 1.0}
+  },
+
+  "permission_categories": {
+    "transaction_entry": {
+      "description": "Can create or enter transactions",
+      "base_risk": "HIGH",
+      "base_risk_score": 75,
+      "keywords": ["Bills", "Invoice", "Sales Order", "Purchase Order", "Cash Sale", "Check", "Deposit"],
+      "patterns": ["^(Bill|Invoice|Check|Deposit|Sales Order|Purchase Order)$"],
+      "conflicts_with": ["transaction_approval", "transaction_payment"],
+
+      "level_risk_adjustments": {
+        "0": {"risk": "NONE", "multiplier": 0.0},
+        "1": {"risk": "LOW", "multiplier": 0.3},
+        "2": {"risk": "MEDIUM", "multiplier": 0.7},
+        "3": {"risk": "HIGH", "multiplier": 0.8},
+        "4": {"risk": "HIGH", "multiplier": 1.0}
+      }
+    },
+
+    "transaction_approval": {
+      "description": "Can approve transactions",
+      "base_risk": "HIGH",
+      "base_risk_score": 80,
+      "keywords": ["Approve"],
+      "patterns": ["Approv"],
+      "conflicts_with": ["transaction_entry", "transaction_payment", "master_data_setup"],
+
+      "level_risk_adjustments": {
+        "0": {"risk": "NONE", "multiplier": 0.0},
+        "1": {"risk": "LOW", "multiplier": 0.2},
+        "2": {"risk": "CRITICAL", "multiplier": 0.9},
+        "3": {"risk": "CRITICAL", "multiplier": 0.9},
+        "4": {"risk": "CRITICAL", "multiplier": 1.0}
+      }
+    },
+
+    "transaction_payment": {
+      "description": "Can process payments",
+      "base_risk": "CRITICAL",
+      "base_risk_score": 95,
+      "keywords": ["Customer Payment", "Vendor Payment", "Payment", "Customer Refund"],
+      "patterns": ["Payment$", "Refund$"],
+      "conflicts_with": ["transaction_entry", "transaction_approval", "vendor_setup", "bank_reconciliation"],
+
+      "level_risk_adjustments": {
+        "0": {"risk": "NONE", "multiplier": 0.0},
+        "1": {"risk": "LOW", "multiplier": 0.2},
+        "2": {"risk": "CRITICAL", "multiplier": 0.8},
+        "3": {"risk": "CRITICAL", "multiplier": 0.9},
+        "4": {"risk": "CRITICAL", "multiplier": 1.0}
+      }
+    },
+
+    "bank_reconciliation": {
+      "description": "Can reconcile bank accounts",
+      "base_risk": "HIGH",
+      "base_risk_score": 70,
+      "keywords": ["Reconcile"],
+      "patterns": ["Reconcil"],
+      "conflicts_with": ["transaction_payment", "journal_entry", "transaction_entry"],
+
+      "level_risk_adjustments": {
+        "0": {"risk": "NONE", "multiplier": 0.0},
+        "1": {"risk": "LOW", "multiplier": 0.3},
+        "2": {"risk": "HIGH", "multiplier": 0.8},
+        "3": {"risk": "HIGH", "multiplier": 0.9},
+        "4": {"risk": "HIGH", "multiplier": 1.0}
+      }
+    },
+
+    "vendor_setup": {
+      "description": "Can create and modify vendor records",
+      "base_risk": "HIGH",
+      "base_risk_score": 75,
+      "keywords": ["Vendors"],
+      "patterns": ["^Vendors$"],
+      "conflicts_with": ["transaction_payment", "transaction_entry", "transaction_approval"],
+
+      "level_risk_adjustments": {
+        "0": {"risk": "NONE", "multiplier": 0.0},
+        "1": {"risk": "LOW", "multiplier": 0.3},
+        "2": {"risk": "MEDIUM", "multiplier": 0.7},
+        "3": {"risk": "HIGH", "multiplier": 0.8},
+        "4": {"risk": "HIGH", "multiplier": 1.0}
+      }
+    },
+
+    "user_admin": {
+      "description": "Can manage users",
+      "base_risk": "CRITICAL",
+      "base_risk_score": 90,
+      "keywords": ["Employees"],
+      "patterns": ["^Employees$"],
+      "conflicts_with": ["role_admin", "permission_admin", "transaction_payment", "transaction_entry"],
+
+      "level_risk_adjustments": {
+        "0": {"risk": "NONE", "multiplier": 0.0},
+        "1": {"risk": "LOW", "multiplier": 0.2},
+        "2": {"risk": "CRITICAL", "multiplier": 0.9},
+        "3": {"risk": "CRITICAL", "multiplier": 0.9},
+        "4": {"risk": "CRITICAL", "multiplier": 1.0}
+      }
+    },
+
+    "role_admin": {
+      "description": "Can manage roles and permissions",
+      "base_risk": "CRITICAL",
+      "base_risk_score": 95,
+      "keywords": ["Bulk Manage Roles"],
+      "patterns": ["Role.*Manage"],
+      "conflicts_with": ["user_admin", "permission_admin"],
+
+      "level_risk_adjustments": {
+        "0": {"risk": "NONE", "multiplier": 0.0},
+        "1": {"risk": "LOW", "multiplier": 0.2},
+        "2": {"risk": "CRITICAL", "multiplier": 1.0},
+        "3": {"risk": "CRITICAL", "multiplier": 1.0},
+        "4": {"risk": "CRITICAL", "multiplier": 1.0}
+      }
+    }
+  },
+
+  "conflict_rules": {
+    "transaction_entry_vs_transaction_approval": {
+      "rule_id": "SOD-RULE-001",
+      "category1": "transaction_entry",
+      "category2": "transaction_approval",
+      "principle": "SOD-001: Maker-Checker Segregation",
+      "description": "User should not be able to create AND approve the same transaction",
+      "rationale": "Allows user to create fraudulent transactions and approve them without oversight",
+
+      "level_conflict_matrix": {
+        "comment": "Rows=Cat1 (entry), Cols=Cat2 (approval). Values: OK, LOW, MED, HIGH, CRIT",
+        "matrix": [
+          ["OK",   "OK",   "OK",   "OK",   "OK"  ],
+          ["OK",   "OK",   "LOW",  "LOW",  "MED" ],
+          ["OK",   "LOW",  "HIGH", "HIGH", "CRIT"],
+          ["OK",   "LOW",  "HIGH", "CRIT", "CRIT"],
+          ["OK",   "MED",  "CRIT", "CRIT", "CRIT"]
+        ],
+        "row_labels": ["None(0)", "View(1)", "Create(2)", "Edit(3)", "Full(4)"],
+        "col_labels": ["None(0)", "View(1)", "Create(2)", "Edit(3)", "Full(4)"]
+      },
+
+      "resolution_strategies": {
+        "OK": {
+          "action": "APPROVE",
+          "description": "No conflict exists",
+          "required_controls": []
+        },
+        "LOW": {
+          "action": "APPROVE",
+          "description": "Acceptable for oversight roles",
+          "required_controls": ["manager_approval"],
+          "explanation": "Both permissions are read-only or limited, minimal risk"
+        },
+        "MED": {
+          "action": "APPROVE_WITH_CONDITIONS",
+          "description": "Resolvable with controls or level reduction",
+          "resolution_options": [
+            {
+              "strategy": "reduce_level",
+              "description": "Reduce approval permission from Full to View",
+              "risk_after": "LOW",
+              "business_impact": "User can view approval status but cannot approve"
+            },
+            {
+              "strategy": "compensating_controls",
+              "description": "Keep both permissions, add controls",
+              "required_controls": ["manager_approval", "dual_approval_workflow", "transaction_limits"],
+              "risk_after": "MEDIUM"
+            }
+          ]
+        },
+        "HIGH": {
+          "action": "APPROVE_WITH_EXTENSIVE_CONTROLS",
+          "description": "Inherent conflict requiring multiple controls",
+          "resolution_options": [
+            {
+              "strategy": "split_roles",
+              "description": "Assign roles to different users",
+              "risk_after": "NONE",
+              "business_impact": "HIGH - Requires coordination"
+            },
+            {
+              "strategy": "reduce_levels",
+              "description": "Reduce both to View for oversight only",
+              "risk_after": "LOW",
+              "business_impact": "HIGH - Eliminates operational capability"
+            },
+            {
+              "strategy": "compensating_controls",
+              "description": "Multiple layers of control required",
+              "required_controls": ["dual_approval_workflow", "segregated_workflows", "transaction_limits", "real_time_monitoring", "manager_review"],
+              "risk_after": "MEDIUM",
+              "approval_required": "CFO"
+            }
+          ]
+        },
+        "CRIT": {
+          "action": "REJECT_OR_EXECUTIVE_OVERRIDE",
+          "description": "Severe conflict - default rejection",
+          "resolution_options": [
+            {
+              "strategy": "reject",
+              "description": "Do not grant access",
+              "risk_after": "NONE",
+              "business_impact": "Cannot perform job duties"
+            },
+            {
+              "strategy": "executive_override",
+              "description": "CEO/Audit Committee approval with maximum controls",
+              "required_controls": ["ceo_approval", "dual_approval_workflow", "segregated_workflows", "transaction_limits", "real_time_monitoring", "manager_review", "quarterly_audit_review"],
+              "risk_after": "HIGH",
+              "approval_required": "CEO or Audit Committee",
+              "review_frequency": "Monthly",
+              "documentation_required": "Full business justification and risk acceptance form"
+            }
+          ]
+        }
+      }
+    },
+
+    "transaction_entry_vs_transaction_payment": {
+      "rule_id": "SOD-RULE-002",
+      "category1": "transaction_entry",
+      "category2": "transaction_payment",
+      "principle": "SOD-002: Payment Segregation",
+      "description": "User should not be able to create transactions AND process payments",
+      "rationale": "Allows user to create fraudulent invoices/bills and pay them",
+
+      "level_conflict_matrix": {
+        "matrix": [
+          ["OK",   "OK",   "OK",   "OK",   "OK"  ],
+          ["OK",   "OK",   "LOW",  "MED",  "MED" ],
+          ["OK",   "LOW",  "CRIT", "CRIT", "CRIT"],
+          ["OK",   "MED",  "CRIT", "CRIT", "CRIT"],
+          ["OK",   "MED",  "CRIT", "CRIT", "CRIT"]
+        ],
+        "row_labels": ["None(0)", "View(1)", "Create(2)", "Edit(3)", "Full(4)"],
+        "col_labels": ["None(0)", "View(1)", "Create(2)", "Edit(3)", "Full(4)"]
+      },
+
+      "resolution_strategies": {
+        "OK": {"action": "APPROVE"},
+        "LOW": {
+          "action": "APPROVE",
+          "required_controls": ["manager_approval"]
+        },
+        "MED": {
+          "action": "APPROVE_WITH_CONDITIONS",
+          "resolution_options": [
+            {
+              "strategy": "reduce_level",
+              "description": "Reduce payment permission to View",
+              "risk_after": "LOW"
+            },
+            {
+              "strategy": "compensating_controls",
+              "required_controls": ["dual_approval_workflow", "transaction_limits", "real_time_monitoring", "manager_review"],
+              "risk_after": "MEDIUM"
+            }
+          ]
+        },
+        "CRIT": {
+          "action": "REJECT_OR_EXECUTIVE_OVERRIDE",
+          "resolution_options": [
+            {
+              "strategy": "reject",
+              "description": "Do not grant payment access"
+            },
+            {
+              "strategy": "split_roles",
+              "description": "Entry and payment roles to different users"
+            },
+            {
+              "strategy": "executive_override",
+              "required_controls": ["ceo_approval", "dual_approval_workflow", "segregated_workflows", "transaction_limits", "real_time_monitoring", "weekly_manager_review", "quarterly_audit_review"],
+              "approval_required": "CEO"
+            }
+          ]
+        }
+      }
+    },
+
+    "transaction_payment_vs_bank_reconciliation": {
+      "rule_id": "SOD-RULE-003",
+      "category1": "transaction_payment",
+      "category2": "bank_reconciliation",
+      "principle": "SOD-003: Payment Oversight Segregation",
+      "description": "User should not be able to process payments AND reconcile bank accounts",
+      "rationale": "Allows user to process fraudulent payments and hide them during reconciliation",
+
+      "level_conflict_matrix": {
+        "matrix": [
+          ["OK",   "OK",   "OK",   "OK",   "OK"  ],
+          ["OK",   "OK",   "LOW",  "LOW",  "MED" ],
+          ["OK",   "LOW",  "HIGH", "CRIT", "CRIT"],
+          ["OK",   "LOW",  "CRIT", "CRIT", "CRIT"],
+          ["OK",   "MED",  "CRIT", "CRIT", "CRIT"]
+        ]
+      },
+
+      "resolution_strategies": {
+        "OK": {"action": "APPROVE"},
+        "LOW": {"action": "APPROVE", "required_controls": ["manager_approval"]},
+        "MED": {
+          "action": "APPROVE_WITH_CONDITIONS",
+          "required_controls": ["manager_approval", "dual_approval_workflow", "manager_review"]
+        },
+        "HIGH": {
+          "action": "APPROVE_WITH_EXTENSIVE_CONTROLS",
+          "required_controls": ["dual_approval_workflow", "segregated_workflows", "manager_review", "increased_audit_frequency"],
+          "approval_required": "Controller"
+        },
+        "CRIT": {
+          "action": "REJECT_OR_EXECUTIVE_OVERRIDE",
+          "required_controls": ["ceo_approval", "dual_approval_workflow", "segregated_workflows", "real_time_monitoring", "weekly_manager_review", "quarterly_audit_review"],
+          "approval_required": "CFO"
+        }
+      }
+    },
+
+    "vendor_setup_vs_transaction_payment": {
+      "rule_id": "SOD-RULE-004",
+      "category1": "vendor_setup",
+      "category2": "transaction_payment",
+      "principle": "SOD-004: Vendor Payment Segregation",
+      "description": "User should not be able to create vendors AND process payments to them",
+      "rationale": "Allows user to create fake vendors and pay them",
+
+      "level_conflict_matrix": {
+        "matrix": [
+          ["OK",   "OK",   "OK",   "OK",   "OK"  ],
+          ["OK",   "OK",   "LOW",  "MED",  "MED" ],
+          ["OK",   "LOW",  "HIGH", "CRIT", "CRIT"],
+          ["OK",   "MED",  "CRIT", "CRIT", "CRIT"],
+          ["OK",   "MED",  "CRIT", "CRIT", "CRIT"]
+        ]
+      },
+
+      "resolution_strategies": {
+        "OK": {"action": "APPROVE"},
+        "LOW": {"action": "APPROVE", "required_controls": ["manager_approval"]},
+        "MED": {
+          "action": "APPROVE_WITH_CONDITIONS",
+          "required_controls": ["dual_approval_workflow", "vendor_approval_workflow", "transaction_limits"]
+        },
+        "HIGH": {
+          "action": "APPROVE_WITH_EXTENSIVE_CONTROLS",
+          "required_controls": ["dual_approval_workflow", "vendor_approval_workflow", "transaction_limits", "real_time_monitoring", "manager_review"]
+        },
+        "CRIT": {
+          "action": "REJECT_OR_EXECUTIVE_OVERRIDE",
+          "required_controls": ["ceo_approval", "dual_approval_workflow", "vendor_approval_workflow", "transaction_limits", "real_time_monitoring", "weekly_manager_review"]
+        }
+      }
+    },
+
+    "user_admin_vs_transaction_payment": {
+      "rule_id": "SOD-RULE-005",
+      "category1": "user_admin",
+      "category2": "transaction_payment",
+      "principle": "SOD-005: User Administration Segregation",
+      "description": "User should not be able to create users AND process payments",
+      "rationale": "Can create user accounts, assign payment permissions, and process fraudulent payments",
+
+      "level_conflict_matrix": {
+        "matrix": [
+          ["OK",   "OK",   "OK",   "OK",   "OK"  ],
+          ["OK",   "OK",   "LOW",  "MED",  "MED" ],
+          ["OK",   "LOW",  "CRIT", "CRIT", "CRIT"],
+          ["OK",   "MED",  "CRIT", "CRIT", "CRIT"],
+          ["OK",   "MED",  "CRIT", "CRIT", "CRIT"]
+        ]
+      },
+
+      "resolution_strategies": {
+        "OK": {"action": "APPROVE"},
+        "LOW": {"action": "APPROVE", "required_controls": ["manager_approval"]},
+        "MED": {
+          "action": "APPROVE_WITH_CONDITIONS",
+          "required_controls": ["dual_approval_workflow", "transaction_limits", "real_time_monitoring"]
+        },
+        "CRIT": {
+          "action": "REJECT_OR_EXECUTIVE_OVERRIDE",
+          "required_controls": ["ceo_approval", "separate_accounts", "dual_approval_workflow", "real_time_monitoring", "weekly_manager_review", "quarterly_audit_review"],
+          "approval_required": "CEO",
+          "recommendation": "Split IT admin functions from financial operations"
+        }
+      }
+    },
+
+    "user_admin_vs_role_admin": {
+      "rule_id": "SOD-RULE-006",
+      "category1": "user_admin",
+      "category2": "role_admin",
+      "principle": "SOD-006: Admin Privilege Segregation",
+      "description": "User should not be able to create users AND assign their roles",
+      "rationale": "Unlimited privilege escalation - can create users and assign any role including admin",
+
+      "level_conflict_matrix": {
+        "matrix": [
+          ["OK",   "OK",   "OK",   "OK",   "OK"  ],
+          ["OK",   "OK",   "MED",  "HIGH", "HIGH"],
+          ["OK",   "MED",  "CRIT", "CRIT", "CRIT"],
+          ["OK",   "HIGH", "CRIT", "CRIT", "CRIT"],
+          ["OK",   "HIGH", "CRIT", "CRIT", "CRIT"]
+        ]
+      },
+
+      "resolution_strategies": {
+        "OK": {"action": "APPROVE"},
+        "MED": {
+          "action": "APPROVE_WITH_CONDITIONS",
+          "required_controls": ["manager_approval", "dual_approval_workflow", "role_assignment_approval"]
+        },
+        "HIGH": {
+          "action": "APPROVE_WITH_EXTENSIVE_CONTROLS",
+          "required_controls": ["ceo_approval", "dual_approval_workflow", "role_assignment_approval", "real_time_monitoring", "quarterly_audit_review"]
+        },
+        "CRIT": {
+          "action": "REJECT_OR_EXECUTIVE_OVERRIDE",
+          "required_controls": ["ceo_approval", "separate_accounts", "dual_approval_workflow", "role_assignment_approval", "real_time_monitoring", "monthly_audit_review"],
+          "approval_required": "CEO or Audit Committee",
+          "recommendation": "Use separate admin accounts for user creation vs role assignment"
+        }
+      }
+    }
+  },
+
+  "risk_scoring": {
+    "inherent_risk_calculation": "(base_risk_score_cat1 * level_multiplier_cat1 + base_risk_score_cat2 * level_multiplier_cat2) / 2",
+    "residual_risk_calculation": "inherent_risk * (1 - (sum of control risk_reductions / 100))",
+    "risk_thresholds": {
+      "0-20": "LOW",
+      "21-50": "MEDIUM",
+      "51-75": "HIGH",
+      "76-100": "CRITICAL"
+    }
+  }
+}

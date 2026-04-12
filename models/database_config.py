@@ -4,14 +4,15 @@ Database Configuration and Session Management
 Manages PostgreSQL connections and SQLAlchemy sessions
 """
 
-import os
 import logging
-from typing import Generator
-from sqlalchemy import create_engine, event, text
-from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.pool import QueuePool
+import os
+from collections.abc import Generator
+
 from dotenv import load_dotenv
+from sqlalchemy import create_engine, text
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import QueuePool
 
 load_dotenv()
 

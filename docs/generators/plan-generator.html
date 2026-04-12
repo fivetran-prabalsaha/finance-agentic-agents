@@ -1,0 +1,1531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>plan.md Generator</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy: #1a1f36;
+    --accent: #5865f2;
+    --accent-hover: #4752c4;
+    --bg: #f5f6fa;
+    --white: #ffffff;
+    --border: #e2e5f0;
+    --text: #2d3048;
+    --text-muted: #6b7280;
+    --danger: #ef4444;
+    --danger-hover: #dc2626;
+    --success: #22c55e;
+    --section-border: 3px solid var(--accent);
+    --radius: 6px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05);
+    --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.05);
+  }
+
+  body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Header */
+  .header {
+    background: var(--navy);
+    color: white;
+    padding: 0 24px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    z-index: 10;
+  }
+
+  .header-title {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .header-title-badge {
+    background: var(--accent);
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 10px;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: background 0.15s, transform 0.1s;
+    white-space: nowrap;
+  }
+
+  .btn:active { transform: scale(0.97); }
+
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+  }
+
+  .btn-primary:hover { background: var(--accent-hover); }
+
+  .btn-outline {
+    background: rgba(255,255,255,0.1);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.25);
+  }
+
+  .btn-outline:hover { background: rgba(255,255,255,0.18); }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--accent);
+    border: 1.5px dashed var(--accent);
+    font-size: 12px;
+    padding: 5px 11px;
+  }
+
+  .btn-ghost:hover { background: rgba(88,101,242,0.06); }
+
+  .btn-danger-icon {
+    background: transparent;
+    color: var(--text-muted);
+    border: none;
+    padding: 3px 7px;
+    font-size: 15px;
+    cursor: pointer;
+    border-radius: 4px;
+    line-height: 1;
+    transition: color 0.15s, background 0.15s;
+  }
+
+  .btn-danger-icon:hover { color: var(--danger); background: #fee2e2; }
+
+  /* Main layout */
+  .main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    gap: 0;
+  }
+
+  /* Left panel */
+  .panel-left {
+    width: 55%;
+    overflow-y: auto;
+    padding: 20px 20px 40px;
+    border-right: 1px solid var(--border);
+    background: var(--bg);
+  }
+
+  /* Right panel */
+  .panel-right {
+    width: 45%;
+    display: flex;
+    flex-direction: column;
+    background: var(--white);
+  }
+
+  .panel-right-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .panel-right-header span { display: flex; align-items: center; gap: 6px; }
+
+  .live-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--success);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .output-textarea {
+    flex: 1;
+    width: 100%;
+    border: none;
+    outline: none;
+    resize: none;
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+    font-size: 12px;
+    line-height: 1.7;
+    padding: 16px;
+    color: var(--text);
+    background: var(--white);
+    tab-size: 2;
+  }
+
+  /* Accordion */
+  .accordion {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .accordion-section {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    border: 1px solid var(--border);
+    transition: border-color 0.15s;
+  }
+
+  .accordion-section.open {
+    border-left: var(--section-border);
+    border-color: var(--accent);
+  }
+
+  .accordion-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 13px 16px;
+    cursor: pointer;
+    user-select: none;
+    background: transparent;
+    transition: background 0.12s;
+  }
+
+  .accordion-header:hover { background: rgba(88,101,242,0.03); }
+
+  .accordion-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .section-num {
+    width: 22px; height: 22px;
+    background: var(--accent);
+    color: white;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .accordion-section:not(.open) .section-num {
+    background: #d1d5db;
+  }
+
+  .accordion-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .accordion-chevron {
+    font-size: 11px;
+    color: var(--text-muted);
+    transition: transform 0.2s;
+    margin-left: 8px;
+  }
+
+  .accordion-section.open .accordion-chevron { transform: rotate(180deg); }
+
+  .accordion-body {
+    display: none;
+    padding: 4px 16px 18px;
+    border-top: 1px solid var(--border);
+  }
+
+  .accordion-section.open .accordion-body { display: block; }
+
+  /* Form elements */
+  .field {
+    margin-top: 12px;
+  }
+
+  .field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .field input[type="text"],
+  .field input[type="date"],
+  .field select,
+  .field textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text);
+    background: var(--white);
+    transition: border-color 0.15s, box-shadow 0.15s;
+    outline: none;
+  }
+
+  .field input:focus,
+  .field select:focus,
+  .field textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(88,101,242,0.12);
+  }
+
+  .field select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 28px;
+  }
+
+  .field textarea { resize: vertical; min-height: 60px; }
+
+  .field-env textarea {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 12px;
+    min-height: 90px;
+  }
+
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 12px;
+  }
+
+  .field-row-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  /* Dynamic items */
+  .dynamic-list { margin-top: 8px; }
+
+  .dynamic-item {
+    background: #f9fafb;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    margin-bottom: 8px;
+    position: relative;
+  }
+
+  .dynamic-item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+
+  .dynamic-item-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .add-btn-row {
+    margin-top: 8px;
+  }
+
+  /* Subgroup */
+  .subgroup {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--border);
+  }
+
+  .subgroup:first-child { border-top: none; margin-top: 8px; padding-top: 0; }
+
+  .subgroup-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--navy);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .subgroup-title::before {
+    content: '';
+    display: inline-block;
+    width: 3px;
+    height: 12px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+
+  /* Inline row (remove button at end) */
+  .inline-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .inline-row .field { flex: 1; margin-top: 0; }
+
+  .remove-btn-wrap {
+    padding-top: 22px;
+    flex-shrink: 0;
+  }
+
+  /* Copy success toast */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--navy);
+    color: white;
+    padding: 10px 18px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-weight: 500;
+    box-shadow: var(--shadow-md);
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  /* Scrollbar styling */
+  .panel-left::-webkit-scrollbar { width: 5px; }
+  .panel-left::-webkit-scrollbar-track { background: transparent; }
+  .panel-left::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+  .output-textarea::-webkit-scrollbar { width: 5px; }
+  .output-textarea::-webkit-scrollbar-track { background: transparent; }
+  .output-textarea::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+
+  @media (max-width: 900px) {
+    body { overflow: auto; height: auto; }
+    .main { flex-direction: column; height: auto; overflow: visible; }
+    .panel-left, .panel-right { width: 100%; }
+    .panel-left { overflow: visible; }
+    .panel-right { min-height: 400px; }
+    .output-textarea { min-height: 400px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="header-title">
+    plan.md Generator
+    <span class="header-title-badge">Claude Code</span>
+  </div>
+  <div class="header-actions">
+    <button class="btn btn-outline" id="copyBtn" onclick="copyOutput()">Copy Markdown</button>
+    <button class="btn btn-primary" onclick="downloadPlan()">Download plan.md</button>
+  </div>
+</header>
+
+<!-- Main -->
+<div class="main">
+
+  <!-- Left: Form -->
+  <div class="panel-left" id="formPanel">
+    <div class="accordion" id="accordion">
+
+      <!-- Section 1: Project Info -->
+      <div class="accordion-section open" data-section="1">
+        <div class="accordion-header" onclick="toggleSection(this)">
+          <div class="accordion-header-left">
+            <span class="section-num">1</span>
+            <span class="accordion-title">Project Info</span>
+          </div>
+          <span class="accordion-chevron">&#9660;</span>
+        </div>
+        <div class="accordion-body">
+          <div class="field">
+            <label>Project Name</label>
+            <input type="text" id="projectName" placeholder="e.g. Slack Answer Feedback Loop" oninput="regen()">
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Status</label>
+              <select id="status" onchange="regen()">
+                <option value="DRAFT">DRAFT</option>
+                <option value="IN PROGRESS">IN PROGRESS</option>
+                <option value="COMPLETE">COMPLETE</option>
+                <option value="ABANDONED">ABANDONED</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Date</label>
+              <input type="date" id="planDate" oninput="regen()">
+            </div>
+          </div>
+          <div class="field">
+            <label>Author</label>
+            <input type="text" id="author" placeholder="e.g. prabal.saha" oninput="regen()">
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: Context -->
+      <div class="accordion-section" data-section="2">
+        <div class="accordion-header" onclick="toggleSection(this)">
+          <div class="accordion-header-left">
+            <span class="section-num">2</span>
+            <span class="accordion-title">Context</span>
+          </div>
+          <span class="accordion-chevron">&#9660;</span>
+        </div>
+        <div class="accordion-body">
+          <div class="field">
+            <label>Current State</label>
+            <textarea id="currentState" rows="3" placeholder="What does the system do today in the area this plan touches? Name specific files, services, tables. E.g. The API server handles user requests via app.py. Performance is measured by 3 automated tests..." oninput="regen()"></textarea>
+          </div>
+          <div class="field">
+            <label>Problem Being Solved</label>
+            <textarea id="problem" rows="3" placeholder="What is broken, missing, or suboptimal? Quantify where possible. E.g. Automated evaluators catch structural failures but cannot detect factually incorrect answers that are structurally sound..." oninput="regen()"></textarea>
+          </div>
+          <div class="field">
+            <label>Why Now / Urgency</label>
+            <textarea id="whyNow" rows="2" placeholder="Why is this the right time to address it? E.g. The service is in daily use by 4 teams as of Feb 2026..." oninput="regen()"></textarea>
+          </div>
+          <div class="field">
+            <label>Constraints</label>
+            <textarea id="constraints" rows="2" placeholder="What must this change NOT break? E.g. Must not change the Slack message format for users who do not click the buttons. Feature must be off by default in CI..." oninput="regen()"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 3: Goals -->
+      <div class="accordion-section" data-section="3">
+        <div class="accordion-header" onclick="toggleSection(this)">
+          <div class="accordion-header-left">
+            <span class="section-num">3</span>
+            <span class="accordion-title">Goals</span>
+          </div>
+          <span class="accordion-chevron">&#9660;</span>
+        </div>
+        <div class="accordion-body">
+          <div class="dynamic-list" id="goalsList"></div>
+          <div class="add-btn-row">
+            <button class="btn btn-ghost" onclick="addGoal()">+ Add Goal</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 4: Non-Goals -->
+      <div class="accordion-section" data-section="4">
+        <div class="accordion-header" onclick="toggleSection(this)">
+          <div class="accordion-header-left">
+            <span class="section-num">4</span>
+            <span class="accordion-title">Non-Goals</span>
+          </div>
+          <span class="accordion-chevron">&#9660;</span>
+        </div>
+        <div class="accordion-body">
+          <div class="dynamic-list" id="nonGoalsList"></div>
+          <div class="add-btn-row">
+            <button class="btn btn-ghost" onclick="addNonGoal()">+ Add Non-Goal</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 5: Implementation Phases -->
+      <div class="accordion-section" data-section="5">
+        <div class="accordion-header" onclick="toggleSection(this)">
+          <div class="accordion-header-left">
+            <span class="section-num">5</span>
+            <span class="accordion-title">Implementation Phases</span>
+          </div>
+          <span class="accordion-chevron">&#9660;</span>
+        </div>
+        <div class="accordion-body">
+          <div class="dynamic-list" id="phasesList"></div>
+          <div class="add-btn-row">
+            <button class="btn btn-ghost" onclick="addPhase()">+ Add Phase</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 6: Files -->
+      <div class="accordion-section" data-section="6">
+        <div class="accordion-header" onclick="toggleSection(this)">
+          <div class="accordion-header-left">
+            <span class="section-num">6</span>
+            <span class="accordion-title">Files to Create / Modify</span>
+          </div>
+          <span class="accordion-chevron">&#9660;</span>
+        </div>
+        <div class="accordion-body">
+          <div class="dynamic-list" id="filesList"></div>
+          <div class="add-btn-row">
+            <button class="btn btn-ghost" onclick="addFile()">+ Add File</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 7: Verification Steps -->
+      <div class="accordion-section" data-section="7">
+        <div class="accordion-header" onclick="toggleSection(this)">
+          <div class="accordion-header-left">
+            <span class="section-num">7</span>
+            <span class="accordion-title">Verification Steps</span>
+          </div>
+          <span class="accordion-chevron">&#9660;</span>
+        </div>
+        <div class="accordion-body">
+          <div class="dynamic-list" id="verifyList"></div>
+          <div class="add-btn-row">
+            <button class="btn btn-ghost" onclick="addVerifyStep()">+ Add Step</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 8: Rollback Plan -->
+      <div class="accordion-section" data-section="8">
+        <div class="accordion-header" onclick="toggleSection(this)">
+          <div class="accordion-header-left">
+            <span class="section-num">8</span>
+            <span class="accordion-title">Rollback Plan</span>
+          </div>
+          <span class="accordion-chevron">&#9660;</span>
+        </div>
+        <div class="accordion-body">
+          <div class="dynamic-list" id="rollbackList"></div>
+          <div class="add-btn-row">
+            <button class="btn btn-ghost" onclick="addRollback()">+ Add Rollback Entry</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 9: Dependencies -->
+      <div class="accordion-section" data-section="9">
+        <div class="accordion-header" onclick="toggleSection(this)">
+          <div class="accordion-header-left">
+            <span class="section-num">9</span>
+            <span class="accordion-title">Dependencies</span>
+          </div>
+          <span class="accordion-chevron">&#9660;</span>
+        </div>
+        <div class="accordion-body">
+          <div class="subgroup">
+            <div class="subgroup-title">External Services</div>
+            <div class="dynamic-list" id="depsExternalList"></div>
+            <div class="add-btn-row">
+              <button class="btn btn-ghost" onclick="addDepExternal()">+ Add External</button>
+            </div>
+          </div>
+          <div class="subgroup">
+            <div class="subgroup-title">Code Dependencies</div>
+            <div class="dynamic-list" id="depsCodeList"></div>
+            <div class="add-btn-row">
+              <button class="btn btn-ghost" onclick="addDepCode()">+ Add Branch / PR</button>
+            </div>
+          </div>
+          <div class="subgroup">
+            <div class="subgroup-title">Data Dependencies</div>
+            <div class="dynamic-list" id="depsDataList"></div>
+            <div class="add-btn-row">
+              <button class="btn btn-ghost" onclick="addDepData()">+ Add Data Dependency</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 10: Open Questions -->
+      <div class="accordion-section" data-section="10">
+        <div class="accordion-header" onclick="toggleSection(this)">
+          <div class="accordion-header-left">
+            <span class="section-num">10</span>
+            <span class="accordion-title">Open Questions</span>
+          </div>
+          <span class="accordion-chevron">&#9660;</span>
+        </div>
+        <div class="accordion-body">
+          <div class="dynamic-list" id="questionsList"></div>
+          <div class="add-btn-row">
+            <button class="btn btn-ghost" onclick="addQuestion()">+ Add Question</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 11: .env Additions -->
+      <div class="accordion-section" data-section="11">
+        <div class="accordion-header" onclick="toggleSection(this)">
+          <div class="accordion-header-left">
+            <span class="section-num">11</span>
+            <span class="accordion-title">.env Additions</span>
+          </div>
+          <span class="accordion-chevron">&#9660;</span>
+        </div>
+        <div class="accordion-body">
+          <div class="field field-env">
+            <label>.env entries (one per line)</label>
+            <textarea id="envContent" rows="6" oninput="regen()">USE_FEATURE_A=true
+USE_CACHE=true
+USE_SUMMARIES=true</textarea>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /accordion -->
+  </div><!-- /panel-left -->
+
+  <!-- Right: Output -->
+  <div class="panel-right">
+    <div class="panel-right-header">
+      <span>
+        <span class="live-dot"></span>
+        Live Preview
+      </span>
+      <span style="font-size:11px;color:#9ca3af;font-weight:400;text-transform:none;letter-spacing:0;">plan.md output</span>
+    </div>
+    <textarea class="output-textarea" id="outputArea" readonly spellcheck="false" placeholder="Fill in the form on the left to generate your plan.md..."></textarea>
+  </div>
+
+</div><!-- /main -->
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function esc(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function v(id) {
+  const el = document.getElementById(id);
+  return el ? el.value.trim() : '';
+}
+
+function uid() {
+  return '_' + Math.random().toString(36).substr(2, 9);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function toggleSection(headerEl) {
+  const section = headerEl.closest('.accordion-section');
+  section.classList.toggle('open');
+  regen();
+}
+
+function removeItem(btn) {
+  btn.closest('.dynamic-item').remove();
+  regen();
+}
+
+// ─── Init ────────────────────────────────────────────────────────────────────
+
+document.addEventListener('DOMContentLoaded', () => {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('planDate').value = today;
+  document.getElementById('projectName').value = 'Workday People Analytics Agent';
+  document.getElementById('author').value = 'Your Name';
+  document.getElementById('status').value = 'IN PROGRESS';
+  document.getElementById('currentState').value = 'No automated way to query Workday headcount data. People analytics queries require manual Workday report exports and spreadsheet manipulation.';
+  document.getElementById('problem').value = 'HR and ops teams cannot get headcount answers in real-time. Every query requires a manual Workday report download. There is no way to ask "how many employees in India?" and get an instant answer.';
+  document.getElementById('whyNow').value = 'Workday RAAS API is accessible with existing credentials. Slack is the primary communication tool. Building this now unblocks people-analytics self-service for all teams.';
+  document.getElementById('constraints').value = 'Must not store Workday credentials in code or git. Must not pass page_size param to RAAS (causes HTTP 500). Must not modify any Workday records — read-only.';
+
+  // Goals
+  const goalData = [
+    { desc: 'Slack bot answers headcount questions in real-time from live Workday data', verify: 'Send "how many employees in India?" in Slack DM → bot replies "313 employees"' },
+    { desc: 'FastAPI server exposes 4 Workday tools on port 8081', verify: 'curl -s http://localhost:8081/health → {"status":"ok"}' },
+    { desc: 'Claude Haiku dispatches tool calls, Opus synthesizes final answers', verify: 'Check bot logs for two-turn pattern: Haiku tool_use → Opus text response' },
+  ];
+  goalData.forEach(g => {
+    addGoal(true);
+    const items = document.querySelectorAll('#goalsList .dynamic-item');
+    const last = items[items.length - 1];
+    const inputs = last.querySelectorAll('input');
+    inputs[0].value = g.desc;
+    inputs[1].value = g.verify;
+  });
+
+  // Non-Goals
+  const nonGoalData = [
+    'Real-time Workday data sync — a single RAAS fetch per query is sufficient',
+    'Modifying Workday records — read-only access only',
+    'Multi-tenant support — single Workday tenant',
+  ];
+  nonGoalData.forEach(ng => {
+    addNonGoal(true);
+    const items = document.querySelectorAll('#nonGoalsList .dynamic-item');
+    const last = items[items.length - 1];
+    last.querySelector('input').value = ng;
+  });
+
+  // Phases
+  const phaseData = [
+    {
+      name: 'API Server',
+      timeline: 'Week 1',
+      deliverables: 'agents/data_collector.py — Workday RAAS fetch and filter tools\napi/server.py — FastAPI on :8081\nutils/tool_router.py — register 4 tools\nagents/environment_setup.py — env validation',
+      gate: 'curl http://localhost:8081/health returns {"status":"ok"} and /tools/list returns 4 tools',
+      flag: '',
+    },
+    {
+      name: 'Slack Bot',
+      timeline: 'Week 2',
+      deliverables: 'bot.py — Haiku dispatch + Opus synthesis with adaptive thinking\nstart.sh — ordered startup script\n.env.example — env template\nrequirements.txt',
+      gate: 'Bot responds to "how many employees in India?" with "313 employees" in Slack DM',
+      flag: '',
+    },
+  ];
+  phaseData.forEach(p => {
+    addPhase(true);
+    const items = document.querySelectorAll('#phasesList .dynamic-item');
+    const last = items[items.length - 1];
+    last.querySelector('.phase-name').value = p.name;
+    last.querySelector('.phase-timeline').value = p.timeline;
+    last.querySelector('.phase-deliverables').value = p.deliverables;
+    last.querySelector('.phase-gate').value = p.gate;
+    last.querySelector('.phase-flag').value = p.flag;
+  });
+
+  // Files
+  const fileData = [
+    { path: 'agents/data_collector.py', change: 'New', notes: 'Agent A — Workday RAAS fetch, geography/worker_type filter, count aggregation' },
+    { path: 'api/server.py',            change: 'New', notes: 'Agent C — FastAPI on :8081, /tools/call and /health endpoints' },
+    { path: 'utils/tool_router.py',     change: 'New', notes: 'Tool registry — all 4 tools must be @registered here or Claude cannot see them' },
+    { path: 'bot.py',                   change: 'New', notes: 'Slack bot — Haiku dispatch turn + Opus synthesis turn (adaptive thinking, streaming)' },
+    { path: '.env.example',             change: 'New', notes: 'Template with all required env var names and placeholder values' },
+  ];
+  fileData.forEach(f => {
+    addFile(true);
+    const items = document.querySelectorAll('#filesList .dynamic-item');
+    const last = items[items.length - 1];
+    last.querySelector('.file-path').value = f.path;
+    last.querySelector('.file-change').value = f.change;
+    last.querySelector('.file-notes').value = f.notes;
+  });
+
+  // Verify steps
+  const verifyData = [
+    { what: 'API server health', expected: '{"status":"ok"}', cmd: 'curl -s http://localhost:8081/health' },
+    { what: 'Environment variables are set', expected: 'All vars present, no exit error', cmd: 'python3 agents/environment_setup.py' },
+    { what: 'Headcount by geography works end-to-end', expected: 'Slack reply: "313 employees" (or similar)', cmd: 'Send "how many employees in India?" to Slack bot DM' },
+  ];
+  verifyData.forEach(v => {
+    addVerifyStep(true);
+    const items = document.querySelectorAll('#verifyList .dynamic-item');
+    const last = items[items.length - 1];
+    last.querySelector('.vstep-what').value = v.what;
+    last.querySelector('.vstep-expected').value = v.expected;
+    last.querySelector('.vstep-cmd').value = v.cmd;
+  });
+
+  // Rollback
+  addRollback(true);
+  const rb = document.querySelectorAll('#rollbackList .dynamic-item')[0];
+  rb.querySelector('.rb-phase').value = 'Any phase';
+  rb.querySelector('.rb-flag').value = '';
+  rb.querySelector('.rb-sql').value = '';
+  rb.querySelector('.rb-restart').value = 'pkill -f uvicorn; pkill -f bot.py; git stash';
+
+  // External deps
+  addDepExternal(true);
+  const ext = document.querySelectorAll('#depsExternalList .dynamic-item')[0];
+  ext.querySelector('.ext-service').value = 'Workday RAAS';
+  ext.querySelector('.ext-url').value = '&lt;host&gt;.myworkday.com/ccx/service/customreport2';
+  ext.querySelector('.ext-health').value = 'python3 -c "from agents.data_collector import get_worker_information; r=get_worker_information(); print(len(r))"';
+
+  // Code deps
+  addDepCode(true);
+  document.querySelector('#depsCodeList .dynamic-item input').value = 'utils/tool_router.py must be populated before bot.py starts';
+
+  // Data deps
+  addDepData(true);
+  const dd = document.querySelectorAll('#depsDataList .dynamic-item')[0];
+  dd.querySelector('.data-table').value = 'Workday RAAS — Report_Entry array (~1,665 records)';
+  dd.querySelector('.data-sql').value = 'python3 -c "from agents.data_collector import get_worker_information; print(len(get_worker_information()))"';
+
+  // Open questions
+  const qData = [
+    { question: 'Should the bot cache RAAS responses in Redis to reduce Workday API load?', owner: 'Your Name', decision: 'TBD' },
+    { question: 'Should we support channel mentions in addition to DMs?', owner: 'Your Name', decision: 'TBD' },
+  ];
+  qData.forEach(q => {
+    addQuestion(true);
+    const items = document.querySelectorAll('#questionsList .dynamic-item');
+    const last = items[items.length - 1];
+    last.querySelector('.q-question').value = q.question;
+    last.querySelector('.q-owner').value = q.owner;
+    last.querySelector('.q-decision').value = q.decision;
+  });
+
+  regen();
+});
+
+// ─── Goal ─────────────────────────────────────────────────────────────────────
+
+function addGoal(silent) {
+  const id = uid();
+  const container = document.getElementById('goalsList');
+  const idx = container.children.length + 1;
+  const div = document.createElement('div');
+  div.className = 'dynamic-item';
+  div.innerHTML = `
+    <div class="dynamic-item-header">
+      <span class="dynamic-item-label">Goal ${idx}</span>
+      <button class="btn-danger-icon" onclick="removeItem(this)" title="Remove">&#215;</button>
+    </div>
+    <div class="field">
+      <label>Description</label>
+      <input type="text" placeholder="e.g. Block Kit feedback buttons appear on every bot response in Slack" oninput="regen()">
+    </div>
+    <div class="field">
+      <label>Verify Command</label>
+      <input type="text" placeholder="e.g. SELECT * FROM answer_feedback ORDER BY created_at DESC LIMIT 1;" oninput="regen()">
+    </div>
+  `;
+  container.appendChild(div);
+  if (!silent) regen();
+}
+
+function getGoals() {
+  const items = document.querySelectorAll('#goalsList .dynamic-item');
+  return Array.from(items).map(item => {
+    const inputs = item.querySelectorAll('input');
+    return { desc: inputs[0]?.value.trim() || '', verify: inputs[1]?.value.trim() || '' };
+  });
+}
+
+// ─── Non-Goal ─────────────────────────────────────────────────────────────────
+
+function addNonGoal(silent) {
+  const container = document.getElementById('nonGoalsList');
+  const idx = container.children.length + 1;
+  const div = document.createElement('div');
+  div.className = 'dynamic-item';
+  div.innerHTML = `
+    <div class="inline-row">
+      <div class="field">
+        <label>Non-Goal ${idx}</label>
+        <input type="text" placeholder="e.g. Model retraining or fine-tuning from collected feedback (out of scope)" oninput="regen()">
+      </div>
+      <div class="remove-btn-wrap">
+        <button class="btn-danger-icon" onclick="removeItem(this)" title="Remove">&#215;</button>
+      </div>
+    </div>
+  `;
+  container.appendChild(div);
+  if (!silent) regen();
+}
+
+function getNonGoals() {
+  return Array.from(document.querySelectorAll('#nonGoalsList .dynamic-item input')).map(i => i.value.trim()).filter(Boolean);
+}
+
+// ─── Phase ────────────────────────────────────────────────────────────────────
+
+function addPhase(silent) {
+  const container = document.getElementById('phasesList');
+  const idx = container.children.length + 1;
+  const div = document.createElement('div');
+  div.className = 'dynamic-item';
+  div.dataset.phaseIndex = idx;
+  div.innerHTML = `
+    <div class="dynamic-item-header">
+      <span class="dynamic-item-label">Phase ${idx}</span>
+      <button class="btn-danger-icon" onclick="removeItem(this)" title="Remove">&#215;</button>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Phase Name</label>
+        <input type="text" class="phase-name" placeholder="e.g. Core Feedback Loop" oninput="regen()">
+      </div>
+      <div class="field">
+        <label>Timeline</label>
+        <input type="text" class="phase-timeline" placeholder="e.g. Week 1" oninput="regen()">
+      </div>
+    </div>
+    <div class="field">
+      <label>Deliverables (one per line)</label>
+      <textarea rows="3" class="phase-deliverables" placeholder="New migration: 007_add_answer_feedback.sql&#10;New model: models/answer_feedback.py&#10;Modify: slack_bot_local.py — add _feedback_blocks()" oninput="regen()"></textarea>
+    </div>
+    <div class="field">
+      <label>Phase Gate (one condition true before next phase)</label>
+      <input type="text" class="phase-gate" placeholder="e.g. SELECT COUNT(*) FROM answer_feedback; returns at least 1 row after clicking a feedback button" oninput="regen()">
+    </div>
+    <div class="field">
+      <label>Feature Flag Name (optional)</label>
+      <input type="text" class="phase-flag" placeholder="e.g. USE_ANSWER_FEEDBACK" oninput="regen()">
+    </div>
+  `;
+  container.appendChild(div);
+  if (!silent) regen();
+}
+
+function getPhases() {
+  return Array.from(document.querySelectorAll('#phasesList .dynamic-item')).map((item, i) => ({
+    idx: i + 1,
+    name: item.querySelector('.phase-name')?.value.trim() || '',
+    timeline: item.querySelector('.phase-timeline')?.value.trim() || '',
+    deliverables: item.querySelector('.phase-deliverables')?.value.trim() || '',
+    gate: item.querySelector('.phase-gate')?.value.trim() || '',
+    flag: item.querySelector('.phase-flag')?.value.trim() || ''
+  }));
+}
+
+// ─── File ─────────────────────────────────────────────────────────────────────
+
+function addFile(silent) {
+  const container = document.getElementById('filesList');
+  const div = document.createElement('div');
+  div.className = 'dynamic-item';
+  div.innerHTML = `
+    <div class="inline-row" style="align-items:flex-end;">
+      <div class="field" style="flex:2;">
+        <label>File Path</label>
+        <input type="text" class="file-path" placeholder="e.g. database/migrations/007_add_answer_feedback.sql" oninput="regen()">
+      </div>
+      <div class="field" style="flex:0 0 110px;">
+        <label>Change</label>
+        <select class="file-change" onchange="regen()">
+          <option value="New">New</option>
+          <option value="Modify">Modify</option>
+          <option value="Delete">Delete</option>
+        </select>
+      </div>
+      <div class="field" style="flex:2;">
+        <label>Notes</label>
+        <input type="text" class="file-notes" placeholder="e.g. Creates feedback table with id, signal, notes columns" oninput="regen()">
+      </div>
+      <div class="remove-btn-wrap">
+        <button class="btn-danger-icon" onclick="removeItem(this)" title="Remove">&#215;</button>
+      </div>
+    </div>
+  `;
+  container.appendChild(div);
+  if (!silent) regen();
+}
+
+function getFiles() {
+  return Array.from(document.querySelectorAll('#filesList .dynamic-item')).map(item => ({
+    path: item.querySelector('.file-path')?.value.trim() || '',
+    change: item.querySelector('.file-change')?.value || 'New',
+    notes: item.querySelector('.file-notes')?.value.trim() || ''
+  }));
+}
+
+// ─── Verify Step ─────────────────────────────────────────────────────────────
+
+function addVerifyStep(silent) {
+  const container = document.getElementById('verifyList');
+  const idx = container.children.length + 1;
+  const div = document.createElement('div');
+  div.className = 'dynamic-item';
+  div.innerHTML = `
+    <div class="dynamic-item-header">
+      <span class="dynamic-item-label">Step ${idx}</span>
+      <button class="btn-danger-icon" onclick="removeItem(this)" title="Remove">&#215;</button>
+    </div>
+    <div class="field">
+      <label>What to Verify</label>
+      <input type="text" class="vstep-what" placeholder="e.g. Slack response shows 3 buttons" oninput="regen()">
+    </div>
+    <div class="field">
+      <label>Expected Result</label>
+      <input type="text" class="vstep-expected" placeholder="e.g. Actions block rendered with Correct / Wrong / Partial" oninput="regen()">
+    </div>
+    <div class="field">
+      <label>Command</label>
+      <input type="text" class="vstep-cmd" placeholder="e.g. SELECT id, signal FROM answer_feedback ORDER BY created_at DESC LIMIT 1;" oninput="regen()">
+    </div>
+  `;
+  container.appendChild(div);
+  if (!silent) regen();
+}
+
+function getVerifySteps() {
+  return Array.from(document.querySelectorAll('#verifyList .dynamic-item')).map((item, i) => ({
+    idx: i + 1,
+    what: item.querySelector('.vstep-what')?.value.trim() || '',
+    expected: item.querySelector('.vstep-expected')?.value.trim() || '',
+    cmd: item.querySelector('.vstep-cmd')?.value.trim() || ''
+  }));
+}
+
+// ─── Rollback ────────────────────────────────────────────────────────────────
+
+function addRollback(silent) {
+  const container = document.getElementById('rollbackList');
+  const div = document.createElement('div');
+  div.className = 'dynamic-item';
+  div.innerHTML = `
+    <div class="dynamic-item-header">
+      <span class="dynamic-item-label">Rollback Entry</span>
+      <button class="btn-danger-icon" onclick="removeItem(this)" title="Remove">&#215;</button>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Phase Name</label>
+        <input type="text" class="rb-phase" placeholder="e.g. Phase A" oninput="regen()">
+      </div>
+      <div class="field">
+        <label>Feature Flag to Disable</label>
+        <input type="text" class="rb-flag" placeholder="e.g. USE_ANSWER_FEEDBACK" oninput="regen()">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Rollback SQL File</label>
+        <input type="text" class="rb-sql" placeholder="e.g. database/migrations/007_add_answer_feedback_rollback.sql" oninput="regen()">
+      </div>
+      <div class="field">
+        <label>Restart Command</label>
+        <input type="text" class="rb-restart" placeholder="e.g. pkill -f slack_bot_local.py && python3 slack_bot_local.py &" oninput="regen()">
+      </div>
+    </div>
+  `;
+  container.appendChild(div);
+  if (!silent) regen();
+}
+
+function getRollbacks() {
+  return Array.from(document.querySelectorAll('#rollbackList .dynamic-item')).map(item => ({
+    phase: item.querySelector('.rb-phase')?.value.trim() || '',
+    flag: item.querySelector('.rb-flag')?.value.trim() || '',
+    sql: item.querySelector('.rb-sql')?.value.trim() || '',
+    restart: item.querySelector('.rb-restart')?.value.trim() || ''
+  }));
+}
+
+// ─── Dep External ────────────────────────────────────────────────────────────
+
+function addDepExternal(silent) {
+  const container = document.getElementById('depsExternalList');
+  const div = document.createElement('div');
+  div.className = 'dynamic-item';
+  div.innerHTML = `
+    <div class="dynamic-item-header">
+      <span class="dynamic-item-label">External Service</span>
+      <button class="btn-danger-icon" onclick="removeItem(this)" title="Remove">&#215;</button>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Service Name</label>
+        <input type="text" class="ext-service" placeholder="e.g. API server" oninput="regen()">
+      </div>
+      <div class="field">
+        <label>URL / Endpoint</label>
+        <input type="text" class="ext-url" placeholder="e.g. localhost:8080" oninput="regen()">
+      </div>
+    </div>
+    <div class="field">
+      <label>Health Check Command</label>
+      <input type="text" class="ext-health" placeholder='e.g. curl -s http://localhost:8080/health' oninput="regen()">
+    </div>
+  `;
+  container.appendChild(div);
+  if (!silent) regen();
+}
+
+function getDepsExternal() {
+  return Array.from(document.querySelectorAll('#depsExternalList .dynamic-item')).map(item => ({
+    service: item.querySelector('.ext-service')?.value.trim() || '',
+    url: item.querySelector('.ext-url')?.value.trim() || '',
+    health: item.querySelector('.ext-health')?.value.trim() || ''
+  }));
+}
+
+// ─── Dep Code ────────────────────────────────────────────────────────────────
+
+function addDepCode(silent) {
+  const container = document.getElementById('depsCodeList');
+  const div = document.createElement('div');
+  div.className = 'dynamic-item';
+  div.innerHTML = `
+    <div class="inline-row">
+      <div class="field">
+        <label>Branch / PR Name</label>
+        <input type="text" class="code-branch" placeholder="e.g. feature/answer-feedback or PR #142" oninput="regen()">
+      </div>
+      <div class="remove-btn-wrap">
+        <button class="btn-danger-icon" onclick="removeItem(this)" title="Remove">&#215;</button>
+      </div>
+    </div>
+  `;
+  container.appendChild(div);
+  if (!silent) regen();
+}
+
+function getDepsCode() {
+  return Array.from(document.querySelectorAll('#depsCodeList .dynamic-item input')).map(i => i.value.trim()).filter(Boolean);
+}
+
+// ─── Dep Data ────────────────────────────────────────────────────────────────
+
+function addDepData(silent) {
+  const container = document.getElementById('depsDataList');
+  const div = document.createElement('div');
+  div.className = 'dynamic-item';
+  div.innerHTML = `
+    <div class="dynamic-item-header">
+      <span class="dynamic-item-label">Data Dependency</span>
+      <button class="btn-danger-icon" onclick="removeItem(this)" title="Remove">&#215;</button>
+    </div>
+    <div class="field">
+      <label>Table / Data Name</label>
+      <input type="text" class="data-table" placeholder="e.g. answer_feedback table" oninput="regen()">
+    </div>
+    <div class="field">
+      <label>Verify SQL</label>
+      <input type="text" class="data-sql" placeholder="e.g. SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'answer_feedback';" oninput="regen()">
+    </div>
+  `;
+  container.appendChild(div);
+  if (!silent) regen();
+}
+
+function getDepsData() {
+  return Array.from(document.querySelectorAll('#depsDataList .dynamic-item')).map(item => ({
+    table: item.querySelector('.data-table')?.value.trim() || '',
+    sql: item.querySelector('.data-sql')?.value.trim() || ''
+  }));
+}
+
+// ─── Question ────────────────────────────────────────────────────────────────
+
+function addQuestion(silent) {
+  const container = document.getElementById('questionsList');
+  const idx = container.children.length + 1;
+  const div = document.createElement('div');
+  div.className = 'dynamic-item';
+  div.innerHTML = `
+    <div class="dynamic-item-header">
+      <span class="dynamic-item-label">Question ${idx}</span>
+      <button class="btn-danger-icon" onclick="removeItem(this)" title="Remove">&#215;</button>
+    </div>
+    <div class="field">
+      <label>Question</label>
+      <input type="text" class="q-question" placeholder="e.g. Should negative feedback bust only the affected user's cache keys, or all users?" oninput="regen()">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Owner</label>
+        <input type="text" class="q-owner" placeholder="e.g. prabal.saha" oninput="regen()">
+      </div>
+      <div class="field">
+        <label>Decision</label>
+        <input type="text" class="q-decision" placeholder="TBD" oninput="regen()">
+      </div>
+    </div>
+  `;
+  container.appendChild(div);
+  if (!silent) regen();
+}
+
+function getQuestions() {
+  return Array.from(document.querySelectorAll('#questionsList .dynamic-item')).map((item, i) => ({
+    num: i + 1,
+    question: item.querySelector('.q-question')?.value.trim() || '',
+    owner: item.querySelector('.q-owner')?.value.trim() || '',
+    decision: item.querySelector('.q-decision')?.value.trim() || 'TBD'
+  }));
+}
+
+// ─── Markdown Generator ───────────────────────────────────────────────────────
+
+function regen() {
+  const out = generateMarkdown();
+  document.getElementById('outputArea').value = out;
+}
+
+function generateMarkdown() {
+  const projectName = v('projectName') || 'Untitled Plan';
+  const status = v('status') || 'DRAFT';
+  const date = v('planDate') || new Date().toISOString().split('T')[0];
+  const author = v('author') || '{{author}}';
+  const currentState = v('currentState');
+  const problem = v('problem');
+  const whyNow = v('whyNow');
+  const constraints = v('constraints');
+  const goals = getGoals();
+  const nonGoals = getNonGoals();
+  const phases = getPhases();
+  const files = getFiles();
+  const verifySteps = getVerifySteps();
+  const rollbacks = getRollbacks();
+  const depsExternal = getDepsExternal();
+  const depsCode = getDepsCode();
+  const depsData = getDepsData();
+  const questions = getQuestions();
+  const envContent = v('envContent');
+
+  let md = '';
+
+  // ── Status block ──
+  md += `> **Status: ${status}**\n`;
+  md += `> Last updated: ${date}\n`;
+  md += `> Author: ${author}\n`;
+  md += '\n';
+
+  // ── Title ──
+  md += `# Plan: ${projectName}\n`;
+  md += '\n';
+
+  // ── Context ──
+  md += `## Context\n\n`;
+  md += `**Current state:** ${currentState || '{{One paragraph describing current state, naming specific files, services, tables.}}'}\n\n`;
+  md += `**Problem:** ${problem || '{{What is broken, missing, or suboptimal? Quantify where possible.}}'}\n\n`;
+  md += `**Why now:** ${whyNow || '{{Why is this the right time to address it?}}'}\n\n`;
+  md += `**Constraints:** ${constraints || '{{What must this change NOT break?}}'}\n`;
+  md += '\n';
+
+  // ── Goals ──
+  md += `## Goals\n\n`;
+  if (goals.length === 0) {
+    md += `- {{Goal description}}\n  - Verify: \`{{verify command}}\`\n`;
+  } else {
+    goals.forEach(g => {
+      if (g.desc || g.verify) {
+        md += `- ${g.desc || '{{goal description}}'}\n`;
+        md += `  - Verify: \`${g.verify || '{{verify command}}'}\`\n`;
+      }
+    });
+  }
+  md += '\n';
+
+  // ── Non-Goals ──
+  md += `## Non-Goals\n\n`;
+  if (nonGoals.length === 0) {
+    md += `- {{Non-goal description}}\n`;
+  } else {
+    nonGoals.forEach(ng => { md += `- ${ng}\n`; });
+  }
+  md += '\n';
+
+  // ── Phases ──
+  phases.forEach(p => {
+    const phaseName = p.name || `Phase ${p.idx}`;
+    const timeline = p.timeline ? ` (${p.timeline})` : '';
+    md += `## Phase ${p.idx} \u2014 ${phaseName}${timeline}\n\n`;
+
+    md += `**Deliverables:**\n`;
+    if (p.deliverables) {
+      const lines = p.deliverables.split('\n').map(l => l.trim()).filter(Boolean);
+      lines.forEach(l => { md += `- ${l}\n`; });
+    } else {
+      md += `- {{deliverable description}}\n`;
+    }
+    md += '\n';
+
+    if (p.gate) {
+      md += `**Phase gate:** ${p.gate}\n`;
+    } else {
+      md += `**Phase gate:** {{One concrete, runnable check before starting next phase.}}\n`;
+    }
+    if (p.flag) {
+      md += `**Feature flag:** \`${p.flag}=true\`\n`;
+    }
+    md += '\n';
+  });
+
+  // ── Files table ──
+  md += `## Files to Create / Modify\n\n`;
+  md += `| File | Change | Notes |\n`;
+  md += `|------|--------|-------|\n`;
+  const validFiles = files.filter(f => f.path);
+  if (validFiles.length === 0) {
+    md += `| \`path/to/file.py\` | New | {{Description}} |\n`;
+  } else {
+    validFiles.forEach(f => {
+      md += `| \`${f.path}\` | ${f.change} | ${f.notes || '{{notes}}'} |\n`;
+    });
+  }
+  md += '\n';
+
+  // ── Verification Steps ──
+  md += `## Verification Steps\n\n`;
+  const validSteps = verifySteps.filter(s => s.what || s.expected || s.cmd);
+  if (validSteps.length === 0) {
+    md += `1. {{What to verify}} \u2192 {{expected result}}\n   Command: \`{{command}}\`\n\n`;
+  } else {
+    validSteps.forEach((s, i) => {
+      md += `**${i + 1}. ${s.what || '{{what to verify}}'}** \u2192 ${s.expected || '{{expected result}}'}\n`;
+      if (s.cmd) {
+        md += `Command: \`${s.cmd}\`\n`;
+      }
+      md += '\n';
+    });
+  }
+
+  // ── Rollback Plan ──
+  md += `## Rollback Plan\n\n`;
+  const validRollbacks = rollbacks.filter(r => r.phase || r.flag || r.sql);
+  if (validRollbacks.length === 0) {
+    md += `### If Phase {{N}} fails\n\n`;
+    md += `1. Set \`{{FEATURE_FLAG}}=false\` in \`.env\` and restart\n`;
+    md += `2. Run: \`psql -f {{rollback_migration_file}}\`\n\n`;
+  } else {
+    validRollbacks.forEach(r => {
+      const phaseName = r.phase || '{{Phase}}';
+      md += `### If ${phaseName} fails\n\n`;
+      if (r.flag) {
+        md += `1. Set \`${r.flag}=false\` in \`.env\` and restart — no code change needed.\n`;
+        md += `   This disables all user-facing behaviour added in this phase.\n\n`;
+      }
+      if (r.sql) {
+        md += `2. Run the rollback migration:\n`;
+        md += `   \`\`\`bash\n   psql $DATABASE_URL -f ${r.sql}\n   \`\`\`\n\n`;
+      }
+      if (r.restart) {
+        md += `3. Restart:\n`;
+        md += `   \`\`\`bash\n   ${r.restart}\n   \`\`\`\n\n`;
+      }
+      md += `---\n\n`;
+    });
+  }
+
+  // ── Dependencies ──
+  md += `## Dependencies\n\n`;
+
+  md += `### External\n\n`;
+  const validExt = depsExternal.filter(d => d.service || d.url);
+  if (validExt.length === 0) {
+    md += `- [ ] {{Service}} running at {{URL/port}}\n  Verify with: {{health check command}}\n\n`;
+  } else {
+    validExt.forEach(d => {
+      const location = [d.service, d.url].filter(Boolean).join(' at ');
+      md += `- [ ] ${location}\n`;
+      if (d.health) md += `  Verify with: \`${d.health}\`\n`;
+      md += '\n';
+    });
+  }
+
+  md += `### Code\n\n`;
+  if (depsCode.length === 0) {
+    md += `- [ ] {{Branch or PR}} merged to main\n\n`;
+  } else {
+    depsCode.forEach(c => { md += `- [ ] ${c} merged to main\n`; });
+    md += '\n';
+  }
+
+  md += `### Data\n\n`;
+  const validData = depsData.filter(d => d.table || d.sql);
+  if (validData.length === 0) {
+    md += `- [ ] {{Table or dataset}} exists — required before Phase {{N}} starts\n\n`;
+  } else {
+    validData.forEach(d => {
+      if (d.table) md += `- [ ] \`${d.table}\` exists\n`;
+      if (d.sql) md += `  Verify with: \`${d.sql}\`\n`;
+      md += '\n';
+    });
+  }
+
+  // ── Open Questions ──
+  md += `## Open Questions\n\n`;
+  md += `| # | Question | Owner | Decision | Date resolved |\n`;
+  md += `|---|----------|-------|----------|---------------|\n`;
+  const validQs = questions.filter(q => q.question);
+  if (validQs.length === 0) {
+    md += `| 1 | {{Question text}} | {{Owner}} | TBD | |\n`;
+  } else {
+    validQs.forEach((q, i) => {
+      const decision = q.decision || 'TBD';
+      md += `| ${i + 1} | ${q.question} | ${q.owner || '{{owner}}'} | ${decision} | |\n`;
+    });
+  }
+  md += '\n';
+
+  // ── .env Additions ──
+  md += `## .env Additions\n\n`;
+  md += `\`\`\`\n`;
+  md += (envContent || 'USE_FEATURE_A=true\nUSE_CACHE=true\nUSE_SUMMARIES=true') + '\n';
+  md += `\`\`\`\n`;
+
+  return md;
+}
+
+// ─── Copy / Download ──────────────────────────────────────────────────────────
+
+function copyOutput() {
+  const area = document.getElementById('outputArea');
+  navigator.clipboard.writeText(area.value).then(() => {
+    const btn = document.getElementById('copyBtn');
+    const original = btn.textContent;
+    btn.textContent = 'Copied ✓';
+    showToast('Copied to clipboard');
+    setTimeout(() => { btn.textContent = original; }, 2000);
+  }).catch(() => {
+    area.select();
+    document.execCommand('copy');
+    showToast('Copied to clipboard');
+  });
+}
+
+function downloadPlan() {
+  const content = document.getElementById('outputArea').value;
+  const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'plan.md';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('Downloaded plan.md');
+}
+</script>
+</body>
+</html>

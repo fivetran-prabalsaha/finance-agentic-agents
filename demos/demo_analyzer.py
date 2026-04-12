@@ -8,7 +8,6 @@ Demonstrates automated SOD violation detection using AI-powered analysis
 import os
 import sys
 from pathlib import Path
-from datetime import datetime
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -16,12 +15,11 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 # Set database URL
 os.environ['DATABASE_URL'] = 'postgresql://compliance_user:compliance_pass@localhost:5432/compliance_db'
 
-from sqlalchemy.orm import Session
-from models.database_config import get_session, DatabaseConfig
-from repositories.user_repository import UserRepository
-from repositories.role_repository import RoleRepository
-from repositories.violation_repository import ViolationRepository
 from agents.analyzer import SODAnalysisAgent
+from models.database_config import DatabaseConfig, get_session
+from repositories.role_repository import RoleRepository
+from repositories.user_repository import UserRepository
+from repositories.violation_repository import ViolationRepository
 
 
 def print_header(title: str):
@@ -59,11 +57,11 @@ def demo_analyzer_capabilities():
             violation_repo=violation_repo
         )
 
-        print(f"✅ SOD Analysis Agent Initialized")
-        print(f"   Model: claude-opus-4.6 (for complex reasoning)")
+        print("✅ SOD Analysis Agent Initialized")
+        print("   Model: claude-opus-4.6 (for complex reasoning)")
         print(f"   SOD Rules Loaded: {len(analyzer.sod_rules)}")
         print()
-        print(f"📋 Rule Categories:")
+        print("📋 Rule Categories:")
 
         # Group rules by type
         rule_types = {}
@@ -92,10 +90,10 @@ def demo_analyzer_capabilities():
 
         if not robin:
             print(f"❌ User not found: {robin_email}")
-            print(f"💡 Run sync first: python3 scripts/sync_from_netsuite.py --limit 2000")
+            print("💡 Run sync first: python3 scripts/sync_from_netsuite.py --limit 2000")
             return
 
-        print(f"👤 User Profile:")
+        print("👤 User Profile:")
         print(f"   Name: {robin.name}")
         print(f"   Email: {robin.email}")
         print(f"   Department: {robin.department}")
@@ -116,7 +114,7 @@ def demo_analyzer_capabilities():
         violations = analyzer._analyze_user(robin)
 
         print()
-        print(f"📊 Analysis Results:")
+        print("📊 Analysis Results:")
         print(f"   Violations Detected: {len(violations)}")
 
         if violations:
@@ -150,7 +148,7 @@ def demo_analyzer_capabilities():
         prabal = user_repo.get_user_by_email(prabal_email)
 
         if prabal:
-            print(f"👤 User Profile:")
+            print("👤 User Profile:")
             print(f"   Name: {prabal.name}")
             print(f"   Email: {prabal.email}")
             print(f"   Roles: {len(prabal.user_roles)}")
@@ -163,7 +161,7 @@ def demo_analyzer_capabilities():
             print(f"   Robin Turner:  {len(violations)} violations (HIGH RISK)")
             print(f"   Prabal Saha:   {len(prabal_violations)} violations (LOW RISK)")
         else:
-            print(f"⚠️  User not found in database")
+            print("⚠️  User not found in database")
 
         # Batch analysis
         print_header("STEP 4: Organization-Wide SOD Scan")
@@ -176,12 +174,12 @@ def demo_analyzer_capabilities():
         if result['success']:
             stats = result['stats']
 
-            print(f"✅ Organization-Wide Scan Complete!\n")
-            print(f"📊 Scan Statistics:")
+            print("✅ Organization-Wide Scan Complete!\n")
+            print("📊 Scan Statistics:")
             print(f"   Users Analyzed: {stats['users_analyzed']}")
             print(f"   Scan Duration: {(stats['end_time'] - stats['start_time']).total_seconds():.2f}s")
             print()
-            print(f"🚨 Violations Detected:")
+            print("🚨 Violations Detected:")
             print(f"   Total: {stats['violations_detected']}")
             print(f"   ├─ Critical: {stats['critical_violations']}")
             print(f"   ├─ High: {stats['high_violations']}")
@@ -220,14 +218,14 @@ def demo_analyzer_capabilities():
             print(f"   Open Violations: {summary.get('total_open', 0)}")
 
             severity_counts = summary.get('severity_counts', {})
-            print(f"   By Severity:")
+            print("   By Severity:")
             print(f"   ├─ Critical: {severity_counts.get('CRITICAL', 0)}")
             print(f"   ├─ High: {severity_counts.get('HIGH', 0)}")
             print(f"   └─ Medium: {severity_counts.get('MEDIUM', 0)}")
 
             status_counts = summary.get('status_counts', {})
             print()
-            print(f"   By Status:")
+            print("   By Status:")
             print(f"   ├─ Open: {status_counts.get('OPEN', 0)}")
             print(f"   ├─ Under Review: {status_counts.get('UNDER_REVIEW', 0)}")
             print(f"   └─ Resolved: {status_counts.get('RESOLVED', 0)}")
@@ -252,27 +250,27 @@ def demo_analyzer_capabilities():
             if ai_result['success']:
                 ai_analysis = ai_result['ai_analysis']
 
-                print(f"✅ AI Analysis Complete!\n")
-                print(f"🎯 Overall Assessment:")
+                print("✅ AI Analysis Complete!\n")
+                print("🎯 Overall Assessment:")
                 print(f"   Risk Level: {ai_analysis['overall_risk_level']}")
                 print(f"   AI Risk Score: {ai_analysis['risk_score']}/100")
                 print(f"   Remediation Priority: {ai_analysis['remediation_priority']}")
 
-                print(f"\n⚠️  Primary Concerns:")
+                print("\n⚠️  Primary Concerns:")
                 for concern in ai_analysis.get('primary_concerns', [])[:3]:
                     print(f"   • {concern}")
 
-                print(f"\n💡 Top Recommendation:")
+                print("\n💡 Top Recommendation:")
                 if ai_analysis.get('detailed_recommendations'):
                     rec = ai_analysis['detailed_recommendations'][0]
                     print(f"   Action: {rec['action']}")
                     print(f"   Rationale: {rec['rationale']}")
                     if rec.get('implementation_steps'):
-                        print(f"   Steps:")
+                        print("   Steps:")
                         for step in rec['implementation_steps'][:3]:
                             print(f"      {step}")
 
-                print(f"\n🛡️  Compensating Controls:")
+                print("\n🛡️  Compensating Controls:")
                 for control in ai_analysis.get('compensating_controls', [])[:2]:
                     print(f"   • {control}")
         else:

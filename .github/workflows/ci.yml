@@ -56,8 +56,8 @@ jobs:
     env:
       DATABASE_URL: postgresql://compliance_user:compliance_pass@localhost:5432/compliance_db
       REDIS_URL: redis://localhost:6379/0
-      # Use repo secret if set, otherwise fall back to stub (live-API tests are excluded below)
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      # Stub values — tests that call live APIs are excluded below
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY || 'sk-ant-stub' }}
       NETSUITE_ACCOUNT_ID: stub
       NETSUITE_CONSUMER_KEY: stub
       NETSUITE_CONSUMER_SECRET: stub
@@ -79,10 +79,6 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-
-      - name: Set stub env vars for missing secrets
-        run: |
-          echo "ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-sk-ant-stub}" >> $GITHUB_ENV
 
       - name: Install dependencies
         run: pip install -r requirements.txt

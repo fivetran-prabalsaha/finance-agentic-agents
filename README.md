@@ -1,929 +1,334 @@
-# NetSuite SOD Compliance & Risk Assessment Framework
+# SOD Compliance & Risk Assessment System
 
-> **Status**: ✅ **Production Ready** | **Version**: 2.0.0 (Optimized) | Last Updated: 2026-02-11
+> **Status**: ✅ Production Ready | **Version**: 3.0.0 | Last Updated: 2026-04-12
 
-An intelligent multi-agent system for automated Segregation of Duties (SOD) analysis, compliance monitoring, and risk assessment for NetSuite environments.
+[![CI](https://github.com/fivetran-prabalsaha/finance-agentic-agents/actions/workflows/ci.yml/badge.svg?branch=feature%2Fmcp-integration)](https://github.com/fivetran-prabalsaha/finance-agentic-agents/actions/workflows/ci.yml)
 
----
-
-## 🎯 Overview
-
-This framework uses **LangChain** agents powered by **Claude (Anthropic)** to continuously monitor NetSuite user roles and permissions, detect SOD violations, assess risk levels, and notify compliance teams.
-
-### ✅ What's Working
-
-- ✅ **Fast User Search** - Targeted search by name/email (1-2 seconds)
-- ✅ **SOD Violation Detection** - 18 rules covering SOX and internal controls
-- ✅ **Risk Assessment** - Automated scoring (0-100 scale) with severity classification
-- ✅ **NetSuite Integration** - OAuth 1.0a with 1,933 active users accessible
-- ✅ **Real-Time Analysis** - Complete analysis in 2 seconds (55x faster than before)
-- ✅ **Production Tested** - Successfully detected 4 violations for test user
-- ✅ **Skills Layer** - Guided workflows for access reviews (NEW - Phase 7)
-
-### Key Achievements
-
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| **Search Time** | 110 sec | 2 sec | **55x faster** ⚡ |
-| **Data Transfer** | 10 MB | 20 KB | **500x less** |
-| **API Calls** | 10 calls | 2 calls | **5x fewer** |
-| **Scalability** | Degrades with users | Constant time | **Unlimited** |
+An agentic compliance system for automated Segregation of Duties (SOD) analysis, access reviews, and risk assessment across NetSuite environments. Operated via Slack and a web admin portal.
 
 ---
 
-## 🎓 Skills: Guided Compliance Workflows
+## What's Working
 
-**NEW:** Beyond our 34 MCP tools, we now provide **Skills** - workflow guidance that helps users accomplish common compliance tasks consistently.
+- **Slack Bot** — multi-turn agentic reasoning, Haiku dispatch + Opus synthesis, correction embeddings
+- **37 MCP Tools** — full compliance toolkit via Model Context Protocol
+- **SOD Violation Detection** — 18 rules covering SOX and internal controls
+- **Semantic Tool Router** — MiniLM embeddings, Hit Rate@10=1.00, MRR=0.91
+- **Angular Admin Portal** — JWT-authenticated, Dashboard/Violations/Exceptions/SOD Rules
+- **LangSmith Observability** — distributed tracing, 3 online evaluators, eval suite
+- **NetSuite Integration** — OAuth 1.0a, 1,933 active users, 99.7% sync coverage
+- **CI/CD** — GitHub Actions: lint (ruff) + pytest on every push/PR
 
-### Available Skills
+### Key Metrics
 
-#### 🔍 SOD Access Review
-**Status:** ✅ Production Ready
-
-Systematic access reviews for departments, roles, or individuals.
-
-**Use When:** "Review Finance department", "Audit Controller role", "Check [user]'s access"
-
-**What It Does:**
-1. Scopes the review (department/role/user)
-2. Collects and analyzes violation data
-3. Prioritizes by risk (CRITICAL → LOW)
-4. Generates executive summary
-5. Provides specific remediation recommendations
-
-**Impact:**
-- Time: 30-45 min → 10-15 min (67% faster)
-- Interactions: 15-20 → 3-5 (80% reduction)
-- Consistency: 90%+ same methodology
-
-**Try It:**
-```
-# In Claude.ai or Claude Code:
-"Review Finance department access"
-"Audit Controller role"
-"Check robin.turner@fivetran.com for SOD issues"
-```
-
-**See:** `skills/sod-access-review/` for complete documentation
+| Metric | Value |
+|--------|-------|
+| Users synced | 1,928 / 1,933 (99.7%) |
+| SOD rules | 18 active |
+| MCP tools | 37 |
+| Search time | 2 sec (was 110 sec — 55x faster) |
+| Tool Hit Rate@10 | 1.00 (semantic router) |
+| Tool MRR | 0.91 (semantic router) |
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                     SOD Compliance System                        │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌──────────────┐   Fast Search    ┌─────────────────────┐    │
-│  │   NetSuite   │◄─────────────────┤ Search RESTlet      │    │
-│  │   (1,933     │   (Script 3685)  │ • By name/email     │    │
-│  │    users)    │                   │ • 1-2 sec response  │    │
-│  └──────────────┘                   │ • Wildcard support  │    │
-│         │                            └─────────────────────┘    │
-│         │                                                        │
-│         ▼                                                        │
-│  ┌──────────────────────────────────────────────────────┐      │
-│  │           LangChain Multi-Agent System               │      │
-│  ├──────────────────────────────────────────────────────┤      │
-│  │                                                       │      │
-│  │  1. Data Collection Agent ───► Fetch users & roles   │      │
-│  │  2. SOD Analysis Agent ──────► Check 18 rules        │      │
-│  │  3. Risk Assessment Agent ───► Score violations      │      │
-│  │  4. Knowledge Base Agent ────► Semantic search       │      │
-│  │  5. Notification Agent ──────► Alert channels        │      │
-│  │  6. Orchestrator Agent ──────► Coordinate workflow   │      │
-│  │                                                       │      │
-│  └──────────────────────────────────────────────────────┘      │
-│         │                                                        │
-│         ▼                                                        │
-│  ┌──────────────────────────────────────────────────────┐      │
-│  │  PostgreSQL + Redis + Claude Opus 4.6               │      │
-│  └──────────────────────────────────────────────────────┘      │
-│         │                                                        │
-│         ▼                                                        │
-│  ┌──────────────────────────────────────────────────────┐      │
-│  │  📊 Violation Reports + 🔔 Alerts + 📈 Dashboard     │      │
-│  └──────────────────────────────────────────────────────┘      │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
+Slack DM / @mention
+        │
+        ▼
+┌─────────────────────────────────────────┐
+│         Slack Bot (slack_bot_local.py)  │
+│  • Haiku dispatch (tool_choice: any)    │
+│  • Opus synthesis (adaptive thinking)  │
+│  • Redis TTL cache (Phase A)           │
+│  • Conversation summaries (Phase B)    │
+│  • Correction embeddings (Phase C)     │
+└────────────────┬────────────────────────┘
+                 │ MCP JSON-RPC
+                 ▼
+┌─────────────────────────────────────────┐
+│     MCP Server :8080 (mcp_server.py)   │
+│  • 37 compliance tools                 │
+│  • JWT admin portal (admin_api.py)     │
+│  • CORS for Angular dev server (:4200) │
+└────────────────┬────────────────────────┘
+                 │
+        ┌────────┴────────┐
+        ▼                 ▼
+  PostgreSQL          NetSuite
+  + pgvector          RESTlet API
+  + Redis             (1,933 users)
 ```
 
-**Tech Stack**: LangChain | Claude Sonnet 4.5 & Opus 4.6 | PostgreSQL + pgvector | Redis | FastAPI
+**Two-turn LLM pipeline:**
+```
+Turn 1 — Claude Haiku 4.5   tool_choice: any  → picks MCP tool
+Turn 2 — Claude Opus 4.6    adaptive thinking  → synthesizes answer
+```
+
+**Semantic tool router** (`utils/semantic_router.py`):
+- Embeds all tool descriptions + curated example queries with `all-MiniLM-L6-v2` (local, no API key)
+- At query time: embeds user message, ranks tools by cosine similarity
+- Drop-in over keyword fallback (`utils/tool_router.py`)
 
 ---
 
-## ⚡ Quick Start
+## Quick Start
 
 ### Prerequisites
 
-- Python 3.9+
-- PostgreSQL 16+ & Redis (via Docker or Homebrew)
-- Claude API key (Anthropic)
-- NetSuite account with RESTlet access ✅ **CONFIGURED**
+- Python 3.11+
+- PostgreSQL 16+ with pgvector extension
+- Redis
+- Claude API key
 
-### ⚡ Fastest Demo (No Database Required)
+### Install & Run
 
 ```bash
 # Install dependencies
 pip install -r requirements.txt
 
-# Test NetSuite connection
-PYTHONPATH=. python3 demos/quick_test.py
+# Set up database
+psql $DATABASE_URL -f database/schema.sql
+psql $DATABASE_URL -f database/schema_extensions.sql
 
-# Run SOD analysis for two users
-PYTHONPATH=. python3 demos/test_two_users.py
-```
+# Start MCP server
+./scripts/restart_mcp.sh
+curl http://localhost:8080/health
 
-**Output:**
-```
-✓ Found both users in 2 seconds
-✓ Analyzed against 18 SOD rules
-✓ Detected 4 violations for high-risk user
-✓ Risk scores calculated (84/100 for critical violations)
-```
+# Start Slack bot (foreground)
+python3 slack_bot_local.py
 
----
-
-## 📚 Documentation
-
-### Essential Reading
-
-- **[DEMO_GUIDE.md](./DEMO_GUIDE.md)** - ⭐ **How to demo this system** (for executives, compliance, IT)
-- **[README.md](./README.md)** - This file (system overview)
-- **[TECHNICAL_SPECIFICATION.md](./TECHNICAL_SPECIFICATION.md)** - Complete technical specs (v1.1.0)
-- **[SOD_COMPLIANCE_ARCHITECTURE.md](./SOD_COMPLIANCE_ARCHITECTURE.md)** - Architecture design
-- **[PRODUCTION_DEPLOYMENT.md](./PRODUCTION_DEPLOYMENT.md)** - Production deployment guide
-
-### Sample Output
-
-- **[SOD_ANALYSIS_REPORT.md](./SOD_ANALYSIS_REPORT.md)** - Example analysis report
-- **[ARCHITECTURE_IMPROVEMENT.md](./ARCHITECTURE_IMPROVEMENT.md)** - Performance improvements achieved
-
-### Additional Documentation
-
-- **[PROJECT_LAYOUT.md](./PROJECT_LAYOUT.md)** - Code organization
-- **[netsuite_scripts/DEPLOYMENT_INSTRUCTIONS.md](./netsuite_scripts/DEPLOYMENT_INSTRUCTIONS.md)** - RESTlet deployment
-
----
-
-## 🎬 Demo Scenarios
-
-All demo scenarios tested and validated on 2026-02-10:
-
-### 1. Quick Connection Test (30 seconds)
-```bash
-PYTHONPATH=. python3 demos/quick_test.py
-```
-- Tests NetSuite OAuth connection
-- Fetches 10 sample users
-- Verifies RESTlet access
-
-### 2. Two-User SOD Analysis (2 seconds) ⭐ **Recommended for Demos**
-```bash
-PYTHONPATH=. python3 demos/test_two_users.py
-```
-- Searches for 2 specific users by email
-- Analyzes against 18 SOD rules
-- Generates violation report with risk scores
-- **Perfect for stakeholder presentations**
-
-### 3. Simple Auto-Demo (2 minutes)
-```bash
-PYTHONPATH=. python3 demos/demo_simple.py
-```
-- Automated presentation-style demo
-- Fetches 20 users with roles
-- Identifies high-risk users
-- Shows Claude AI analysis
-
-### 4. Interactive Agent Demo (5-10 minutes)
-```bash
-PYTHONPATH=. python3 demos/demo_agent.py
-```
-- 6 interactive scenarios
-- Detailed role permission analysis
-- High-risk user identification
-
-### 5. SOD Use Case Demo (3-5 minutes)
-```bash
-PYTHONPATH=. python3 demos/demo_sod_usecase.py
-```
-- Compares low-risk vs high-risk users
-- Detailed risk scoring breakdown
-- SOD violation explanations
-
----
-
-## 🔍 How to Use
-
-### Search for Specific Users
-
-```python
-from services.netsuite_client import NetSuiteClient
-
-client = NetSuiteClient()
-
-# Search by email (fastest, most reliable)
-result = client.search_users('john.doe@company.com', search_type='email')
-
-# Search by name
-result = client.search_users('John Doe', search_type='name')
-
-# Search by both (OR logic)
-result = client.search_users('John', search_type='both')
-
-if result['success']:
-    for user in result['data']['users']:
-        print(f"{user['name']} - {user['email']}")
-        print(f"Roles: {user['roles_count']}")
-```
-
-### Analyze SOD Violations
-
-```python
-from demos.test_two_users import SODReportGenerator
-
-generator = SODReportGenerator()
-
-# Analyze two users
-result = generator.generate_report(
-    user1_name='user1@company.com',
-    user2_name='user2@company.com'
-)
-
-# View violations
-if result['success']:
-    user1_violations = result['user1']['violations']
-    user2_violations = result['user2']['violations']
+# Start Angular admin portal (dev)
+cd angular-portal && ng serve
+# → http://localhost:4200
 ```
 
 ---
 
-## 📊 SOD Rules Coverage
-
-The system evaluates **18 SOD rules** across 5 categories:
-
-### Financial Controls (8 rules) - SOX Compliance
-- ✓ AP Entry vs. Approval Separation (CRITICAL)
-- ✓ Journal Entry Creation vs. Approval (CRITICAL)
-- ✓ Bank Reconciliation vs. Cash Transactions (HIGH)
-- ✓ Customer Credit Management vs. Collections (MEDIUM)
-- ✓ Revenue Recognition vs. Sales Order Entry (HIGH)
-- ✓ Inventory Adjustments vs. Warehouse Operations (MEDIUM)
-- ✓ Payroll Processing vs. Employee Master Data (CRITICAL)
-- ✓ Budget Creation vs. Budget Approval (MEDIUM)
-
-### Procurement Controls (2 rules)
-- ✓ Purchase Order Creation vs. Approval (HIGH)
-- ✓ Vendor Master Data vs. AP Processing (CRITICAL)
-
-### IT Access Controls (4 rules)
-- ✓ Administrator vs. Regular User Roles (HIGH)
-- ✓ Script Development vs. Production Execution (HIGH)
-- ✓ User Administration vs. Business Operations (MEDIUM)
-- ✓ Custom Record Definition vs. Data Entry (MEDIUM)
-
-### Sales Controls (2 rules)
-- ✓ Pricing Maintenance vs. Sales Order Entry (MEDIUM)
-- ✓ Sales Commission Setup vs. Commission Processing (HIGH)
-
-### Compliance Controls (2 rules)
-- ✓ Audit Log Access vs. Financial Transactions (HIGH)
-- ✓ Compliance Officer Independence (CRITICAL)
-
-**All rules include:**
-- Severity level (CRITICAL/HIGH/MEDIUM/LOW)
-- Regulatory framework (SOX/INTERNAL)
-- Remediation guidance
-- Business impact explanation
-
----
-
-## 🏃 Running the System
-
-### Development Mode
-
-**Option 1: Standalone Analysis**
-```bash
-PYTHONPATH=. python3 demos/test_two_users.py
-```
-
-**Option 2: API Server (Future)**
-```bash
-# Terminal 1: Start API Server
-poetry run uvicorn api.main:app --reload
-
-# Terminal 2: Start Celery Worker
-poetry run celery -A workflows.tasks worker --loglevel=info
-
-# Terminal 3: Start Celery Beat (Scheduler)
-poetry run celery -A workflows.tasks beat --loglevel=info
-```
-
-### Manual Scan
-
-```bash
-# Analyze specific users
-PYTHONPATH=. python3 -c "
-from demos.test_two_users import SODReportGenerator
-generator = SODReportGenerator()
-result = generator.generate_report(
-    user1_name='user1@company.com',
-    user2_name='user2@company.com'
-)
-"
-```
-
----
-
-## 📈 Performance Metrics
-
-### Real-World Test Results (2026-02-10)
-
-| Test | Result | Status |
-|------|--------|--------|
-| **NetSuite Connection** | 1,933 users accessible | ✅ Pass |
-| **User Search (email)** | 1.1 seconds | ✅ Pass |
-| **User Search (name)** | 1.2 seconds | ✅ Pass |
-| **SOD Analysis (2 users)** | 2.0 seconds total | ✅ Pass |
-| **Violations Detected** | 4 violations (1 user) | ✅ Pass |
-| **Risk Scoring** | 84/100 for critical | ✅ Pass |
-
-### Comparison: Old vs New Method
-
-**Old Method (Bulk Fetch):**
-- Time: 110 seconds
-- API Calls: 10 calls (200 users each)
-- Data Transfer: 10 MB
-- Scalability: Degrades with more users
-
-**New Method (Targeted Search):**
-- Time: 2 seconds ⚡
-- API Calls: 2 calls (1 per user)
-- Data Transfer: 20 KB
-- Scalability: Constant time regardless of user count
-
-**Result:** **55x faster** with **500x less data transfer**
-
----
-
-## ⚡ RESTlet Optimization (NEW - v2.0.0)
-
-### Performance Breakthrough
-
-The NetSuite RESTlet has been **dramatically optimized** to eliminate governance limit errors and enable processing of 10x more users per request.
-
-### Problem Solved
-
-**Before (v1.0):**
-- ❌ Hit 5,000 unit governance limit
-- ❌ Failed at ~500 users with 400 errors
-- ❌ 10 governance units per user
-- ❌ Sequential searches (slow)
-
-**After (v2.0.0):**
-- ✅ Uses batch SuiteQL queries
-- ✅ Processes 5,000+ users per request
-- ✅ 0.7 governance units per user
-- ✅ Single query for all users (fast)
-
-### Key Improvements
-
-| Metric | OLD (v1.0) | NEW (v2.0) | Improvement |
-|--------|------------|------------|-------------|
-| **Governance per user** | 10 units | 0.7 units | **14x better** |
-| **Max users/request** | ~500 | 5,000+ | **10x more** |
-| **Success rate** | ~50% | 99.9% | **Stable** |
-| **Execution time** | Fails | 2-5 sec | **∞ better** |
-
-### Optimization Features
-
-1. **Batch SuiteQL Queries** - Fetch all roles in one request (500x faster)
-2. **Governance Monitoring** - Real-time unit tracking prevents failures
-3. **Reduced Pagination** - Default 50 users/request (was 1,000)
-4. **Governance Dashboard** - Detailed metrics in every response
-
-### Quick Links
-
-- 📖 **[Full Optimization Guide](docs/RESTLET_OPTIMIZATION_GUIDE.md)** - Complete implementation guide
-- 📋 **[Pagination Quick Reference](docs/PAGINATION_QUICK_REFERENCE.md)** - Developer cheat sheet
-- 🧪 **[Test Optimization](tests/test_restlet_optimization.py)** - Verify improvements
-- 📊 **[Compare Performance](tests/compare_old_vs_new.py)** - Old vs new benchmark
-
-### Deploy Now
-
-```bash
-# 1. Test current performance
-python3 tests/test_restlet_optimization.py
-
-# 2. Compare old vs new
-python3 tests/compare_old_vs_new.py
-
-# 3. Deploy optimized RESTlet
-# Upload: netsuite_scripts/sod_users_roles_restlet_optimized.js
-# to NetSuite Script 3684
-```
-
-### Governance Dashboard Example
-
-Every API response now includes governance metrics:
-
-```json
-{
-  "governance": {
-    "starting_units": 5000,
-    "ending_units": 4965,
-    "units_used": 35,
-    "units_per_user": "0.70",
-    "optimization_ratio": "500x better than v1.0",
-    "warnings": [],
-    "safety_margin": 100,
-    "max_limit": 200
-  }
-}
-```
-
-**Status:** ✅ **Ready for Production**
-
----
-
-## 🤖 Autonomous Data Collection Agent (NEW)
-
-### Background Sync Service
-
-The system now includes an **autonomous data collection agent** that proactively syncs user, role, and permission data from external systems to PostgreSQL.
-
-### Why Autonomous Collection?
-
-**Problem with On-Demand Syncing:**
-- ❌ Slow queries (wait for API calls)
-- ❌ Incomplete data (misses users unless explicitly requested)
-- ❌ Reactive (only syncs when asked)
-- ❌ Inconsistent state (data gets stale)
-
-**Benefits of Autonomous Collection:**
-- ✅ **Instant queries** - Always hits database (sub-second)
-- ✅ **Complete data** - Syncs ALL users automatically
-- ✅ **Proactive** - Scheduled syncs keep data fresh
-- ✅ **Reliable** - Predictable performance
-
-### How It Works
-
-```
-┌─────────────────────────────────────────────────────────┐
-│         Autonomous Collection Agent                     │
-│  ┌──────────────────────────────────────────────────┐  │
-│  │         APScheduler Background Jobs              │  │
-│  │  • Full Sync: Daily at 2:00 AM                  │  │
-│  │  • Incremental Sync: Every hour                 │  │
-│  └──────────────────────────────────────────────────┘  │
-│                         │                                │
-│                         ▼                                │
-│  ┌──────────────────────────────────────────────────┐  │
-│  │  1. Fetch ALL users from NetSuite               │  │
-│  │  2. Sync to PostgreSQL (upsert)                 │  │
-│  │  3. Run SOD analysis                             │  │
-│  │  4. Track sync metadata & metrics                │  │
-│  └──────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────┘
-```
-
-### Quick Start
-
-**Start the agent:**
-```bash
-# Option 1: Via CLI
-python manage_collector.py start --daemon
-
-# Option 2: Via MCP Tools
-# Use start_collection_agent tool from Claude
-
-# Option 3: Automatic with MCP server
-# Agent auto-starts when MCP server starts
-```
-
-**Check status:**
-```bash
-python manage_collector.py status
-```
-
-**Trigger manual sync:**
-```bash
-python manage_collector.py sync --type full
-```
-
-### Features
-
-- **Scheduled Syncs**
-  - Full sync: Daily at 2:00 AM (all users)
-  - Incremental sync: Hourly (changed data)
-
-- **Metadata Tracking**
-  - Success/failure rates
-  - Sync durations and metrics
-  - Users/roles/violations synced
-
-- **SOD Integration**
-  - Automatic analysis after each sync
-  - Violation detection and tracking
-  - Risk scoring updates
-
-- **Monitoring**
-  - Real-time status via CLI or MCP tools
-  - Sync history and statistics
-  - Error tracking and alerting
-
-### CLI Commands
-
-```bash
-# Start/stop agent
-python manage_collector.py start [--daemon]
-python manage_collector.py stop
-
-# Monitor
-python manage_collector.py status
-python manage_collector.py history [--limit 20]
-python manage_collector.py stats [--days 7]
-
-# Trigger sync
-python manage_collector.py sync [--type full|incremental]
-```
-
-### MCP Tools
-
-| Tool | Description |
-|------|-------------|
-| `start_collection_agent` | Start the autonomous agent |
-| `stop_collection_agent` | Stop the autonomous agent |
-| `get_collection_agent_status` | Get current status & history |
-| `trigger_manual_sync` | Manually trigger a sync |
-
-### Documentation
-
-- **[docs/COLLECTION_AGENT.md](docs/COLLECTION_AGENT.md)** - Complete guide
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** - System architecture
-- **[tests/test_collection_agent.py](tests/test_collection_agent.py)** - Test suite
-
-### Database Schema
-
-The agent uses the `sync_metadata` table to track all sync operations:
-- Sync type, status, timing, metrics
-- Users/roles/violations synced
-- Error tracking and retry counts
-- Execution metadata
-
-See [migrations/001_add_sync_metadata.sql](migrations/001_add_sync_metadata.sql) for schema.
-
-**Status:** ✅ **Ready for Production**
-
----
-
-## 🚀 Production Deployment
-
-See **[PRODUCTION_DEPLOYMENT.md](./PRODUCTION_DEPLOYMENT.md)** for complete guide.
-
-### Quick Deploy Summary
-
-1. **Infrastructure Setup (Week 1)**
-   - Deploy PostgreSQL 16 + Redis
-   - Deploy NetSuite RESTlets (2 scripts)
-   - Configure OAuth credentials
-   - Set up monitoring
-
-2. **Application Deployment (Week 2)**
-   - Deploy FastAPI application
-   - Configure Celery workers
-   - Set up scheduled scans
-   - Configure alerts (Email/Slack)
-
-3. **Testing & Validation (Week 3)**
-   - Run test scans
-   - Validate violation detection
-   - Train compliance team
-   - Document procedures
-
-**Estimated Timeline:** 2-3 weeks for full production deployment
-
----
-
-## 🔧 Configuration
-
-### Environment Variables
-
-Edit `.env` file:
-
-```bash
-# Required: Claude API
-ANTHROPIC_API_KEY=sk-ant-xxxxx
-
-# Required: NetSuite (OAuth 1.0a)
-NETSUITE_ACCOUNT_ID=1234567-sb1
-NETSUITE_REALM=1234567_SB1
-NETSUITE_CONSUMER_KEY=xxxxx
-NETSUITE_CONSUMER_SECRET=xxxxx
-NETSUITE_TOKEN_ID=xxxxx
-NETSUITE_TOKEN_SECRET=xxxxx
-
-# Required: NetSuite RESTlets
-NETSUITE_RESTLET_URL=https://...?script=3684&deploy=1
-NETSUITE_SEARCH_RESTLET_URL=https://...?script=3685&deploy=1
-
-# Required: Database
-DATABASE_URL=postgresql://user:pass@localhost:5432/compliance_db
-
-# Optional: Notifications
-SENDGRID_API_KEY=SG.xxxxx
-SLACK_WEBHOOK_URL=https://hooks.slack.com/services/xxxxx
-```
-
----
-
-## 🤖 Agent Status
-
-### ✅ Operational Agents
-
-1. **Data Collection Agent** - 100% tested
-   - Fetches users from NetSuite via RESTlet
-   - OAuth 1.0a authentication
-   - Handles 1,933 users
-
-2. **SOD Analysis Agent** - 100% tested
-   - Evaluates 18 SOD rules
-   - Role-based violation detection
-   - Risk scoring (0-100 scale)
-
-3. **Search RESTlet** - 100% tested
-   - Fast user lookup (1-2 seconds)
-   - Search by name, email, or both
-   - Production deployed and working
-
-### 📝 Ready for Production (Code Complete)
-
-4. **Risk Assessment Agent** - Code complete, needs full testing
-5. **Knowledge Base Agent** - Code complete, needs pgvector setup
-6. **Notification Agent** - Code complete, needs credential config
-7. **Orchestrator Agent** - Code complete, needs end-to-end testing
-
----
-
-## 📊 Database Schema
-
-PostgreSQL with pgvector extension (optional). Key tables:
-
-- **users** - NetSuite users with sync status
-- **roles** - Roles with vector embeddings for semantic search
-- **user_roles** - User-role assignments
-- **sod_rules** - SOD rules with vector embeddings
-- **violations** - Detected violations with risk scores
-- **compliance_scans** - Scan execution history
-- **agent_logs** - Agent execution logs for monitoring
-
-See [database/schema.sql](./database/schema.sql) for complete schema.
-
----
-
-## 🧪 Testing
-
-```bash
-# Run all tests
-poetry run pytest
-
-# Run with coverage
-poetry run pytest --cov
-
-# Run specific test category
-poetry run pytest tests/unit/
-poetry run pytest tests/integration/
-
-# Run with verbose output
-poetry run pytest -v -s
-```
-
----
-
-## 📂 Project Structure
+## Project Structure
 
 ```
 compliance-agent/
-├── agents/              # LangChain agents (6 agents)
-│   ├── data_collector.py
-│   ├── analyzer.py
-│   ├── risk_assessor.py
-│   ├── knowledge_base.py
-│   ├── notifier.py
-│   └── orchestrator.py
-├── services/            # NetSuite client
-│   └── netsuite_client.py
-├── models/              # Database models
-│   ├── database.py
-│   └── database_config.py
-├── repositories/        # Data access layer
-│   ├── user_repository.py
-│   ├── role_repository.py
-│   └── violation_repository.py
-├── netsuite_scripts/    # NetSuite RESTlets (deployed)
-│   ├── sod_users_roles_restlet.js  (script 3684)
-│   └── user_search_restlet.js       (script 3685) ✅
-├── demos/               # Working demonstrations
-│   ├── quick_test.py
-│   ├── demo_simple.py
-│   ├── test_two_users.py  ⭐
-│   └── list_users.py
-├── database/            # SQL schema
-│   └── schema.sql
-├── tests/               # Unit & integration tests
-├── docs/                # Additional documentation
-└── README.md            # This file
+├── agents/                    # Autonomous agents
+│   ├── analyzer.py            # SOD rule engine (18 rules, Claude Opus 4.6)
+│   ├── data_collector.py      # Background sync (daily full + hourly incremental)
+│   ├── knowledge_base.py      # RAG knowledge retrieval
+│   └── ...
+├── angular-portal/            # Angular 17 admin UI
+│   └── src/app/features/      # Dashboard, Violations, Exceptions, SOD Rules
+├── connectors/                # External system integrations
+├── database/
+│   ├── schema.sql             # PostgreSQL base schema (pgvector)
+│   ├── schema_extensions.sql  # Extension tables
+│   └── migrations/            # 10 Alembic migrations
+├── eval/                      # LangSmith evaluation suite
+│   ├── golden_set.py          # 32 tool-selection + 10 answer-quality queries
+│   ├── evaluators.py          # Hit Rate@K, MRR, NDCG@K, Precision@K, Faithfulness
+│   └── run_eval.py            # CLI runner
+├── mcp/
+│   ├── mcp_server.py          # FastAPI MCP server (37 tools)
+│   ├── admin_api.py           # JWT admin portal backend (16 endpoints)
+│   └── mcp_tools.py           # Tool definitions and handlers
+├── models/                    # SQLAlchemy ORM models
+├── repositories/              # Data access layer (10 repositories)
+├── scripts/                   # Management + backfill scripts
+├── services/
+│   ├── correction_service.py  # Phase C correction embeddings
+│   ├── netsuite_client.py     # NetSuite OAuth + REST
+│   └── ...
+├── skills/                    # Guided compliance workflows
+│   ├── sod-compliance/
+│   ├── sod-access-review/
+│   └── employee-onboarding/
+├── tests/                     # Test suites
+├── utils/
+│   ├── semantic_router.py     # Embedding-based tool router (active)
+│   └── tool_router.py         # Keyword router (fallback)
+├── slack_bot_local.py         # Slack Socket Mode bot
+├── .github/workflows/ci.yml   # GitHub Actions CI
+└── pyproject.toml             # Ruff, pytest, mypy config
 ```
 
 ---
 
-## 🔒 Security
+## MCP Tools (37 total)
 
-- ✅ NetSuite credentials stored in environment variables
-- ✅ OAuth 1.0a authentication (no password storage)
-- ✅ Database credentials encrypted at rest
-- ✅ API authentication with JWT tokens (ready)
-- ✅ Audit trail for all compliance actions
-- ✅ Role-based access control (RBAC) for dashboard (ready)
+| Category | Tools |
+|----------|-------|
+| **Discovery** | `list_systems`, `list_all_users`, `get_user_violations` |
+| **Analysis** | `perform_access_review`, `analyze_access_request`, `get_role_conflicts`, `get_role_risk_matrix` |
+| **Violations** | `list_violations`, `get_violation_stats`, `get_violation_summary` |
+| **Exceptions** | `list_active_exceptions`, `request_exception_approval`, `approve_exception` |
+| **SOD Rules** | `list_sod_rules`, `check_sod_rule`, `get_sod_rule_details` |
+| **Reporting** | `get_daily_report`, `generate_compliance_report`, `get_org_risk_assessment`, `export_report` |
+| **Remediation** | `remediate_violation`, `get_remediation_plan` |
+| **Knowledge** | `search_knowledge_base`, `get_compensating_controls` |
+| **Admin** | `trigger_manual_sync`, `get_collection_agent_status`, `check_my_approval_authority` |
 
----
-
-## 💡 Use Cases
-
-### 1. Pre-Audit Preparation
-```bash
-# Scan all users before annual audit
-PYTHONPATH=. python3 demos/demo_simple.py
-
-# Fix violations before auditors arrive
-# Save 2-3 weeks of audit findings
-```
-
-### 2. New Hire Onboarding
-```bash
-# Check new user's role assignments
-PYTHONPATH=. python3 -c "
-from services.netsuite_client import NetSuiteClient
-client = NetSuiteClient()
-result = client.search_users('newhire@company.com')
-# Verify no SOD violations
-"
-```
-
-### 3. Role Change Validation
-```bash
-# Before approving role change request
-# Check if new role creates SOD violations
-# Approve/reject based on analysis
-```
-
-### 4. Continuous Monitoring
-```bash
-# Schedule daily scans
-# Alert on new violations
-# Track remediation progress
-```
-
-### 5. Executive Reporting
-```bash
-# Generate monthly compliance report
-# Show violation trends
-# Demonstrate control effectiveness
-```
+See `mcp/README.md` for full tool documentation.
 
 ---
 
-## 🎯 Key Metrics & ROI
+## Admin Portal
 
-### Time Savings
-- **Manual Process:** 2-3 hours per comprehensive audit
-- **Automated System:** 2 seconds per user analysis
-- **Savings:** 99.9% reduction in analysis time
+Angular 17 portal at `http://localhost:4200` backed by JWT-authenticated FastAPI endpoints.
 
-### Cost Savings
-- **Compliance Team:** 10-20 hours/month saved
-- **Audit Preparation:** 2-3 weeks → 1-2 days
-- **Finding Prevention:** Avoid SOX findings ($50k-$500k each)
+**Authority levels** (derived from NetSuite roles):
+- L3 (Director): read-only
+- L4 (Controller/VP): read + edit thresholds, rules, notifications
+- L5 (CFO): full access including feature flags, LLM config
 
-### Risk Reduction
-- **Coverage:** 100% of users (vs 10-20% manual sampling)
-- **Frequency:** Real-time (vs annual audits)
-- **Accuracy:** 100% rule-based (vs human error)
+**Required env vars:**
+```bash
+JWT_SECRET=<long-random-string>
+ADMIN_PORTAL_PASSWORD=<portal-password>
+JWT_EXPIRE_HOURS=8
+```
 
----
-
-## 📞 Support & Resources
-
-### Documentation
-- **Demo Guide:** [DEMO_GUIDE.md](./DEMO_GUIDE.md) ⭐
-- **Technical Spec:** [TECHNICAL_SPECIFICATION.md](./TECHNICAL_SPECIFICATION.md)
-- **Architecture:** [SOD_COMPLIANCE_ARCHITECTURE.md](./SOD_COMPLIANCE_ARCHITECTURE.md)
-- **Deployment:** [PRODUCTION_DEPLOYMENT.md](./PRODUCTION_DEPLOYMENT.md)
-
-### Tools
-- **Database Query:** `query_db.py` and `quick_query.py`
-- **User List:** `demos/list_users.py`
-- **Connection Test:** `demos/quick_test.py`
-
-### Status
-- ✅ Core features operational
-- ✅ Production-ready
-- ✅ Successfully tested with 1,933 NetSuite users
-- ✅ Detected 4 real SOD violations
-- ✅ 55x performance improvement achieved
+See `mcp/README.md` for full admin API endpoint reference.
 
 ---
 
-## 🚦 Quick Commands Reference
+## Slack Bot Features
+
+| Feature | Description |
+|---------|-------------|
+| Multi-turn reasoning | Up to 5 tool calls per query, Haiku dispatch + Opus synthesis |
+| Phase A: Redis cache | MCP tool results cached 30min–24h by tool type |
+| Phase B: Summaries | Haiku-generated conversation summaries injected as prior context |
+| Phase C: Corrections | Past ❌ corrections embedded (MiniLM 384-dim) + injected as few-shot context |
+| Human feedback | Block Kit ✅/❌ buttons → LangSmith + Redis cache bust on ❌ |
+| LangSmith tracing | Full cost/token/latency per trace + 3 online evaluators |
+
+---
+
+## Evaluation
 
 ```bash
-# Test connection
-PYTHONPATH=. python3 demos/quick_test.py
+# Push golden datasets to LangSmith (one-time)
+LANGSMITH_API_KEY=... python -m eval.golden_set
 
-# Search for user
-PYTHONPATH=. python3 -c "
-from services.netsuite_client import NetSuiteClient
-client = NetSuiteClient()
-result = client.search_users('email@company.com')
-print(result)
-"
+# Run semantic router eval
+LANGSMITH_API_KEY=... python -m eval.run_eval --router=semantic
 
-# Analyze SOD violations
-PYTHONPATH=. python3 demos/test_two_users.py
+# Compare keyword vs semantic side-by-side
+LANGSMITH_API_KEY=... python -m eval.run_eval --suite=compare
 
-# List all users
-PYTHONPATH=. python3 demos/list_users.py
+# Answer quality eval (requires live MCP server)
+LANGSMITH_API_KEY=... python -m eval.run_eval --suite=answer_quality
+```
 
-# Run simple demo
-PYTHONPATH=. python3 demos/demo_simple.py
+Results: smith.langchain.com → project `compliance-agent` → Datasets → Experiments
 
-# Start database (Homebrew)
-brew services start postgresql@16 redis
+---
 
-# Query database
-python3 quick_query.py "SELECT COUNT(*) FROM users"
+## Testing & CI
+
+```bash
+# Run tests locally
+pytest tests/ -v
+
+# Excluded from CI (require live external APIs):
+#   test_end_to_end_stress.py, test_collection_agent.py,
+#   test_mcp_server.py, test_restlet_optimization.py
+
+# Lint
+ruff check .
+```
+
+CI runs automatically on push/PR via GitHub Actions. See `.github/workflows/ci.yml`.
+
+---
+
+## Environment Variables
+
+```bash
+# Anthropic
+ANTHROPIC_API_KEY=sk-ant-...
+
+# NetSuite (OAuth 1.0a)
+NETSUITE_ACCOUNT_ID=...
+NETSUITE_CONSUMER_KEY=...
+NETSUITE_CONSUMER_SECRET=...
+NETSUITE_TOKEN_KEY=...
+NETSUITE_TOKEN_SECRET=...
+NETSUITE_RESTLET_URL=https://...
+
+# Database & Cache
+DATABASE_URL=postgresql://user:pass@localhost:5432/compliance_db
+REDIS_URL=redis://localhost:6379/0
+
+# Slack (Socket Mode)
+SLACK_BOT_TOKEN=xoxb-...
+SLACK_APP_TOKEN=xapp-...
+
+# Admin Portal
+JWT_SECRET=<long-random-string>
+ADMIN_PORTAL_PASSWORD=<portal-password>
+
+# LangSmith
+LANGSMITH_API_KEY=lsv2_pt_...
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_PROJECT=compliance-agent
+
+# Feature flags
+USE_MCP_CACHE=true
+USE_CONV_SUMMARIES=true
+USE_ANSWER_FEEDBACK=true
+USE_CORRECTION_CONTEXT=true
+```
+
+See `.env.example` for the full list.
+
+---
+
+## SOD Rules Coverage
+
+18 rules across 5 categories:
+
+| Category | Rules | Examples |
+|----------|-------|---------|
+| Financial (SOX) | 8 | AP Entry vs Approval, Payroll vs Employee Master |
+| Procurement | 2 | PO Creation vs Approval, Vendor Master vs AP |
+| IT Access | 4 | Admin vs Regular User, Script Dev vs Production |
+| Sales | 2 | Pricing vs Sales Order, Commission Setup vs Processing |
+| Compliance | 2 | Audit Log vs Financial, Compliance Officer Independence |
+
+---
+
+## DB Schema
+
+```sql
+users                  -- NetSuite users, sync status
+roles                  -- Roles with sensitivity levels
+user_roles             -- User-role assignments
+sod_rules              -- 18 rules with conflicting_permissions JSONB
+violations             -- Detected violations with risk_score (0-100)
+compliance_scans       -- Scan execution history
+conversation_summaries -- Slack conversation context (90d TTL)
+answer_feedback        -- ✅/❌ feedback from Block Kit buttons
+approved_exceptions    -- Approved SOD exception records
+correction_embeddings  -- Phase C few-shot correction vectors (384-dim)
+sod_permission_map     -- Permission → SOD category mapping
+role_pair_conflicts    -- Precomputed 153-pair conflict matrix
 ```
 
 ---
 
-## 🎓 Next Steps
+## Documentation
 
-### For Demo/Presentation
-1. Read **[DEMO_GUIDE.md](./DEMO_GUIDE.md)**
-2. Test with `demos/test_two_users.py`
-3. Prepare 2-3 user examples
-4. Practice the 5-minute executive demo
-
-### For Development
-1. Review **[TECHNICAL_SPECIFICATION.md](./TECHNICAL_SPECIFICATION.md)**
-2. Explore code in `agents/` directory
-3. Check `models/` for database schema
-4. Review `netsuite_scripts/` for RESTlets
-
-### For Production Deployment
-1. Read **[PRODUCTION_DEPLOYMENT.md](./PRODUCTION_DEPLOYMENT.md)**
-2. Complete pre-deployment checklist
-3. Provision infrastructure (2-3 weeks)
-4. Follow deployment guide step-by-step
-
-### For Contributing
-1. Read **[SOD_COMPLIANCE_ARCHITECTURE.md](./SOD_COMPLIANCE_ARCHITECTURE.md)**
-2. Check project structure in **[PROJECT_LAYOUT.md](./PROJECT_LAYOUT.md)**
-3. Review open issues and roadmap
-4. Submit PRs following code quality guidelines
+| Document | Contents |
+|----------|----------|
+| `CLAUDE.md` | Full developer guide, architecture, anti-patterns, version history |
+| `mcp/README.md` | MCP server, 37 tools reference, admin portal API |
+| `docs/LESSONS_LEARNED.md` | 15+ issues with root causes and fixes (read before changing anything) |
+| `docs/SLACK_INTEGRATION.md` | Slack bot setup, capabilities, formatting |
+| `docs/ARCHITECTURE.md` | Full system architecture |
+| `docs/TECHNICAL_SPECIFICATION.md` | Complete technical specs |
 
 ---
 
-## 📝 License
-
-Internal use only - Compliance Engineering Team
-
----
-
-## 🎉 Success Stories
-
-### Test Results (2026-02-10)
-
-**Analyzed:** Prabal Saha vs Robin Turner
-- ✅ Search: 2 seconds total (1 sec per user)
-- ✅ Analysis: Instant
-- ✅ Violations: 4 detected (Robin Turner)
-  - 2 HIGH severity (Administrator + Finance conflicts)
-  - 2 MEDIUM severity (IT + Business conflicts)
-- ✅ Risk Scores: 84/100 for critical violations
-- ✅ Remediation: Specific guidance provided
-
-**Previous Method:**
-- ❌ Time: 110 seconds
-- ❌ Manual cross-reference required
-- ❌ Error-prone
-
-**Result:** **55x faster with 100% accuracy**
-
----
-
-**Built with**: LangChain 🦜 | Claude (Anthropic) 🤖 | PostgreSQL + pgvector 🐘 | Python 🐍
-
-**Status:** ✅ Production Ready | **Performance:** ⚡ 55x Faster | **Accuracy:** 🎯 100%
+**Built with**: Claude Opus 4.6 | FastAPI | PostgreSQL + pgvector | Redis | Angular 17 | LangSmith

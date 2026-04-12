@@ -249,7 +249,7 @@ Phase 3: Knowledge Base (pgvector)
 
 | Component | File | Purpose |
 |-----------|------|---------|
-| **MCP Server** | `mcp/mcp_server.py` | FastAPI server exposing 11 compliance tools |
+| **MCP Server** | `mcp/mcp_server.py` | FastAPI server exposing 37 compliance tools + admin portal routes |
 | **Data Collector** | `agents/data_collector.py` | Autonomous agent for scheduled syncing |
 | **SOD Analyzer** | `agents/analyzer.py` | AI-powered violation detection |
 | **NetSuite Connector** | `connectors/netsuite_connector.py` | RESTlet API integration |
@@ -266,6 +266,7 @@ Phase 3: Knowledge Base (pgvector)
 ```
 compliance-agent/
 ├── agents/              # Autonomous agents (collector, analyzer, knowledge)
+├── angular-portal/      # Angular 17 admin UI (Dashboard, Violations, Exceptions, SOD Rules)
 ├── connectors/          # External system integrations (NetSuite)
 ├── database/
 │   ├── migrations/     # Alembic database migrations
@@ -274,16 +275,21 @@ compliance-agent/
 │   ├── LESSONS_LEARNED.md       # All 15 issues + solutions (CRITICAL REFERENCE)
 │   ├── MCP_SERVER_MANAGEMENT.md # Operations guide
 │   └── *.md            # Architecture, troubleshooting, user guides
+├── eval/               # LangSmith evaluation suite
+│   ├── golden_set.py   # 32 tool-selection + 10 answer-quality labelled examples
+│   ├── evaluators.py   # Hit Rate@K, MRR, NDCG@K, Precision@K, Faithfulness
+│   └── run_eval.py     # CLI runner (--router=keyword|semantic, --suite=compare)
 ├── mcp/                # Model Context Protocol server
+│   ├── mcp_server.py   # 37 tools + admin portal routes mounted
+│   ├── admin_api.py    # JWT-authenticated admin API (16 endpoints)
+│   └── mcp_tools.py    # Tool definitions and handlers
 ├── models/             # SQLAlchemy ORM models
 ├── repositories/       # Data access layer
-├── scripts/            # Management scripts (restart, status check)
-├── services/           # Business logic (NetSuite client, LLM service)
-├── tests/              # Test suites
-└── eval/               # LangSmith evaluation suite
-    ├── golden_set.py   # 32 tool-selection + 10 answer-quality labelled examples
-    ├── evaluators.py   # Hit Rate@K, MRR, NDCG@K, Precision@K, Faithfulness
-    └── run_eval.py     # CLI runner (--router=keyword|semantic, --suite=compare)
+├── scripts/            # Management scripts (restart, status check, embed_corrections)
+├── services/
+│   ├── correction_service.py  # Phase C: store/retrieve correction embeddings
+│   └── ...             # NetSuite client, LLM service, violation reports
+└── tests/              # Test suites
 
 Key Files:
 - .env                  # Environment config (DATABASE_URL, API keys)
@@ -840,10 +846,12 @@ SLACK_APP_TOKEN="xapp-..."
 - [ ] PostgreSQL has pgvector extension installed
 - [ ] NetSuite credentials validated
 - [ ] LLM API keys validated
+- [ ] `JWT_SECRET` and `ADMIN_PORTAL_PASSWORD` set (admin portal)
 - [ ] Firewall allows port 8080 access
 - [ ] Log rotation configured for `/tmp/mcp_server.log`
 - [ ] Monitoring alerts set up (use `check_mcp_status.sh`)
 - [ ] Backup strategy for PostgreSQL database
+- [ ] CI passing on `feature/**` and `main` branches
 - [ ] Documentation reviewed by operations team
 
 ### Running in Production
@@ -912,7 +920,7 @@ A: Create new connector in `connectors/`, implement `BaseConnector` interface, r
 
 ---
 
-## 🎯 Current Status (2026-02-27)
+## 🎯 Current Status (2026-04-12)
 
 ### ✅ Completed
 
@@ -949,6 +957,8 @@ A: Create new connector in `connectors/`, implement `BaseConnector` interface, r
 - [x] **NEW**: Regex tool router fixed — plural/singular patterns corrected; `always_include` moved to end of shortlist; MRR 0.18 → 0.41 (2026-03-15)
 - [x] **NEW**: Semantic tool router (`utils/semantic_router.py`) — MiniLM-L6-v2 embeddings, curated exemplars per tool; Hit Rate@10 1.00, MRR 0.91, NDCG 0.89 (2026-03-15)
 - [x] **NEW**: LangSmith eval suite (`eval/`) — golden sets, 5 retrieval metrics + faithfulness judge; `--suite=compare` runs keyword vs semantic side-by-side (2026-03-15)
+- [x] **NEW**: GitHub Actions CI (`/.github/workflows/ci.yml`) — lint (ruff) + pytest with Postgres/Redis service containers on every push/PR to `main` and `feature/**` (2026-04-12)
+- [x] **NEW**: Ruff auto-fix pass — 2157 violations fixed (import sort, typing.Dict→dict); duplicate dict key + undefined `channel` bugs fixed; pyproject.toml migrated to `[tool.ruff.lint]` (2026-04-12)
 
 ### 🚧 Known Issues
 
@@ -1057,7 +1067,32 @@ Priority items:
 
 ---
 
+---
+
+## 🔄 CI/CD
+
+GitHub Actions workflow at `.github/workflows/ci.yml` runs on every push/PR:
+
+| Job | Triggers | What it checks |
+|-----|----------|----------------|
+| **Lint** | Always | `ruff check .` — style, imports, bugbear |
+| **Test** | After lint passes | `pytest tests/` with Postgres 16 + pgvector + Redis service containers |
+
+**Tests excluded from CI** (require live external APIs):
+- `test_end_to_end_stress.py`, `test_collection_agent.py` — NetSuite/Anthropic
+- `test_mcp_server.py` — running MCP server at :8080
+- `test_restlet_optimization.py`, `tests/netsuite/` — NetSuite RESTlets
+
+**To add `ANTHROPIC_API_KEY` for tests that need it:**
+`GitHub → Settings → Secrets and variables → Actions → New repository secret`
+
+Coverage XML uploaded as artifact on every run. View at:
+`https://github.com/fivetran-prabalsaha/finance-agentic-agents/actions`
+
+---
+
 **Version History:**
+- v2.1 (2026-04-12): GitHub Actions CI (lint + test); ruff auto-fix (2157 violations); `channel` bug fix in handle_mention; duplicate dict key fix in semantic_router
 - v2.0 (2026-03-15): Semantic tool router (MiniLM embeddings, Hit Rate@10=1.00, MRR=0.91); LangSmith eval suite (golden sets, 5 metrics + faithfulness); regex router fixes (plural patterns, always_include ranking)
 - v1.8 (2026-02-27): Feedback Phase C — correction embeddings + few-shot injection (correction_embeddings table, CorrectionService, embed_corrections.py backfill)
 - v1.7 (2026-02-27): Response length management (auto-upload + truncation); dynamic capabilities intro (list_systems-driven); identity rebrand (compliance agent, not SOD agent); HARD LIMIT prompt constraints

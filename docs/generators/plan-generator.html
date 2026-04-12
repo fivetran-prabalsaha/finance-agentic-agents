@@ -774,21 +774,142 @@ function removeItem(btn) {
 // ─── Init ────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Set today's date
   const today = new Date().toISOString().split('T')[0];
   document.getElementById('planDate').value = today;
+  document.getElementById('projectName').value = 'Workday People Analytics Agent';
+  document.getElementById('author').value = 'Your Name';
+  document.getElementById('status').value = 'IN PROGRESS';
+  document.getElementById('currentState').value = 'No automated way to query Workday headcount data. People analytics queries require manual Workday report exports and spreadsheet manipulation.';
+  document.getElementById('problem').value = 'HR and ops teams cannot get headcount answers in real-time. Every query requires a manual Workday report download. There is no way to ask "how many employees in India?" and get an instant answer.';
+  document.getElementById('whyNow').value = 'Workday RAAS API is accessible with existing credentials. Slack is the primary communication tool. Building this now unblocks people-analytics self-service for all teams.';
+  document.getElementById('constraints').value = 'Must not store Workday credentials in code or git. Must not pass page_size param to RAAS (causes HTTP 500). Must not modify any Workday records — read-only.';
 
-  // Seed default rows
-  for (let i = 0; i < 3; i++) addGoal(true);
-  for (let i = 0; i < 3; i++) addNonGoal(true);
-  for (let i = 0; i < 2; i++) addPhase(true);
-  for (let i = 0; i < 3; i++) addFile(true);
-  for (let i = 0; i < 3; i++) addVerifyStep(true);
+  // Goals
+  const goalData = [
+    { desc: 'Slack bot answers headcount questions in real-time from live Workday data', verify: 'Send "how many employees in India?" in Slack DM → bot replies "313 employees"' },
+    { desc: 'FastAPI server exposes 4 Workday tools on port 8081', verify: 'curl -s http://localhost:8081/health → {"status":"ok"}' },
+    { desc: 'Claude Haiku dispatches tool calls, Opus synthesizes final answers', verify: 'Check bot logs for two-turn pattern: Haiku tool_use → Opus text response' },
+  ];
+  goalData.forEach(g => {
+    addGoal(true);
+    const items = document.querySelectorAll('#goalsList .dynamic-item');
+    const last = items[items.length - 1];
+    const inputs = last.querySelectorAll('input');
+    inputs[0].value = g.desc;
+    inputs[1].value = g.verify;
+  });
+
+  // Non-Goals
+  const nonGoalData = [
+    'Real-time Workday data sync — a single RAAS fetch per query is sufficient',
+    'Modifying Workday records — read-only access only',
+    'Multi-tenant support — single Workday tenant',
+  ];
+  nonGoalData.forEach(ng => {
+    addNonGoal(true);
+    const items = document.querySelectorAll('#nonGoalsList .dynamic-item');
+    const last = items[items.length - 1];
+    last.querySelector('input').value = ng;
+  });
+
+  // Phases
+  const phaseData = [
+    {
+      name: 'API Server',
+      timeline: 'Week 1',
+      deliverables: 'agents/data_collector.py — Workday RAAS fetch and filter tools\napi/server.py — FastAPI on :8081\nutils/tool_router.py — register 4 tools\nagents/environment_setup.py — env validation',
+      gate: 'curl http://localhost:8081/health returns {"status":"ok"} and /tools/list returns 4 tools',
+      flag: '',
+    },
+    {
+      name: 'Slack Bot',
+      timeline: 'Week 2',
+      deliverables: 'bot.py — Haiku dispatch + Opus synthesis with adaptive thinking\nstart.sh — ordered startup script\n.env.example — env template\nrequirements.txt',
+      gate: 'Bot responds to "how many employees in India?" with "313 employees" in Slack DM',
+      flag: '',
+    },
+  ];
+  phaseData.forEach(p => {
+    addPhase(true);
+    const items = document.querySelectorAll('#phasesList .dynamic-item');
+    const last = items[items.length - 1];
+    last.querySelector('.phase-name').value = p.name;
+    last.querySelector('.phase-timeline').value = p.timeline;
+    last.querySelector('.phase-deliverables').value = p.deliverables;
+    last.querySelector('.phase-gate').value = p.gate;
+    last.querySelector('.phase-flag').value = p.flag;
+  });
+
+  // Files
+  const fileData = [
+    { path: 'agents/data_collector.py', change: 'New', notes: 'Agent A — Workday RAAS fetch, geography/worker_type filter, count aggregation' },
+    { path: 'api/server.py',            change: 'New', notes: 'Agent C — FastAPI on :8081, /tools/call and /health endpoints' },
+    { path: 'utils/tool_router.py',     change: 'New', notes: 'Tool registry — all 4 tools must be @registered here or Claude cannot see them' },
+    { path: 'bot.py',                   change: 'New', notes: 'Slack bot — Haiku dispatch turn + Opus synthesis turn (adaptive thinking, streaming)' },
+    { path: '.env.example',             change: 'New', notes: 'Template with all required env var names and placeholder values' },
+  ];
+  fileData.forEach(f => {
+    addFile(true);
+    const items = document.querySelectorAll('#filesList .dynamic-item');
+    const last = items[items.length - 1];
+    last.querySelector('.file-path').value = f.path;
+    last.querySelector('.file-change').value = f.change;
+    last.querySelector('.file-notes').value = f.notes;
+  });
+
+  // Verify steps
+  const verifyData = [
+    { what: 'API server health', expected: '{"status":"ok"}', cmd: 'curl -s http://localhost:8081/health' },
+    { what: 'Environment variables are set', expected: 'All vars present, no exit error', cmd: 'python3 agents/environment_setup.py' },
+    { what: 'Headcount by geography works end-to-end', expected: 'Slack reply: "313 employees" (or similar)', cmd: 'Send "how many employees in India?" to Slack bot DM' },
+  ];
+  verifyData.forEach(v => {
+    addVerifyStep(true);
+    const items = document.querySelectorAll('#verifyList .dynamic-item');
+    const last = items[items.length - 1];
+    last.querySelector('.vstep-what').value = v.what;
+    last.querySelector('.vstep-expected').value = v.expected;
+    last.querySelector('.vstep-cmd').value = v.cmd;
+  });
+
+  // Rollback
   addRollback(true);
+  const rb = document.querySelectorAll('#rollbackList .dynamic-item')[0];
+  rb.querySelector('.rb-phase').value = 'Any phase';
+  rb.querySelector('.rb-flag').value = '';
+  rb.querySelector('.rb-sql').value = '';
+  rb.querySelector('.rb-restart').value = 'pkill -f uvicorn; pkill -f bot.py; git stash';
+
+  // External deps
   addDepExternal(true);
+  const ext = document.querySelectorAll('#depsExternalList .dynamic-item')[0];
+  ext.querySelector('.ext-service').value = 'Workday RAAS';
+  ext.querySelector('.ext-url').value = '&lt;host&gt;.myworkday.com/ccx/service/customreport2';
+  ext.querySelector('.ext-health').value = 'python3 -c "from agents.data_collector import get_worker_information; r=get_worker_information(); print(len(r))"';
+
+  // Code deps
   addDepCode(true);
+  document.querySelector('#depsCodeList .dynamic-item input').value = 'utils/tool_router.py must be populated before bot.py starts';
+
+  // Data deps
   addDepData(true);
-  for (let i = 0; i < 2; i++) addQuestion(true);
+  const dd = document.querySelectorAll('#depsDataList .dynamic-item')[0];
+  dd.querySelector('.data-table').value = 'Workday RAAS — Report_Entry array (~1,665 records)';
+  dd.querySelector('.data-sql').value = 'python3 -c "from agents.data_collector import get_worker_information; print(len(get_worker_information()))"';
+
+  // Open questions
+  const qData = [
+    { question: 'Should the bot cache RAAS responses in Redis to reduce Workday API load?', owner: 'Your Name', decision: 'TBD' },
+    { question: 'Should we support channel mentions in addition to DMs?', owner: 'Your Name', decision: 'TBD' },
+  ];
+  qData.forEach(q => {
+    addQuestion(true);
+    const items = document.querySelectorAll('#questionsList .dynamic-item');
+    const last = items[items.length - 1];
+    last.querySelector('.q-question').value = q.question;
+    last.querySelector('.q-owner').value = q.owner;
+    last.querySelector('.q-decision').value = q.decision;
+  });
 
   regen();
 });

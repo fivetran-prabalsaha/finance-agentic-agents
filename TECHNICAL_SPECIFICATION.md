@@ -4,9 +4,9 @@
 
 | Property | Value |
 |----------|-------|
-| **Document Version** | 3.3.0 |
-| **Last Updated** | 2026-02-12 20:45:00 |
-| **Status** | ✅ Production Ready - LLM Agnostic + Okta + pgvector + Redis Cache + Agent Response Pattern |
+| **Document Version** | 3.4.0 |
+| **Last Updated** | 2026-03-15 |
+| **Status** | ✅ Production Ready - LLM Agnostic + Okta + pgvector + Redis Cache + Agent Response Pattern + Semantic Tool Router + Eval Suite |
 | **Owner** | Prabal Saha |
 | **Project** | SOD Compliance & Risk Assessment System |
 
@@ -21,9 +21,11 @@
 5. [Business Logic](#business-logic)
 6. [Component Specifications](#component-specifications)
 7. [Integration Points](#integration-points)
-8. [Security & Encryption](#security--encryption)
-9. [Performance Metrics](#performance-metrics)
-10. [Deployment](#deployment)
+8. [Semantic Tool Router](#semantic-tool-router)
+9. [Evaluation Suite](#evaluation-suite)
+10. [Security & Encryption](#security--encryption)
+11. [Performance Metrics](#performance-metrics)
+12. [Deployment](#deployment)
 
 ---
 
@@ -1612,6 +1614,204 @@ Response:
 
 ---
 
+## Semantic Tool Router
+
+**Added**: Mar 2026 | **File**: `utils/semantic_router.py`
+
+Replaces the regex router as the primary tool-selection mechanism for the Slack bot dispatch turn. Uses dense vector similarity rather than keyword pattern matching so that novel query phrasings continue to surface the correct tools.
+
+### Architecture
+
+```
+User Query (string)
+       │
+       ▼
+┌─────────────────────────────────────────────────────┐
+│              SemanticToolRouter                      │
+│                                                      │
+│  At startup (_build_index):                          │
+│  ┌──────────────────────────────────────────────┐   │
+│  │  TOOL_EXEMPLARS dict                         │   │
+│  │  tool_name → description + 3–5 sample queries│   │
+│  │  (query-to-query similarity > query-to-desc) │   │
+│  └──────────────────┬───────────────────────────┘   │
+│                     │                                │
+│                     ▼                                │
+│  ┌──────────────────────────────────────────────┐   │
+│  │  SentenceTransformer.encode(all tool texts)  │   │
+│  │  → float32 numpy array, unit-normalised      │   │
+│  │  shape: n_tools × 384                        │   │
+│  │  ~200ms one-time cost at startup             │   │
+│  └──────────────────────────────────────────────┘   │
+│                                                      │
+│  Per query (select):                                 │
+│  ┌──────────────────────────────────────────────┐   │
+│  │  encode(query)  →  vector [384]              │   │
+│  │  dot_product(query_vec, tool_matrix)         │   │
+│  │  = cosine similarity (vectors are normalised)│   │
+│  │  argsort(desc) → top-k tool names           │   │
+│  │  append always_include tools at end          │   │
+│  └──────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────┘
+       │
+       ▼
+  Top-k tool names (default k=8)
+```
+
+### Model
+
+| Property | Value |
+|----------|-------|
+| Model ID | `sentence-transformers/all-MiniLM-L6-v2` |
+| Embedding dimension | 384 |
+| Inference | Local — no API key, no network call |
+| Normalisation | Unit-normalised float32 (enables dot product as cosine sim) |
+
+### Key Design Decisions
+
+**TOOL_EXEMPLARS rather than raw descriptions**: Each entry in `TOOL_EXEMPLARS` concatenates the tool's description with 3–5 representative example queries. Because the encoder was trained on sentence pairs, query-to-query similarity is measurably higher than query-to-description similarity, which directly improves recall on novel phrasings.
+
+**always_include list**: Tools that must always appear in the Haiku dispatch context (e.g., `list_systems`) are appended after the top-k results rather than inserted at position 0. This preserves the semantic ranking of the primary tools and avoids pushing relevant results off the end of the shortlist.
+
+**Singleton via `get_router()`**: The index is built once at process start. `update_tools(tools)` rebuilds the index after a `/tools/refresh` call so the gateway and router stay in sync without a restart.
+
+**Fallback**: If `sentence-transformers` is unavailable at import time, `semantic_select_tools()` transparently falls back to the keyword router (`select_tools_for_intent` in `utils/tool_router.py`). No calling-code change is required.
+
+### Class Interface
+
+```python
+class SemanticToolRouter:
+    def __init__(self, tools: list[dict], always_include: list[str] = None)
+    def _build_index(self) -> None
+        # Encodes all tool texts; stores unit-normalised float32 matrix
+    def select(self, query: str, k: int = 8) -> list[str]
+        # Returns top-k tool names + always_include appended at end
+    def update_tools(self, tools: list[dict]) -> None
+        # Rebuilds index; called after /tools/refresh
+
+# Module-level helpers (drop-in replacements for select_tools_for_intent)
+def get_router() -> SemanticToolRouter          # singleton accessor
+def semantic_select_tools(query, tools, k=8, always_include=None) -> list[str]
+    # Falls back to keyword router if model unavailable
+```
+
+### Performance Characteristics
+
+| Operation | Latency | Notes |
+|-----------|---------|-------|
+| Index build (37 tools) | ~200ms | One-time at startup, MPS-accelerated on Apple Silicon |
+| Per-query select | ~2ms | Single encode + matrix multiply |
+| Token savings vs full schema | ~8K tokens/request | Same as keyword router — only top-k schemas sent to Haiku |
+
+---
+
+## Evaluation Suite
+
+**Added**: Mar 2026 | **Directory**: `eval/`
+
+Systematic offline evaluation of tool-selection routers, integrated with LangSmith for experiment tracking and side-by-side comparison.
+
+### File Inventory
+
+| File | Purpose |
+|------|---------|
+| `eval/golden_set.py` | Dataset definitions + `push_to_langsmith()` |
+| `eval/evaluators.py` | Five metric evaluators (LangSmith 0.4.x signature) |
+| `eval/run_eval.py` | CLI runner — selects router, suite, and live/stub mode |
+| `eval/__init__.py` | Package marker |
+
+### Datasets (`eval/golden_set.py`)
+
+Two datasets are defined and pushed to LangSmith:
+
+**`compliance-tool-selection-v1`** — 32 queries for router evaluation.
+Each example contains:
+- `input`: natural-language query string
+- `expected_tool`: single primary correct tool name
+- `relevant_tools`: dict mapping tool names to graded relevance scores (0 = irrelevant, 1 = acceptable, 2 = ideal) used for NDCG
+
+**`compliance-answer-quality-v1`** — 10 queries for end-to-end faithfulness evaluation.
+Each example contains:
+- `input`: query string
+- `expected_facts`: list of strings that must appear in the final Opus answer
+
+### Evaluators (`eval/evaluators.py`)
+
+All evaluators follow the LangSmith 0.4.x function signature:
+
+```python
+fn(outputs: dict, reference_outputs: dict) -> dict
+# Returns: {"key": metric_name, "score": float}
+```
+
+| Evaluator | Factory / Name | Description |
+|-----------|---------------|-------------|
+| `hit_rate_at_k(k)` | Factory, returns evaluator fn | Binary: 1.0 if `expected_tool` appears in the top-k returned tools, else 0.0 |
+| `mrr_evaluator` | Direct fn | 1 / rank of the first relevant tool (reciprocal rank). 0.0 if not found in results. |
+| `ndcg_at_k(k)` | Factory, returns evaluator fn | Normalised Discounted Cumulative Gain using graded `relevant_tools` scores. Rewards placing highly-relevant tools at lower rank positions. |
+| `precision_at_k(k)` | Factory, returns evaluator fn | Fraction of the top-k returned tools that have a graded relevance score > 0 |
+| `faithfulness_evaluator` | Direct fn | LLM-as-judge (Claude Haiku 4.5): does the answer contain the facts listed in `expected_facts`? Returns float 0.0–1.0. |
+
+### CLI Runner (`eval/run_eval.py`)
+
+```bash
+# Evaluate keyword router on tool-selection dataset
+python -m eval.run_eval --router=keyword
+
+# Evaluate semantic router
+python -m eval.run_eval --router=semantic
+
+# Compare both back-to-back (two LangSmith experiments)
+python -m eval.run_eval --suite=compare
+
+# Answer quality (faithfulness) — requires live MCP at :8080
+python -m eval.run_eval --suite=answer_quality --live
+
+# Use live tool schemas instead of stubs
+python -m eval.run_eval --router=semantic --live
+```
+
+**`--router`**: `keyword` | `semantic` — selects the router under test.
+**`--suite`**: `compare` runs both routers back-to-back; `answer_quality` runs faithfulness eval.
+**`--live`**: fetches tool schemas from the running MCP server at `:8080` instead of embedded stubs.
+
+### LangSmith Integration
+
+```python
+from langsmith import evaluate
+
+evaluate(
+    target,                          # callable: input → outputs dict
+    data=dataset_name,               # "compliance-tool-selection-v1"
+    evaluators=[hit_rate_at_k(10), mrr_evaluator, ndcg_at_k(10)],
+    experiment_prefix="semantic-router-v1"
+)
+```
+
+Results appear in **smith.langchain.com → project `compliance-agent` → Datasets → Experiments**. Each run is a separate named experiment, enabling side-by-side metric comparison across router versions.
+
+Required environment variable: `LANGSMITH_API_KEY` (add to `compliance-agent/.env`).
+
+### Metric Results (Mar 2026 Benchmark)
+
+Evaluated on `compliance-tool-selection-v1` (32 queries):
+
+| Metric | Baseline (regex) | Fixed regex | Semantic |
+|--------|-----------------|-------------|----------|
+| hit_rate_at_10 | 0.72 | 0.78 | **1.00** |
+| hit_rate_at_5 | 0.56 | 0.72 | **0.97** |
+| mrr | 0.18 | 0.41 | **0.91** |
+| ndcg_at_10 | 0.37 | 0.60 | **0.89** |
+| precision_at_5 | 0.24 | 0.33 | **0.39** |
+
+**Key observations**:
+- The semantic router achieves perfect hit_rate_at_10 (1.00) — the correct tool appears in the top 10 for every query in the golden set.
+- MRR improvement from 0.18 → 0.91 indicates the correct tool is now consistently ranked first or second rather than being buried in the shortlist.
+- The regex fixes (plural/singular patterns, added `remediation` and `role_analysis` patterns) provided a meaningful intermediate improvement, confirming the baseline gap was partly a pattern maintenance problem. The semantic router eliminates that maintenance burden entirely.
+- precision_at_5 remains modest (0.39) because the 37-tool corpus contains many thematically related tools; the top 5 will always include some borderline relevance. This is expected and acceptable — Haiku's dispatch turn handles the final selection.
+
+---
+
 ## Security & Encryption
 
 ### 1. API Key Encryption
@@ -1970,6 +2170,8 @@ logging.basicConfig(
 | **Agents** | LangChain + LangGraph | Latest |
 | **Embeddings** | HuggingFace (sentence-transformers) | 384-dim MiniLM |
 | **Vector Search** | pgvector cosine similarity | 0.8.1 |
+| **Semantic Router** | sentence-transformers/all-MiniLM-L6-v2 | Local, 384-dim, no API key |
+| **Eval Framework** | LangSmith | 0.4.x — experiment tracking + datasets |
 | **LLM** | Claude, GPT, Gemini | Latest |
 | **NetSuite** | SuiteScript 2.1 | Latest |
 | **Okta** | REST API | v1 |
@@ -2033,6 +2235,16 @@ compliance-agent/
 │   ├── llm_config.yaml              # LLM provider config (NEW)
 │   └── llm_config.example.yaml      # Config template (NEW)
 │
+├── utils/                           # Shared utilities
+│   ├── tool_router.py               # Regex/keyword router (fallback)
+│   └── semantic_router.py           # Semantic router — primary selector (NEW Mar 2026)
+│
+├── eval/                            # Offline evaluation suite (NEW Mar 2026)
+│   ├── __init__.py
+│   ├── golden_set.py                # 32-query tool-selection dataset + 10-query answer quality dataset
+│   ├── evaluators.py                # hit_rate, MRR, NDCG, precision, faithfulness evaluators
+│   └── run_eval.py                  # CLI runner — --router, --suite, --live flags
+│
 ├── tests/                           # Test suites
 │   ├── test_all_agents.py           # Agent tests (23 tests)
 │   ├── test_context_aware_sod.py    # Context-aware logic tests
@@ -2067,6 +2279,8 @@ compliance-agent/
 | **3.0.0** | 2026-02-09 | LLM abstraction + Okta integration (Phase 1) |
 | **3.1.0** | 2026-02-12 | pgvector integration complete - vector search operational |
 | **3.2.0** | 2026-02-12 | Redis caching layer - 90% cost reduction for LLM calls |
+| **3.3.0** | 2026-02-12 | Agent response pattern + analyze_role_permissions tool |
+| **3.4.0** | 2026-03-15 | Semantic tool router (utils/semantic_router.py) + eval suite (eval/) — hit_rate_at_10 1.00, MRR 0.91 |
 
 ### D. Future Enhancements
 
@@ -2107,8 +2321,10 @@ This technical specification documents a comprehensive, production-ready SOD com
 ✅ **Enterprise Security** - Encrypted API keys, OAuth, audit trails
 ✅ **Scalable Architecture** - Linear scaling to 100K+ users
 ✅ **Comprehensive Testing** - 100% agent test pass rate
+✅ **Semantic Tool Router** - Dense vector tool selection, hit_rate_at_10 1.00, MRR 0.91 (utils/semantic_router.py)
+✅ **Eval Suite** - LangSmith-integrated offline evaluation, 5 metrics, 2 datasets (eval/)
 
-**Current Status**: v3.2.0 - Production Ready with pgvector + Redis Cache
+**Current Status**: v3.4.0 - Production Ready with Semantic Router + Eval Suite
 **Next Milestone**: Phase 2 - Okta Reconciliation Agents (2 weeks)
 
 ---

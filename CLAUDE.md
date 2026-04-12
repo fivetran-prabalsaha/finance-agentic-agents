@@ -1,8 +1,8 @@
 # Claude Code Project Guide: SOD Compliance System
 
 **Project:** AI-Powered Segregation of Duties (SOD) Compliance System
-**Version:** 1.6
-**Last Updated:** 2026-02-27
+**Version:** 2.0
+**Last Updated:** 2026-03-15
 **Primary Language:** Python 3.9+
 **Framework:** FastAPI with MCP (Model Context Protocol)
 
@@ -27,6 +27,8 @@ This is an autonomous compliance monitoring system that peforms user access revi
 - ✅ 37 MCP tools operational (updated from 11)
 - ✅ Autonomous agent running 24/7
 - ✅ **NEW**: Slack bot with multi-turn agentic reasoning (Feb 2026)
+- ✅ **NEW**: Semantic tool router — embedding-based, MRR 0.18 → 0.91, Hit Rate@10 → 1.00 (Mar 2026)
+- ✅ **NEW**: LangSmith eval suite — Hit Rate@K, MRR, NDCG, Precision@K, Faithfulness (Mar 2026)
 
 ### 🚀 Latest Enhancement: Multi-Turn Agentic Tool Use (Feb 2026)
 
@@ -132,6 +134,71 @@ Block Kit ✅/❌/🔧 buttons appended to every bot response. On click, feedbac
 
 ---
 
+### 🔍 Latest Enhancement: Semantic Tool Router + LangSmith Eval Suite (Mar 2026)
+
+**Problem:** The regex-based `select_tools_for_intent()` in `utils/tool_router.py` was scoring:
+- Hit Rate@10: 0.72 — correct tool missing from shortlist 28% of queries
+- MRR: 0.18 — correct tool buried at rank ~5 due to `always_include` pollution
+
+**Root causes identified via eval:**
+1. `initialize_session` + `check_my_approval_authority` always placed at positions 0–1, burying intent tools
+2. Regex plural/singular mismatches (`\bexception\b` doesn't match `exceptions`, `\bsod rule\b` doesn't match `rules`)
+3. No intra-group ranking — correct tool buried within group
+
+**Fix 1 — Regex patches + always_include moved to end** (`utils/tool_router.py`):
+Scores after fix: Hit Rate@10: 0.78, MRR: 0.41
+
+**Fix 2 — Semantic router** (`utils/semantic_router.py`):
+`SemanticToolRouter` embeds all tool descriptions + curated example queries using `sentence-transformers/all-MiniLM-L6-v2` (local, no API key). At query time embeds the user message and ranks tools by cosine similarity.
+
+```python
+# Drop-in replacement in slack_bot_local.py
+from utils.semantic_router import semantic_select_tools
+relevant_tools = semantic_select_tools(user_message, MCP_TOOLS) if MCP_TOOLS else []
+```
+
+**Final scores after semantic router:**
+
+| Metric | Baseline | Semantic | Delta |
+|--------|----------|----------|-------|
+| hit_rate_at_10 | 0.72 | 1.00 | +0.28 |
+| hit_rate_at_5 | 0.56 | 0.97 | +0.41 |
+| mrr | 0.18 | 0.91 | +0.73 |
+| ndcg_at_10 | 0.37 | 0.89 | +0.52 |
+| precision_at_5 | 0.24 | 0.39 | +0.15 |
+
+**LangSmith Eval Suite** (`eval/`):
+
+| File | Purpose |
+|------|---------|
+| `eval/golden_set.py` | 32 labelled tool-selection queries + 10 answer-quality queries. Run once to push datasets to LangSmith. |
+| `eval/evaluators.py` | Hit Rate@K, MRR, NDCG@K, Precision@K, Faithfulness (Haiku judge) |
+| `eval/run_eval.py` | CLI runner — pushes results to LangSmith Experiments tab |
+
+```bash
+# Push golden datasets to LangSmith (one-time or after golden set changes)
+LANGSMITH_API_KEY=... python -m eval.golden_set
+
+# Run keyword router eval
+LANGSMITH_API_KEY=... python -m eval.run_eval --router=keyword
+
+# Run semantic router eval
+LANGSMITH_API_KEY=... python -m eval.run_eval --router=semantic
+
+# Side-by-side comparison of both routers (pushes two experiments)
+LANGSMITH_API_KEY=... python -m eval.run_eval --suite=compare
+
+# Run answer quality eval (requires live MCP server at :8080)
+LANGSMITH_API_KEY=... python -m eval.run_eval --suite=answer_quality
+```
+
+Results appear in LangSmith → Datasets → `compliance-tool-selection-v1` → Experiments tab.
+
+**Adding a new tool to the semantic router:**
+Add an entry to `TOOL_EXEMPLARS` in `utils/semantic_router.py` with the tool description and 3–5 example queries. No regex patterns needed.
+
+---
+
 ### ⚡ Latest Enhancement: Haiku/Opus Model Split + LangSmith Evaluators (Feb 2026)
 
 **Haiku for tool dispatch, Opus for synthesis** (`slack_bot_local.py:461`):
@@ -188,7 +255,9 @@ Phase 3: Knowledge Base (pgvector)
 | **NetSuite Connector** | `connectors/netsuite_connector.py` | RESTlet API integration |
 | **Knowledge Agent** | `agents/knowledge_base_agent.py` | pgvector semantic search |
 | **LLM Layer** | `services/llm_service.py` | Multi-provider abstraction (Anthropic/OpenAI/Gemini) |
-| **Tool Router** | `utils/tool_router.py` | Pre-filter that limits which tools Claude sees per query (saves ~8K tokens). Every new MCP tool must be registered here. |
+| **Tool Router (keyword)** | `utils/tool_router.py` | Regex/keyword pre-filter. Kept as fallback. Every new tool must be registered in `TOOL_GROUPS`. |
+| **Tool Router (semantic)** | `utils/semantic_router.py` | Embedding-based router (MiniLM-L6-v2, local). Drop-in replacement. Register new tools in `TOOL_EXEMPLARS`. **Active in production.** |
+| **Eval Suite** | `eval/` | LangSmith evaluation: golden sets, metric evaluators, CLI runner. |
 
 ---
 
@@ -210,7 +279,11 @@ compliance-agent/
 ├── repositories/       # Data access layer
 ├── scripts/            # Management scripts (restart, status check)
 ├── services/           # Business logic (NetSuite client, LLM service)
-└── tests/              # Test suites
+├── tests/              # Test suites
+└── eval/               # LangSmith evaluation suite
+    ├── golden_set.py   # 32 tool-selection + 10 answer-quality labelled examples
+    ├── evaluators.py   # Hit Rate@K, MRR, NDCG@K, Precision@K, Faithfulness
+    └── run_eval.py     # CLI runner (--router=keyword|semantic, --suite=compare)
 
 Key Files:
 - .env                  # Environment config (DATABASE_URL, API keys)
@@ -418,6 +491,24 @@ messages = [
 
 ## 🧪 Testing
 
+### Eval Suite (LangSmith)
+
+```bash
+# Push golden datasets (one-time setup or after changing golden_set.py)
+LANGSMITH_API_KEY=... python -m eval.golden_set
+
+# Run semantic router eval (no live server needed)
+LANGSMITH_API_KEY=... python -m eval.run_eval --router=semantic
+
+# Compare keyword vs semantic side-by-side
+LANGSMITH_API_KEY=... python -m eval.run_eval --suite=compare
+
+# Run answer faithfulness eval (requires MCP server at :8080)
+LANGSMITH_API_KEY=... python -m eval.run_eval --suite=answer_quality
+```
+
+View results: smith.langchain.com → project `compliance-agent` → Datasets → Experiments
+
 ### Smoke Test Suite
 
 ```bash
@@ -481,7 +572,10 @@ python3 -c "from services.netsuite_client import NetSuiteClient; client = NetSui
        pass
    ```
 3. Add to `TOOLS` list in startup function
-4. **Register in `utils/tool_router.py`** — add the tool name to the appropriate intent group (or create a new group). Without this step, Claude will never see the tool because the router pre-filters the tool list before each query.
+4. **Register in both routers:**
+   - `utils/tool_router.py` — add to the appropriate `TOOL_GROUPS` entry (keyword fallback)
+   - `utils/semantic_router.py` — add an entry to `TOOL_EXEMPLARS` with description + 3–5 example queries (primary router)
+   Without this step, the tool will never appear in Claude's shortlist.
 5. Restart server
 6. Verify with `tools/list` MCP request
 
@@ -851,6 +945,10 @@ A: Create new connector in `connectors/`, implement `BaseConnector` interface, r
 - [x] **NEW**: Response length prompt constraints — `HARD LIMIT` for `get_role_risk_matrix` (3 bullets, 1200 chars max), `GLOBAL RESPONSE LENGTH` rule (1800 chars max for all responses) (2026-02-27)
 - [x] **NEW**: Dynamic capabilities intro — bot calls `list_systems` when asked "what can you do", lists only connected systems, describes cross-system compliance when multiple systems active (2026-02-27)
 - [x] **NEW**: Identity rebrand — removed "SOD compliance agent"; bot is now "Fivetran's compliance agent"; SOD is one capability, not the identity; explicit prohibition in system prompt (2026-02-27)
+- [x] **NEW**: Feedback Phase C — Correction embeddings (pgvector, MiniLM 384-dim) stored on every ❌ Wrong correction; cosine ANN search injects top-3 similar past corrections as few-shot context into every future query; `correction_embeddings` table + ivfflat index; `services/correction_service.py`; backfill via `scripts/embed_corrections.py`; feature flag `USE_CORRECTION_CONTEXT=true` (2026-02-27)
+- [x] **NEW**: Regex tool router fixed — plural/singular patterns corrected; `always_include` moved to end of shortlist; MRR 0.18 → 0.41 (2026-03-15)
+- [x] **NEW**: Semantic tool router (`utils/semantic_router.py`) — MiniLM-L6-v2 embeddings, curated exemplars per tool; Hit Rate@10 1.00, MRR 0.91, NDCG 0.89 (2026-03-15)
+- [x] **NEW**: LangSmith eval suite (`eval/`) — golden sets, 5 retrieval metrics + faithfulness judge; `--suite=compare` runs keyword vs semantic side-by-side (2026-03-15)
 
 ### 🚧 Known Issues
 
@@ -960,14 +1058,16 @@ Priority items:
 ---
 
 **Version History:**
+- v2.0 (2026-03-15): Semantic tool router (MiniLM embeddings, Hit Rate@10=1.00, MRR=0.91); LangSmith eval suite (golden sets, 5 metrics + faithfulness); regex router fixes (plural patterns, always_include ranking)
+- v1.8 (2026-02-27): Feedback Phase C — correction embeddings + few-shot injection (correction_embeddings table, CorrectionService, embed_corrections.py backfill)
 - v1.7 (2026-02-27): Response length management (auto-upload + truncation); dynamic capabilities intro (list_systems-driven); identity rebrand (compliance agent, not SOD agent); HARD LIMIT prompt constraints
 - v1.6 (2026-02-27): Role risk matrix (17 roles, 153 pairs, 443 conflict rows); get_role_risk_matrix + list_violations tools; tool_router role_risk intent group; McKinsey partner voice; _trim_history API-400 fix
-- v1.5 (2026-02-27): FivetranChat-style formatting (clean prose, no emoji); feedback buttons 👎 👍 (commit 948f495)
-- v1.4 (2026-02-26): Feedback loop — Block Kit buttons, answer_feedback table, LangSmith human_rating, Redis cache bust on NEGATIVE (commit 547c187)
-- v1.3 (2026-02-26): Fixed LangSmith context_cache_hit tagging (threading.local fix); load test script added (/tmp/load_test.py)
-- v1.2 (2026-02-22): Added LangSmith observability section, ChatAnthropic migration notes, DM conversation context, updated env vars and current status
-- v1.1 (2026-02-16): Updated MCP tool count (11→35), Slack bot multi-turn agentic tool use
-- v1.0 (2026-02-12): Initial comprehensive guide
+- v1.5 (2026-02-27): FivetranChat-style formatting (clean prose, no emoji); feedback buttons 👎 👍
+- v1.4 (2026-02-26): Feedback loop — Block Kit buttons, answer_feedback table, LangSmith human_rating, Redis cache bust on NEGATIVE
+- v1.3 (2026-02-26): Fixed LangSmith context_cache_hit tagging (threading.local fix)
+- v1.2 (2026-02-22): LangSmith observability, ChatAnthropic migration, DM conversation context
+- v1.1 (2026-02-16): MCP tool count 11→35, Slack bot multi-turn agentic tool use
+- v1.0 (2026-02-12): Initial guide
 
 **Maintained by:** AI Development Team
-**Last Verified:** 2026-02-27
+**Last Verified:** 2026-03-15

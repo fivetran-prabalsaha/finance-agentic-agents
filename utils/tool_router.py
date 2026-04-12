@@ -110,32 +110,37 @@ INTENT_PATTERNS: Dict[str, List[str]] = {
         r"\bcompliance issue\b",
     ],
     "exception_mgmt": [
-        r"\bexception\b",
+        r"\bexceptions?\b",
         r"\bapproval\b",
         r"\bapprove\b",
         r"\bwaiver\b",
         r"\bexemption\b",
+        r"\blist.*active\b",
+        r"\bactive.*exception\b",
     ],
     "sod_rules": [
-        r"\bsod rule\b",
+        r"\bsod rules?\b",
         r"\bsegregation of duties\b",
         r"\brule\b.*\bcheck\b",
-        r"\bwhat rules\b",
-        r"\blist.*rules\b",
+        r"\bwhat rules?\b",
+        r"\blist.*rules?\b",
+        r"\brules?.*exist\b",
     ],
     "knowledge": [
-        r"\bcompensating control\b",
+        r"\bcompensating controls?\b",
         r"\bbest practice\b",
         r"\bpolicy\b",
         r"\bguidance\b",
         r"\bknowledge base\b",
         r"\bhow to remediate\b",
+        r"\bhow.*fix\b",
     ],
     "role_analysis": [
-        r"\brole.*permission\b",
-        r"\bpermission.*role\b",
+        r"\broles?.*permission\b",
+        r"\bpermissions?.*role\b",
         r"\banalyze.*role\b",
-        r"\brole conflict\b",
+        r"\broles?.*conflict\b",
+        r"\bwhat.*roles?.*conflict\b",
         r"\binside.*role\b",
     ],
     "role_risk": [
@@ -163,9 +168,13 @@ INTENT_PATTERNS: Dict[str, List[str]] = {
     "remediation": [
         r"\bremediat\b",
         r"\bfix\b.*\bviolation\b",
+        r"\bhow.*fix\b",
         r"\bschedule.*review\b",
-        r"\bticket\b",
+        r"\bcreate.*ticket\b",
+        r"\bopen.*ticket\b",
+        r"\bticket\b.*\bfix\b",
         r"\bnotif.*manager\b",
+        r"\bnotify\b",
     ],
     "system": [
         r"\bsync\b",
@@ -234,16 +243,23 @@ def select_tools_for_intent(
 
     intents = classify_intent(user_message)
 
-    # Collect relevant tool names in order
-    selected_names: List[str] = list(always_include)
+    # Collect relevant tool names first, always_include appended at the end.
+    # Keeping always_include at the front buried intent-specific tools at rank 3+
+    # and tanked MRR — the relevant tool should be as close to rank 1 as possible.
+    selected_names: List[str] = []
     for intent in intents:
         for name in TOOL_GROUPS.get(intent, []):
-            if name not in selected_names:
+            if name not in selected_names and name not in always_include:
                 selected_names.append(name)
-            if len(selected_names) >= max_tools:
+            if len(selected_names) >= max_tools - len(always_include):
                 break
-        if len(selected_names) >= max_tools:
+        if len(selected_names) >= max_tools - len(always_include):
             break
+
+    # Append always_include tools at the end so they don't pollute top ranks
+    for name in always_include:
+        if name not in selected_names:
+            selected_names.append(name)
 
     # Map names back to schemas, skipping any that don't exist in the full set
     result = [tool_index[name] for name in selected_names if name in tool_index]

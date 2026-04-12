@@ -6092,12 +6092,145 @@ Always pair prompt-level constraints with a code-level safety net. The prompt re
 
 ---
 
-**Document Version:** 2.5
-**Last Updated:** 2026-02-27 (Added Issues #46-48: files:write scope, SOD branding prohibition, hard response-length limits)
+### Issue #49: Regex tool router — `always_include` pollution killed MRR
+
+**Date:** 2026-03-15
+**Severity:** High
+
+**Context:**
+MRR was 0.18 — the correct tool ranked approximately 5th on almost every query despite being present in the shortlist. Investigation revealed that `always_include = ["initialize_session", "check_my_approval_authority"]` was prepended at positions 0 and 1 on every single query, regardless of relevance. Every intent-specific tool was pushed down by 2 positions.
+
+**Root Cause:**
+The shortlist was initialised with `selected_names: List[str] = list(always_include)`, meaning the two always-include tools occupied the top slots before any intent-specific tools were added. Rank-based metrics (MRR, NDCG) are heavily penalised by low rank even when the correct tool is present.
+
+**Solution:**
+Build the shortlist from intent tools first; append `always_include` tools at the end.
+
+```python
+# Before (utils/tool_router.py)
+selected_names: List[str] = list(always_include)
+
+# After
+selected_names: List[str] = []
+# ... populate from intent patterns ...
+for name in always_include:
+    if name not in selected_names:
+        selected_names.append(name)
+```
+
+**Impact:** MRR 0.18 → 0.41 from this single change.
+
+**Key lesson:**
+Prepending "always include" tools destroys MRR. Always-include tools must follow intent tools in rank order, not precede them. If they truly must be called on every query, inject them after LLM dispatch — not during retrieval ranking.
+
+---
+
+### Issue #50: Regex patterns — plural/singular mismatches caused complete misses
+
+**Date:** 2026-03-15
+**Severity:** High
+
+**Context:**
+9 out of 32 golden queries returned entirely wrong tools. Queries like "list all active exceptions" or "what SOD rules exist" fell back to the default `["access_review", "violation_query"]` intents, missing the correct tools entirely.
+
+**Root Cause:**
+`r"\bexception\b"` does not match "exceptions" because the word boundary `\b` anchors the pattern after the `n`, making "exceptions" fail the match. Similarly `r"\bsod rule\b"` does not match "rules". Additionally, the `remediation` intent was crowded out when `violation_query` filled all 8 slots first, leaving no room for remediation tools even when the query was remediation-oriented.
+
+**Solution:**
+Updated patterns to use optional plural suffixes and reserved slots for each intent before applying the `max_tools` cap:
+
+```python
+# Before
+r"\bexception\b"
+r"\bsod rule\b"
+
+# After
+r"\bexceptions?\b"
+r"\bsod rules?\b"
+```
+
+Added slot reservation so each matched intent always contributes at least one tool before the cap is enforced.
+
+**Key lesson:**
+Every regex pattern for a noun must cover both singular and plural forms (`s?` suffix). Missing the plural is the single most common source of complete misses in keyword routers. Test each pattern against a representative query set — not just the query you wrote the pattern for.
+
+---
+
+### Issue #51: Keyword routing ceiling — regex cannot handle paraphrasing
+
+**Date:** 2026-03-15
+**Severity:** Medium
+
+**Context:**
+Even after all regex fixes (Issues #49–50), Hit Rate@10 was 0.78. Queries like "analyze the CFO role for potential conflicts" matched `violation_query` because "conflicts" triggered that intent — even though the query was actually asking for role-level SOD analysis, not a violation lookup.
+
+**Root Cause:**
+Keyword matching is a binary bag-of-words approach. It cannot distinguish "role conflict" from "SOD conflict" because both contain the word "conflict". Adding more patterns creates overlapping intent groups that compete for the `max_tools` cap, pushing the right tools out.
+
+**Solution:**
+Replaced the keyword router with a semantic embedding-based router (`utils/semantic_router.py`). Each tool is represented by a rich text document (description + example queries). At query time, the user message is embedded and tools are ranked by cosine similarity.
+
+**Key lesson:**
+Keyword routing works to approximately 80% Hit Rate@10. Beyond that threshold, semantic representations are required. The inflection point is when the intent space has overlapping vocabulary (e.g. "conflict" appears in both "role conflict" and "SOD violation" contexts). Adding more keyword patterns past this point produces diminishing returns and introduces new ambiguities faster than it resolves old ones.
+
+---
+
+### Issue #52: Evaluating without a golden set is flying blind
+
+**Date:** 2026-03-15
+**Severity:** High
+
+**Context:**
+The tool router had been in production with MRR of 0.18 — but nobody knew, because there were no retrieval metrics. The only signal was whether the bot returned a plausible-sounding answer, not whether it had called the *right* tool.
+
+**Root Cause:**
+No evaluation framework existed when the router was first built. Correctness was assessed by manual spot-checks and user impressions, neither of which surfaces systematic rank degradation.
+
+**Solution:**
+Built `eval/` suite with 32 labelled queries, 5 retrieval metrics (Hit Rate@K, MRR, NDCG, Precision@K), and a Faithfulness LLM judge. Results are pushed to LangSmith for trend tracking across router versions.
+
+**Key lesson:**
+For any routing or retrieval component, build the golden set *before* tuning. Without baseline metrics you cannot prove improvements — and, more dangerously, you cannot detect regressions. The golden set is the only source of truth for whether a router change is an improvement or a regression. Build it first, even if it is only 20 queries.
+
+---
+
+### Issue #53: LangSmith API key in shell env overrides `.env` file
+
+**Date:** 2026-03-15
+**Severity:** Low
+
+**Context:**
+`python -m eval.golden_set` returned 401 even after updating `.env` with a valid `LANGSMITH_API_KEY`. The new key was correct but the script kept authenticating with the old (revoked) key.
+
+**Root Cause:**
+`python-dotenv`'s `load_dotenv()` does NOT override environment variables that are already set in the shell session. The old key had been exported earlier in the terminal session (`export LANGSMITH_API_KEY=...`), and `load_dotenv()` silently skipped the `.env` value because the variable was already present in `os.environ`.
+
+**Solution:**
+Pass the key explicitly on the command line to bypass the shell environment:
+
+```bash
+LANGSMITH_API_KEY=lsv2_pt_... python -m eval.golden_set
+```
+
+Or use `load_dotenv(override=True)` in code to force `.env` values to win:
+
+```python
+from dotenv import load_dotenv
+load_dotenv(override=True)
+```
+
+**Key lesson:**
+Never rely on `.env` alone for secrets during interactive shell sessions. If a credential update appears to have no effect, check `echo $VARIABLE_NAME` first — the shell environment wins over `.env` unless `override=True` is set. This is a common source of "I updated the key but it still fails" confusion.
+
+---
+
+**Document Version:** 2.6
+**Last Updated:** 2026-03-15 (Added Issues #49-53: semantic router and eval suite lessons from Mar 2026)
 **Maintainer:** Compliance Engineering Team
 **Next Review:** After Phase C semantic catalogue implementation
 
 **Change Log:**
+- v2.6 (2026-03-15): Issues #49-53 added — always_include rank pollution, plural/singular regex mismatches, keyword routing ceiling, eval golden set requirement, LangSmith env var override
 - v2.5 (2026-02-27): Issues #46-48 added — files:write scope for Slack file upload, Claude SOD branding prohibition, hard response-length limits with code-level safety net
 - v2.4 (2026-02-27): Added Issue #45 — Phase B correction modal private_metadata carries button payload context; trigger_id 3-second expiry
 - v2.3 (2026-02-27): Added Issues #41-44 — list_violations vs get_role_risk_matrix routing, _trim_history orphaned tool_result blocks, role risk matrix tool router scope, run_migrations comment-prefixed SQL block skipping

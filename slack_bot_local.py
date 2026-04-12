@@ -134,6 +134,12 @@ def _get_langsmith_client():
 # ---------------------------------------------------------------------------
 USE_CONV_SUMMARIES = os.getenv("USE_CONV_SUMMARIES", "true").lower() == "true"
 
+# ---------------------------------------------------------------------------
+# Phase C — Correction Embeddings (few-shot context from past corrections)
+# Feature flag: set USE_CORRECTION_CONTEXT=false in .env to disable
+# ---------------------------------------------------------------------------
+USE_CORRECTION_CONTEXT = os.getenv("USE_CORRECTION_CONTEXT", "true").lower() == "true"
+
 _db_session_factory = None
 
 
@@ -745,6 +751,20 @@ def _save_feedback(signal: str, run_id: str, user_email: str, channel_id: str,
         except Exception as e:
             logger.warning(f"Redis cache bust failed: {e}")
 
+    # 4. Phase C — embed and store correction for future few-shot injection
+    if correction and USE_CORRECTION_CONTEXT:
+        try:
+            from services.correction_service import store_correction as _store_correction
+            _store_correction(
+                run_id=run_id or "",
+                user_email=user_email,
+                query_preview=query[:300] if query else "",
+                correction=correction,
+                tool_called=tool_called,
+            )
+        except Exception as e:
+            logger.warning(f"Phase C correction embedding failed: {e}")
+
 
 def _replace_feedback_block_with_confirmation(client, body: dict, signal: str) -> None:
     """
@@ -972,6 +992,30 @@ def process_with_claude(user_message: str, user_email: str, mentioned_users: Opt
                     run.metadata["context_summaries_injected"] = prior_context.count("\n- ")
             except Exception:
                 pass
+
+        # Phase C — inject semantically similar past corrections as few-shot context
+        if USE_CORRECTION_CONTEXT:
+            try:
+                from services.correction_service import (
+                    find_similar_corrections as _find_corrections,
+                    format_corrections_for_context as _fmt_corrections,
+                )
+                past_corrections = _find_corrections(user_message)
+                if past_corrections:
+                    correction_block = _fmt_corrections(past_corrections)
+                    dynamic_context += f"\n\n{correction_block}"
+                    logger.info(
+                        f"Phase C: injected {len(past_corrections)} correction(s) "
+                        f"into context for {user_email}"
+                    )
+                    try:
+                        run = get_current_run_tree()
+                        if run:
+                            run.metadata["corrections_injected"] = len(past_corrections)
+                    except Exception:
+                        pass
+            except Exception as e:
+                logger.warning(f"Phase C correction context injection failed: {e}")
 
         # SystemMessage with cache_control on the static portion
         system_msg = SystemMessage(content=[

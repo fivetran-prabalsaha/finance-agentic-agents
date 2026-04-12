@@ -1001,55 +1001,64 @@ function showToast(msg) {
 function init() {
   initDate();
 
-  // 2 default rules
+  // Static fields
+  document.getElementById('slug').value    = 'workday-agent';
+  document.getElementById('title').value   = 'Workday People Analytics';
+  document.getElementById('desc').value    = 'Answers headcount and geography questions using live Workday RAAS data via a Slack bot. Use when a user asks about employee counts, country breakdowns, or employee vs contingent worker splits. Does NOT handle Workday record modifications, payroll queries, or data from systems other than Workday.';
+  document.getElementById('mcpServer').value = 'workday-api-server';
+  document.getElementById('author').value  = 'Your Name';
+  document.getElementById('version').value = '1.0.0';
+  document.getElementById('compat').value  = 'Claude Code, Slack Bot';
+
+  // Rules
   addRule(
-    'NEVER answer questions from memory.',
-    'Every data point must come from a live tool call. Training data may be stale or incorrect for your specific system.'
+    'NEVER pass page or page_size to RAAS.',
+    'Workday returns HTTP 500 for any paginated request — all ~1,665 records come in a single response with ?format=json only.'
   );
   addRule(
-    'ALWAYS call initialize_session before making data calls.',
-    'Skipping it means the tool calls run without required context — produces incomplete or incorrect results. This is the most common setup failure.'
+    'ALWAYS use tool_choice: {"type": "any"} in the Haiku dispatch turn.',
+    'Without this, Claude may answer headcount questions from training data and return completely wrong numbers with no error signal.'
   );
 
-  // 4 default trigger phrases
-  addTrigger('"look up" + an identifier or name');
-  addTrigger('"show me" + a record type');
-  addTrigger('"what is the status of" + a request or ticket');
-  addTrigger('"list all" + a category or department');
+  // Triggers
+  addTrigger('"how many employees in" + a country or location');
+  addTrigger('"headcount breakdown" or "headcount by country"');
+  addTrigger('"employees vs contingent workers"');
+  addTrigger('"list countries" or "which countries do we have employees in"');
 
-  // 2 default workflows
+  // Workflows
   addWorkflow(
-    'Data Lookup',
-    '"look up", "find", "get status of", "what is", "show me"',
-    '1. Call initialize_session\n2. Call get_data(identifier=<id>) — returns current state\n3. Call analyze(data_id=<id>, query=<query>)\n4. Respond with verdict or summary first, then details',
-    'Always call initialize_session first to load context before making data calls.'
+    'Headcount by Geography',
+    '"how many employees in", "headcount in", "people in"',
+    '1. Call get_headcount_by_geography(geography=<country>)\n   → returns integer count\n2. Respond: "There are {count} employees in {country}."\nNote: geography accepts full country name ("United States of America") or 3-letter prefix ("USA"). Filtering is client-side.',
+    'Always call a tool — never answer from training data. Workday headcount changes frequently.'
   );
   addWorkflow(
-    'Status Query',
-    '"show me", "how many", "list all", "status of", "summary of"',
-    '1. Call get_stats() — summary counts\n2. Call list_items(status=<status>, limit=20)\n3. Call get_details(id=<id>) for specific items needing full context\n4. Group results by category. For each: name, status, score, days open.',
-    'Always call get_stats first for an overview before retrieving individual records.'
+    'Full Country Breakdown',
+    '"breakdown by country", "headcount all countries", "which countries", "list countries"',
+    '1. Call get_headcount_all_countries()\n   → returns sorted list of {country, count}\n2. Present as a table or sorted list, descending by count\n3. Include total at the end',
+    'Results are pre-sorted descending — present them in the order returned.'
   );
 
-  // 2 default examples
+  // Examples
   addExample(
-    'Data lookup — single record status',
-    'What is the current status of ticket #4421?',
-    `1. initialize_session()\n   → context loaded\n\n2. get_data(identifier="ticket-4421")\n   → id=t-4421\n   → status: In Progress\n   → assigned_to: Austin Chen\n   → created: 2026-01-15\n\n3. get_details(data_id="t-4421")\n   → priority: HIGH\n   → last_updated: 2026-02-20\n   → notes: Awaiting review from manager`,
-    'Ticket #4421 is currently In Progress, assigned to Austin Chen (HIGH priority). Last updated 2026-02-20 — awaiting manager review. No blockers identified.'
+    'Headcount by geography',
+    'How many employees in India?',
+    '1. get_headcount_by_geography(geography="India")\n   → 313',
+    'There are 313 employees in India.'
   );
   addExample(
-    'Status query — department summary',
-    'List all open items for the Engineering department',
-    `1. initialize_session()\n   → context loaded\n\n2. get_stats(department="Engineering")\n   → total: 12 open items\n   → HIGH: 2, MEDIUM: 5, LOW: 5\n\n3. list_items(department="Engineering", status="open", limit=20)\n   → 12 items returned`,
-    'Engineering has 12 open items: 2 HIGH, 5 MEDIUM, 5 LOW. Recommend addressing the 2 HIGH priority items first — see details below.'
+    'Employees vs contingent workers',
+    'How many employees vs contingent workers do we have?',
+    '1. get_worker_information()\n   → 1,665 total records\n   → Worker_Type="Employee": 1,554\n   → Worker_Type="Contingent Worker": 111',
+    'Total workforce: 1,665. Breakdown: 1,554 employees (93.3%) and 111 contingent workers (6.7%).'
   );
 
-  // 4 default troubleshooting rows (populated from defaults inside addTsRow)
-  addTsRow();
-  addTsRow();
-  addTsRow();
-  addTsRow();
+  // Troubleshooting
+  addTsRow('RAAS returns HTTP 500', 'page or page_size param was passed in the request', 'Remove pagination params — call with ?format=json only. Never pass page_size to the RAAS endpoint.');
+  addTsRow('Tool not visible to Claude', 'Tool not registered in utils/tool_router.py', 'Add @register decorator to the tool function in tool_router.py and restart the API server.');
+  addTsRow('Filter returns 0 results', 'Worker_Type casing mismatch (e.g. "employee" instead of "Employee")', 'Use exact values: "Employee" or "Contingent Worker" — string match is case-sensitive.');
+  addTsRow('Port conflict on startup', 'Port 8080 is already in use by another local service', 'Set API_PORT=8081 in .env — port 8080 is reserved for the compliance-mcp-server.');
 
   generate();
 }

@@ -1,0 +1,11 @@
+@use '@angular/material' as mat;
+
+html, body { height: 100%; margin: 0; }
+body { font-family: Roboto, "Helvetica Neue", sans-serif; background: #f5f5f5; }
+
+/* Global mat-card elevation */
+mat-card { border-radius: 8px !important; }
+
+/* Snackbar */
+.mat-mdc-snack-bar-container.success .mdc-snackbar__surface { background: #4caf50; }
+.mat-mdc-snack-bar-container.error .mdc-snackbar__surface { background: #f44336; }

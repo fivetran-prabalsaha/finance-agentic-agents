@@ -1,8 +1,8 @@
-# 🏗️ SOD Compliance System - Complete Architecture Documentation V6
+# 🏗️ SOD Compliance System - Complete Architecture Documentation V9
 
-**Last Updated**: 2026-02-18 14:00:00
-**Version**: 6.0
-**Status**: Production-Ready with Token Optimization, Security Hardening + Slack UI
+**Last Updated**: 2026-03-15
+**Version**: 9.0
+**Status**: Production-Ready with Semantic Tool Routing, Eval Suite + LangSmith Integration
 
 ---
 
@@ -21,6 +21,8 @@
 11. [Level-Based Conflict Detection](#level-based-conflict-detection)
 12. [Deployment Architecture](#deployment-architecture)
 13. [Security & Authentication](#security--authentication)
+14. [Semantic Tool Router (NEW)](#semantic-tool-router-new)
+15. [Eval Suite (NEW)](#eval-suite-new)
 
 ---
 
@@ -45,6 +47,8 @@ The SOD (Segregation of Duties) Compliance System is an AI-powered compliance pl
 ✅ **Token Optimization**: Prefix caching, intent-based tool routing (35→3-8 tools), output sanitization
 ✅ **Security Hardened**: Parameterized SQL, env-only secrets, CORS allowlist, required API key validation
 ✅ **Slack Block Kit UI**: Animated thinking indicator, mrkdwn formatting, section dividers
+✅ **Semantic Tool Router**: Embedding-based tool selection replaces regex routing (Hit Rate@10: 0.72→1.00, MRR: 0.18→0.91)
+✅ **Eval Suite**: LangSmith-integrated evaluation with Hit Rate@K, MRR, NDCG@K, Precision@K, Faithfulness metrics
 
 ---
 
@@ -66,7 +70,9 @@ The SOD (Segregation of Duties) Compliance System is an AI-powered compliance pl
 │  │  • @mention detection → email resolution                            │   │
 │  │  • 5-turn conversation loop for multi-step reasoning                │   │
 │  │  • Block Kit responses with animated thinking indicator             │   │
-│  │  • Intent-based tool routing (35 tools → 3-8 per request)          │   │
+│  │  • Semantic tool routing (35 tools → 3-8 per request)              │   │
+│  │  •   Primary: SemanticToolRouter (sentence-transformers/all-MiniLM-L6-v2)│   │
+│  │  •   Fallback: keyword/regex router (utils/tool_router.py)         │   │
 │  │  • Prefix-cached system prompt (90% cache hit discount)            │   │
 │  │  • Tool output sanitization (TOOL_OUTPUT_MAX_CHARS cap)            │   │
 │  │  • Token tracking via AnthropicClientWrapper                       │   │
@@ -286,7 +292,8 @@ MCP_SERVER_URL = "http://localhost:8080"
 | Technique | Where Applied | Savings |
 |-----------|--------------|---------|
 | **Prefix Caching** | Slack bot, Analyzer, Risk Assessor | 90% cost on cached system prompt re-reads |
-| **Intent-Based Tool Routing** | `utils/tool_router.py` → Slack bot | 35 tools (~10K tokens) → 3-8 tools (~1.5K tokens) per request |
+| **Semantic Tool Routing** | `utils/semantic_router.py` → Slack bot (primary) | 35 tools (~10K tokens) → 3-8 tools (~1.5K tokens) per request; Hit Rate@10=1.00 |
+| **Keyword Tool Routing (fallback)** | `utils/tool_router.py` → Slack bot | Falls back if sentence-transformers unavailable |
 | **Output Sanitization** | `call_mcp_tool()` in Slack bot | Caps tool output at `TOOL_OUTPUT_MAX_CHARS` (default 2000 chars) |
 | **History Trimming** | Slack bot multi-turn loop | Keeps last `MAX_HISTORY_TURNS` (default 4) turn-pairs |
 | **Output Length Control** | All agents | `max_tokens=1024` (Slack), `2048` (Analyzer/Report), `1024` (Risk) |
@@ -297,7 +304,8 @@ MCP_SERVER_URL = "http://localhost:8080"
 
 | File | Purpose |
 |------|---------|
-| `utils/tool_router.py` | Intent classification + tool group selection |
+| `utils/semantic_router.py` | Semantic tool routing — primary router (embedding-based, `SemanticToolRouter` + `semantic_select_tools()`) |
+| `utils/tool_router.py` | Keyword/regex tool routing — fallback router (INTENT_PATTERNS + TOOL_GROUPS) |
 | `utils/token_tracker.py` | Global token usage tracker with per-agent stats |
 | `utils/anthropic_wrapper.py` | Auto-tracking Anthropic SDK wrapper |
 | `utils/langchain_callback.py` | LangChain `on_llm_end` → TokenTracker bridge |
@@ -2258,6 +2266,162 @@ See `docs/LESSONS_LEARNED.md` Issues #31-32 for the root cause of the S3 limitat
 
 ---
 
+## Semantic Tool Router (NEW)
+
+**Added:** March 2026
+**File:** `utils/semantic_router.py`
+**Impact:** Hit Rate@10: 0.72 → 1.00 | MRR: 0.18 → 0.91 | NDCG@10: 0.37 → 0.89
+
+### Overview
+
+The `SemanticToolRouter` replaces the regex-based `select_tools_for_intent()` in `utils/tool_router.py` as the primary tool-selection mechanism in the Slack bot. The keyword router is retained as a fallback.
+
+Instead of matching keywords with handwritten regex patterns, each tool is represented by a rich text document (curated description + representative example queries). At query time, the user message is embedded and tools are ranked by cosine similarity.
+
+**Why semantic routing beats regex:**
+- Handles plurals, paraphrasing, and word-order variations automatically
+- Ranking is continuous, not binary — the most relevant tool floats to rank 1
+- Adding a new tool requires only writing its description, not new regex patterns
+- Falls back to the keyword router if the sentence-transformers model is unavailable
+
+### Architecture
+
+```
+Slack message
+    │
+    ▼
+semantic_select_tools(user_message, all_tools, k=8)   [utils/semantic_router.py]
+    │
+    ├─► SemanticToolRouter singleton (built once at startup)
+    │       │
+    │       ├─ _build_index(): embed all tool texts with all-MiniLM-L6-v2
+    │       │   Tool text = TOOL_EXEMPLARS[name] + live schema description
+    │       │
+    │       └─ select(query, k=8):
+    │             1. Embed user message
+    │             2. Cosine similarity against all tool embeddings
+    │             3. Exclude always_include tools from top-k competition
+    │             4. Return top-k intent tools + always_include appended at END
+    │
+    └─► Fallback: select_tools_for_intent()            [utils/tool_router.py]
+            (used if model unavailable or select() raises)
+```
+
+### Key Classes and Functions
+
+| Symbol | Location | Description |
+|--------|----------|-------------|
+| `SemanticToolRouter` | `utils/semantic_router.py` | Class — builds embedding index at startup, exposes `select(query, k)` |
+| `TOOL_EXEMPLARS` | `utils/semantic_router.py` | Dict mapping tool name → curated description + example queries |
+| `semantic_select_tools()` | `utils/semantic_router.py` | Drop-in replacement for `select_tools_for_intent()` — used in `slack_bot_local.py` |
+| `get_router()` | `utils/semantic_router.py` | Returns module-level singleton; builds it on first call |
+| `select_tools_for_intent()` | `utils/tool_router.py` | Legacy keyword/regex router — fallback only |
+
+### `always_include` Placement Fix
+
+In both routers, `always_include` tools (`initialize_session`, `check_my_approval_authority`) are now appended **at the END** of the shortlist, not inserted at positions 0–1. This means they no longer displace high-relevance tools from the top of the list — important for the synthesis model which reads the shortlist top-down.
+
+### Embedding Model
+
+| Property | Value |
+|----------|-------|
+| Model | `sentence-transformers/all-MiniLM-L6-v2` |
+| Dimensions | 384 |
+| Source | Local (no API key required) |
+| Index built | Once at bot startup via `_build_index()` |
+| Similarity | Cosine (unit-normalised dot product) |
+
+The same model is already used by the Knowledge Base Agent for pgvector document search — no additional dependency is introduced.
+
+### Metric Results (LangSmith Experiments)
+
+| Experiment | Hit Rate@10 | MRR | NDCG@10 | Notes |
+|------------|------------|-----|---------|-------|
+| Baseline (regex router) | 0.72 | 0.18 | 0.37 | Plural/singular mismatches; always_include at position 0–1 |
+| After regex fixes | 0.78 | 0.41 | — | Fixed INTENT_PATTERNS plural mismatches + always_include placement |
+| After semantic router | **1.00** | **0.91** | **0.89** | SemanticToolRouter, all-MiniLM-L6-v2, k=8 |
+
+All experiments run against the 32-query tool-selection golden set (`eval/golden_set.py`, dataset `compliance-tool-selection-v1`) and pushed to LangSmith.
+
+---
+
+## Eval Suite (NEW)
+
+**Added:** March 2026
+**Directory:** `eval/`
+**Backend:** LangSmith (datasets + experiments)
+
+### Overview
+
+The eval suite provides reproducible, quantitative measurement of tool-routing quality and answer faithfulness. All results are pushed to LangSmith for tracking across experiments.
+
+### Directory Structure
+
+```
+eval/
+├── __init__.py
+├── golden_set.py     — 32 tool-selection + 10 answer-quality labelled examples; push to LangSmith
+├── evaluators.py     — Hit Rate@K, MRR, NDCG@K, Precision@K, Faithfulness (Haiku LLM-as-judge)
+└── run_eval.py       — CLI runner; pushes experiment results to LangSmith
+```
+
+### Datasets
+
+| LangSmith Dataset | Size | Contents |
+|-------------------|------|----------|
+| `compliance-tool-selection-v1` | 32 examples | `query`, `expected_tool`, `relevant_tools` (graded relevance 0/1/2 for NDCG) |
+| `compliance-answer-quality-v1` | 10 examples | `query`, `expected_facts` for faithfulness judge |
+
+### Evaluators (`eval/evaluators.py`)
+
+| Evaluator | Key | What it measures |
+|-----------|-----|-----------------|
+| `hit_rate_at_k(k)` | `hit_rate_at_K` | Binary: was `expected_tool` in the top-K returned? |
+| `mrr_evaluator` | `mrr` | 1 / rank of the first correct tool; 0 if absent |
+| `ndcg_at_k(k)` | `ndcg_at_K` | Normalised discounted cumulative gain using graded `relevant_tools` scores |
+| `precision_at_k(k)` | `precision_at_K` | Fraction of top-K tools that appear in `relevant_tools` |
+| `faithfulness` | `faithfulness` | Claude Haiku LLM-as-judge: does the answer contain the expected facts? |
+
+All evaluators follow the LangSmith 0.4.x signature:
+```python
+fn(outputs: dict, reference_outputs: dict) -> dict
+```
+
+### Running Evals
+
+```bash
+# Push / refresh golden datasets to LangSmith (run once, or after editing golden_set.py)
+python -m eval.golden_set
+
+# Dry-run: print examples without pushing
+python -m eval.golden_set --dry-run
+
+# Run all evaluations
+python -m eval.run_eval
+
+# Run only tool-selection eval (no live MCP server needed)
+python -m eval.run_eval --suite tool_selection
+
+# Run only answer-quality eval (requires live MCP server at :8080)
+python -m eval.run_eval --suite answer_quality
+```
+
+Results appear in LangSmith → Experiments tab under the project set by `LANGCHAIN_PROJECT` in `.env`.
+
+### Required Environment Variables
+
+```bash
+# LangSmith (required for eval suite)
+LANGCHAIN_API_KEY=ls__...
+LANGCHAIN_PROJECT=compliance-agent      # experiment results group
+LANGCHAIN_TRACING_V2=true
+
+# Anthropic (required for faithfulness evaluator)
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+---
+
 **Version History**:
 - V1.0 (2026-01-15): Initial architecture
 - V2.0 (2026-01-28): Added data collection agent
@@ -2268,7 +2432,8 @@ See `docs/LESSONS_LEARNED.md` Issues #31-32 for the root cause of the S3 limitat
 - V6.0 (2026-02-18): Security hardening, token optimization, Slack Block Kit UI, exception management
 - V7.0 (2026-02-22): LangSmith full observability — Threads grouping, @traceable on call_mcp_tool(), 3 online evaluators with 3-layer detection logic
 - V8.0 (2026-02-23): Haiku/Opus model split — Haiku for tool-dispatch turns, Opus for synthesis; verified trace c06830c0
+- V9.0 (2026-03-15): Semantic tool router (utils/semantic_router.py) replaces regex routing as primary; tool_router.py kept as fallback; always_include tools moved to end of shortlist; eval suite added (eval/ directory) with LangSmith datasets and Hit Rate@K, MRR, NDCG@K, Precision@K, Faithfulness evaluators; metric improvement Hit Rate@10 0.72→1.00, MRR 0.18→0.91, NDCG@10 0.37→0.89
 
 ---
 
-**Document Status**: ✅ **COMPLETE AND UP-TO-DATE** (V8.0 — 2026-02-23)
+**Document Status**: ✅ **COMPLETE AND UP-TO-DATE** (V9.0 — 2026-03-15)

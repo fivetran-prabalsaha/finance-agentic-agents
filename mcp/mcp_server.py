@@ -22,6 +22,7 @@ from .mcp_tools import (
     get_tool_handler,
     TOOL_SCHEMAS
 )
+from .admin_api import auth_router, admin_router
 
 # Configure logging
 logging.basicConfig(
@@ -44,7 +45,10 @@ See RESPONSE_STYLE_GUIDE.md for details.""",
 
 # Add CORS middleware — restrict to internal origins via MCP_ALLOWED_ORIGINS env var
 _allowed_origins_raw = os.getenv('MCP_ALLOWED_ORIGINS', '')
-_allowed_origins = [o.strip() for o in _allowed_origins_raw.split(',') if o.strip()] or ["http://localhost"]
+_allowed_origins = (
+    [o.strip() for o in _allowed_origins_raw.split(',') if o.strip()]
+    or ["http://localhost", "http://localhost:4200"]   # 4200 = Angular dev server
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -53,6 +57,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount admin portal routers
+app.include_router(auth_router)
+app.include_router(admin_router)
 
 
 # ============================================================================

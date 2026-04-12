@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Architecture One-Pager Generator</title>
+<title>1 Pager Generator</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: system-ui, -apple-system, sans-serif; background: #f5f6fa; color: #1a1f36; min-height: 100vh; display: flex; flex-direction: column; }
@@ -49,15 +49,15 @@
   <div class="header-left">
     <a href="index.html" class="back-link">&larr; Back</a>
     <div>
-      <h1>Architecture One-Pager Generator</h1>
-      <p>Paste CLAUDE.md + plan.md + SKILL.md &rarr; shareable architecture one-pager</p>
+      <h1>1 Pager Generator</h1>
+      <p>Paste CLAUDE.md &rarr; shareable architecture one-pager</p>
     </div>
   </div>
 </header>
 
 <main>
   <div class="tip">
-    <strong>How it works:</strong> Paste one or more of your project files below, then click <strong>Generate &amp; Open</strong> &mdash; the one-pager opens in a new tab. Use <strong>Download HTML</strong> to save a standalone file.
+    <strong>How it works:</strong> Paste your <strong>CLAUDE.md</strong> below, then click <strong>Generate &amp; Open</strong> &mdash; the one-pager opens in a new tab. Use <strong>Download HTML</strong> to save a standalone file.
   </div>
 
   <div class="file-block">
@@ -68,28 +68,6 @@
     </div>
     <div class="file-body" id="claude-body">
       <textarea id="claude-in" rows="10" placeholder="Paste CLAUDE.md content here..."></textarea>
-    </div>
-  </div>
-
-  <div class="file-block">
-    <div class="file-hdr" onclick="toggle('plan')">
-      <span class="file-label">&#x1F4CA; plan.md</span>
-      <span class="file-hint">Phases &middot; KPIs &middot; deliverables &middot; verification steps</span>
-      <span class="toggle-ic" id="plan-ic">&#x25BC;</span>
-    </div>
-    <div class="file-body" id="plan-body">
-      <textarea id="plan-in" rows="10" placeholder="Paste plan.md content here..."></textarea>
-    </div>
-  </div>
-
-  <div class="file-block">
-    <div class="file-hdr" onclick="toggle('skill')">
-      <span class="file-label">&#x26A1; SKILL.md</span>
-      <span class="file-hint">Workflows &middot; rules &middot; classifications &middot; examples</span>
-      <span class="toggle-ic" id="skill-ic">&#x25BC;</span>
-    </div>
-    <div class="file-body" id="skill-body">
-      <textarea id="skill-in" rows="10" placeholder="Paste SKILL.md content here..."></textarea>
     </div>
   </div>
 
@@ -111,7 +89,7 @@ function toggle(name) {
 }
 
 function clearAll() {
-  ['claude-in','plan-in','skill-in'].forEach(function(id) { document.getElementById(id).value = ''; });
+  ['claude-in'].forEach(function(id) { document.getElementById(id).value = ''; });
   document.getElementById('dl-btn').disabled = true;
   setStatus('', '');
   lastHTML = '';
@@ -187,7 +165,7 @@ function parseMeta(cm, pm) {
     date:   fm(all,[/\*\*Last Updated:\*\*\s*(.+)/,/Date:\s*(\d{4}-\d{2}-\d{2})/i,/(\d{4}-\d{2}-\d{2})/]) || new Date().toISOString().slice(0,10),
     author: fm(all,[/\*\*Author:\*\*\s*(.+)/,/Author:\s*(.+)/i,/Maintained by:?\s*(.+)/i]) || '',
     status: fm(all,[/\*\*Status:\*\*\s*(.+)/,/Status:\s*(DRAFT|IN PROGRESS|COMPLETE|REVIEW|APPROVED|PRODUCTION)/i]) || 'DRAFT',
-    desc:   (fm(all,[/##\s*(?:Goal|Objective|Overview|Context)[^\n]*\n+([^\n#]{20,})/i,/>\s*(.{15,120})/m]) || '').slice(0,200),
+    desc:   (fm(all,[/\*\*Purpose:\*\*\s*(.{20,250})/,/##\s*(?:Goal|Objective|Overview|Context)[^\n]*\n+([^\n#]{20,})/i]) || '').slice(0,200),
   };
 }
 
@@ -195,7 +173,51 @@ function parseAgents(cm) {
   if (!cm) return [];
   var out = [];
 
-  // Strategy 1: explicit ## Agent A -- Name headers
+  // Strategy 0: ### Agent Pipeline Visual markdown table (recon CLAUDE.md structured metadata)
+  // Columns: | ID | Display Name | Phase | Color | Traceable | Parallel | Duty 1 | Duty 2 | Duty 3 |
+  var agentTableM = cm.match(/###\s*Agent Pipeline Visual[\s\S]*?\n\|[^\n]+\|\n\|[-| :]+\|\n((?:\|.+\|\n?)+)/);
+  if (agentTableM) {
+    var agentRows = agentTableM[1].trim().split('\n');
+    for (var ar = 0; ar < agentRows.length; ar++) {
+      var aCells = agentRows[ar].split('|').map(function(c){ return c.trim(); }).filter(Boolean);
+      if (aCells.length < 3 || /^[-:]+$/.test(aCells[0])) continue;
+      var agId = aCells[0].toUpperCase();
+      var agName = aCells[1] || agId;
+      var agPhase = aCells[2] ? (parseInt(aCells[2]) || null) : null;
+      var agParallel = aCells[5] ? /yes/i.test(aCells[5]) : false;
+      var duties = aCells.slice(6).filter(function(d){ return d && d !== '—' && d !== '-'; });
+      out.push({
+        letter: agId, name: agName,
+        phase: agPhase, parallel: agParallel,
+        buls: duties.slice(0, 3), tables: [],
+      });
+    }
+  }
+
+  // Strategy 0b: ### QA Gate Visual table — add gate agents (G1–G4)
+  var gateTableM = cm.match(/###\s*QA Gate Visual[\s\S]*?\n\|[^\n]+\|\n\|[-| :]+\|\n((?:\|.+\|\n?)+)/);
+  if (gateTableM) {
+    var gateRows = gateTableM[1].trim().split('\n');
+    for (var gr = 0; gr < gateRows.length; gr++) {
+      var gCells = gateRows[gr].split('|').map(function(c){ return c.trim(); }).filter(Boolean);
+      if (gCells.length < 2 || /^[-:]+$/.test(gCells[0])) continue;
+      var gId = gCells[0].toUpperCase(); // G1, G2, G3, G4
+      var gName = gCells[1] || gId;
+      var gChecks = gCells.slice(2).filter(function(c){ return c && c !== '—'; }).slice(0, 3);
+      // Phase: G1→1, G2→2, G3→3, G4→4 (numeric part of gate ID)
+      var gPhaseNum = parseInt(gId.replace(/\D/g,'')) || null;
+      out.push({
+        letter: gId, name: gName,
+        phase: gPhaseNum, parallel: false,
+        buls: gChecks, tables: [],
+        isGate: true,
+      });
+    }
+  }
+
+  if (out.length > 0) return out;
+
+  // Strategy 1: ## Agent X — Name headings (fallback for older CLAUDE.md formats)
   var parts = cm.split(/\n(?=#{2,4}\s*Agent\s+[A-Z]\b)/i);
   for (var i = 0; i < parts.length; i++) {
     var p = parts[i];
@@ -216,22 +238,19 @@ function parseAgents(cm) {
     });
   }
 
-  // Strategy 2: Component/Agent tables
+  // Strategy 2: Component/Agent tables (last resort)
   if (out.length === 0) {
     var usedLetters = {};
     var letterIdx = 0;
     var letters = 'ABCDEFGHIJKLMNOP';
-    // Fixed regex: {2,40} instead of invalid {2,35?}
     var rowRe = /\|\s*\*?\*?\s*([A-Z][^|*\n]{2,40}?)\s*\*?\*?\s*\|\s*(?:`[^`\n]*`)?\s*(?:\||\s)\s*([^|\n]{8,100})\s*\|/g;
     var rowM;
     while ((rowM = rowRe.exec(cm)) !== null && out.length < 9) {
       var rawName = rowM[1].trim();
       var rawDesc = rowM[2].trim().replace(/\*\*/g,'').replace(/\*/g,'');
-      // Skip header rows, dividers, and short entries
       if (/^[-\s]+$/.test(rawName)) continue;
       if (/^(component|file|purpose|name|agent|key|library|tool)/i.test(rawName)) continue;
-      if (rawName.length < 3) continue;
-      if (rawDesc.length < 8) continue;
+      if (rawName.length < 3 || rawDesc.length < 8) continue;
       if (!usedLetters[rawName]) {
         usedLetters[rawName] = letters[letterIdx++] || String.fromCharCode(65 + out.length);
         out.push({
@@ -244,7 +263,7 @@ function parseAgents(cm) {
     }
   }
 
-  return out.slice(0,9);
+  return out;
 }
 
 function parsePhases(cm, pm) {
@@ -264,6 +283,22 @@ function parsePhases(cm, pm) {
 function parseTech(cm, pm) {
   var text = (cm||'') + '\n' + (pm||'');
   var tech = [];
+  // Strategy 0: "Stack: item1 · item2 · ..." inline line (recon CLAUDE.md format)
+  var stackLineM = text.match(/^Stack:\s*([^\n]+)/im);
+  if (stackLineM) {
+    var stackItems = stackLineM[1].split(/\s*[\u00b7\u2022]\s*/);
+    for (var si = 0; si < stackItems.length; si++) {
+      var sItem = stackItems[si].trim();
+      if (!sItem) continue;
+      var sParens = sItem.match(/^(.+?)\s*\((.+)\)$/);
+      if (sParens) {
+        tech.push({ name: sParens[1].trim(), desc: sParens[2].trim() });
+      } else {
+        tech.push({ name: sItem, desc: '' });
+      }
+    }
+    if (tech.length > 0) return tech.slice(0, 14);
+  }
   var secM = text.match(/(?:##[#]?\s+)?(?:Tech(?:nology)?\s+Stack|Core Technologies|Key Libraries)[^\n]*\n([\s\S]+?)(?=\n##|\n---|\n\*\*\*|$)/i);
   if (secM) {
     var sec = secM[1];
@@ -298,6 +333,19 @@ function parseTech(cm, pm) {
 function parseKPIs(cm, pm) {
   var all = (cm||'') + '\n' + (pm||'');
   var kpis = [];
+
+  // Strategy 0: ### KPIs markdown table (recon CLAUDE.md structured metadata)
+  var kpiTableM = all.match(/###\s*KPIs?\s*\n\|[^\n]+\|\n\|[-| :]+\|\n((?:\|.+\|\n?)+)/i);
+  if (kpiTableM) {
+    var kpiRows = kpiTableM[1].trim().split('\n');
+    for (var kr = 0; kr < kpiRows.length && kpis.length < 6; kr++) {
+      var kCells = kpiRows[kr].split('|').map(function(c){ return c.trim(); }).filter(Boolean);
+      if (kCells.length >= 2 && !/^[-:]+$/.test(kCells[0])) {
+        kpis.push({ label: kCells[0], value: kCells[1] });
+      }
+    }
+    if (kpis.length > 0) return kpis;
+  }
 
   // Strategy 1: check-mark success metrics lines — fixed regex to use unicode code points
   var checkRe = /[\u2705\u2714\u2611]\s+(.+)/g, cm2;
@@ -351,11 +399,29 @@ function parseWorkflows(sm) {
 
 function parseRules(cm, sm) {
   var all = (cm||'') + '\n' + (sm||'');
+
+  // Strategy 0: markdown table format | # | Rule | Impact | (recon CLAUDE.md)
+  var tableSecM = all.match(/(?:Critical Rules?)[^\n]*\n\|[^\n]+\|\n\|[-| :]+\|\n((?:\|.+\|\n?)+)/i);
+  if (tableSecM) {
+    var tableRules = [];
+    var ruleRows = tableSecM[1].trim().split('\n');
+    for (var rr = 0; rr < ruleRows.length && tableRules.length < 8; rr++) {
+      var rCells = ruleRows[rr].split('|').map(function(c){ return c.trim(); }).filter(Boolean);
+      // Columns: | # | Rule | Impact if violated |
+      if (rCells.length >= 2 && !/^[-:]+$/.test(rCells[0]) && !/^#/.test(rCells[0])) {
+        var ruleText = rCells[1] || rCells[0];
+        if (ruleText.length > 5) tableRules.push(ruleText.slice(0, 90));
+      }
+    }
+    if (tableRules.length > 0) return tableRules;
+  }
+
+  // Strategy 1: section with numbered or bullet list (fallback)
   var secM = all.match(/(?:Critical Rules?|Non-Negotiable Rules?|MUST READ|Important Rules?)[^\n]*\n([\s\S]+?)(?=\n##|$)/i);
   if (!secM) return [];
-  var r1 = numbered(secM[1], 6);
-  var r2 = bullets(secM[1], 6);
-  return r1.concat(r2).slice(0,6);
+  var r1 = numbered(secM[1], 8);
+  var r2 = bullets(secM[1], 8);
+  return r1.concat(r2).slice(0, 8);
 }
 
 function parseSources(cm, pm, sm) {
@@ -377,6 +443,12 @@ function parseSources(cm, pm, sm) {
   var found = [];
   for (var i = 0; i < known.length; i++) {
     if (!known[i].pat.test(all)) continue;
+    // Skip generic "Salesforce" if "Salesforce CPQ" already added
+    if (known[i].name === 'Salesforce' && found.some(function(f){ return f.name === 'Salesforce CPQ'; })) continue;
+    // Skip internal systems that are not data sources (PostgreSQL, LangSmith, Slack)
+    if (known[i].name === 'PostgreSQL' && found.length >= 3) continue;
+    if (known[i].name === 'Slack'      && found.length >= 3) continue;
+    if (known[i].name === 'LangSmith'  && found.length >= 3) continue;
 
     // Extract nearby context (500 chars after the source name mention)
     var srcEscaped = known[i].name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
@@ -446,7 +518,7 @@ function parseSources(cm, pm, sm) {
       auth: authStr + ' \u00b7 ' + apiStr,
       bullets: buls,
     });
-    if (found.length >= 4) break;
+    if (found.length >= 5) break;
   }
   return found;
 }
@@ -455,45 +527,57 @@ function parseModels(cm) {
   if (!cm) return [];
   var out = [];
 
+  // Strategy 0: ### Cost Model markdown table (recon CLAUDE.md structured metadata)
+  // Columns: | Tier | Model | Est. per run | Use cases |
+  var costTableM = cm.match(/###\s*Cost Model\s*\n\|[^\n]+\|\n\|[-| :]+\|\n((?:\|.+\|\n?)+)/i);
+  if (costTableM) {
+    var costRows = costTableM[1].trim().split('\n');
+    for (var cr = 0; cr < costRows.length; cr++) {
+      var cCells = costRows[cr].split('|').map(function(c){ return c.trim(); }).filter(Boolean);
+      if (cCells.length < 3 || /^[-:]+$/.test(cCells[0])) continue;
+      var tier = cCells[0], model = cCells[1], cost = cCells[2];
+      var usecases = cCells[3] || '';
+      var color = /haiku/i.test(model) ? '#f59e0b'
+                : /opus/i.test(model)  ? '#7c3aed'
+                : /sonnet/i.test(model)? '#3b82f6'
+                : '#10b981';
+      out.push({
+        name:    model || tier,
+        role:    tier,
+        cost:    cost,
+        color:   color,
+        bullets: usecases ? usecases.split(/\s*[·\u00b7]\s*/).slice(0, 3) : [],
+      });
+    }
+    if (out.length > 0) return out;
+  }
+
+  // Strategy 1: keyword detection (fallback for other CLAUDE.md formats)
   if (/deterministic|no.llm|free/i.test(cm)) {
-    out.push({
-      name: 'No LLM',
-      role: 'Deterministic (free)',
-      cost: '~$0.00/run',
-      color: '#10b981',
-      bullets: ['Rule-based processing only', 'No API costs incurred', 'Instant deterministic results'],
-    });
+    out.push({ name:'No LLM', role:'Deterministic (free)', cost:'~$0.00/run', color:'#10b981',
+      bullets:['Rule-based processing only','No API costs incurred','Instant deterministic results'] });
   }
   if (/haiku/i.test(cm)) {
-    var haikuCtx = '';
-    var hm = cm.match(/haiku[\s\S]{0,400}/i);
-    if (hm) haikuCtx = hm[0];
+    var haikuCtx = ''; var hm = cm.match(/haiku[\s\S]{0,400}/i); if (hm) haikuCtx = hm[0];
     var haikuBuls = [];
     if (/dispatch|tool\s+call|routing/i.test(haikuCtx)) haikuBuls.push('Tool dispatch and intent routing');
     if (/fast|cheap|high.vol/i.test(haikuCtx)) haikuBuls.push('High-volume, low-latency calls');
     if (/summar/i.test(haikuCtx)) haikuBuls.push('Conversation summarization');
-    if (haikuBuls.length === 0) haikuBuls = ['Fast, high-volume dispatch', 'Low-cost processing', 'Routing and classification'];
-    out.push({ name: 'Claude Haiku', role: 'Fast / High-volume dispatch', cost: '~$0.15/1M tok', color: '#f59e0b', bullets: haikuBuls });
+    if (haikuBuls.length === 0) haikuBuls = ['Fast, high-volume dispatch','Low-cost processing','Routing and classification'];
+    out.push({ name:'Claude Haiku', role:'Fast / High-volume dispatch', cost:'~$0.15/1M tok', color:'#f59e0b', bullets:haikuBuls });
   }
   if (/sonnet/i.test(cm) && !/opus/i.test(cm)) {
-    out.push({
-      name: 'Claude Sonnet',
-      role: 'Balanced reasoning',
-      cost: '~$3/1M tok',
-      color: '#3b82f6',
-      bullets: ['Balanced speed and quality', 'Complex multi-step analysis', 'Mid-tier cost efficiency'],
-    });
+    out.push({ name:'Claude Sonnet', role:'Balanced reasoning', cost:'~$3/1M tok', color:'#3b82f6',
+      bullets:['Balanced speed and quality','Complex multi-step analysis','Mid-tier cost efficiency'] });
   }
   if (/opus/i.test(cm)) {
-    var opusCtx = '';
-    var om = cm.match(/opus[\s\S]{0,400}/i);
-    if (om) opusCtx = om[0];
+    var opusCtx = ''; var om = cm.match(/opus[\s\S]{0,400}/i); if (om) opusCtx = om[0];
     var opusBuls = [];
     if (/synthes|reasoning|analys/i.test(opusCtx)) opusBuls.push('Deep reasoning and synthesis');
     if (/sod|compliance|violation/i.test(opusCtx)) opusBuls.push('SOD / compliance analysis');
     if (/200k|context|long/i.test(opusCtx)) opusBuls.push('200K token context window');
-    if (opusBuls.length === 0) opusBuls = ['Deep reasoning on complex queries', 'High-quality synthesis', 'Largest context window'];
-    out.push({ name: 'Claude Opus', role: 'Smart / Deep reasoning', cost: '~$15/1M tok', color: '#7c3aed', bullets: opusBuls });
+    if (opusBuls.length === 0) opusBuls = ['Deep reasoning on complex queries','High-quality synthesis','Largest context window'];
+    out.push({ name:'Claude Opus', role:'Smart / Deep reasoning', cost:'~$15/1M tok', color:'#7c3aed', bullets:opusBuls });
   }
   return out;
 }
@@ -670,6 +754,7 @@ function rAgents(agents, phases, dbOutputs) {
   var hasPhases = Object.keys(phaseMap).length > 0;
 
   function agentCard(a) {
+    var gateBorder = a.isGate ? 'border: 1.5px dashed #f59e0b;' : '';
     // Phase tag
     var pTag = a.phase !== null
       ? '<span style="background:' + pCol(a.phase) + ';color:#fff;font-size:6.5px;padding:1px 5px;border-radius:3px;font-weight:600;margin-left:auto;white-space:nowrap;">Phase ' + a.phase + '</span>'
@@ -687,7 +772,7 @@ function rAgents(agents, phases, dbOutputs) {
         }).join('') + '</div>'
       : '';
     // Agent card header: circle + name + phase tag + parallel badge in one flex row
-    return '<div style="background:#fff;border-radius:7px;padding:7px 9px;margin-bottom:5px;box-shadow:0 1px 3px rgba(26,31,54,0.07);">'
+    return '<div style="background:#fff;border-radius:7px;padding:7px 9px;margin-bottom:5px;box-shadow:0 1px 3px rgba(26,31,54,0.07);' + gateBorder + '">'
       + '<div style="display:flex;align-items:center;gap:5px;margin-bottom:3px;">'
       + '<div style="background:' + aCol(a.letter) + ';color:#fff;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:9px;flex-shrink:0;">' + esc(a.letter) + '</div>'
       + '<div style="font-weight:700;font-size:9.5px;color:#1a1f36;">' + esc(a.name.slice(0,40)) + '</div>'
@@ -879,6 +964,7 @@ function renderOP(d) {
     + (models.length > 0 ? rModels(models) : '')
     + (sev ? rSev(sev, agents) : '')
     + (kpis.length > 0 ? rKPIs(kpis) : '')
+    + (rules.length > 0 ? rRules(rules) : '')
     + '</div>'
     + '</div>';
 
@@ -905,10 +991,8 @@ var lastHTML = '';
 
 function buildHTML() {
   var cm = document.getElementById('claude-in').value.trim();
-  var pm = document.getElementById('plan-in').value.trim();
-  var sm = document.getElementById('skill-in').value.trim();
-  if (!cm && !pm && !sm) { setStatus('Paste at least one file first.', 'err'); return null; }
-  var d = parse(cm, pm, sm);
+  if (!cm) { setStatus('Paste CLAUDE.md first.', 'err'); return null; }
+  var d = parse(cm, '', '');
   var body = renderOP(d);
   var full = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'
     + '<meta name="viewport" content="width=device-width,initial-scale=1">'
@@ -953,6 +1037,179 @@ function downloadHTML() {
     console.error(err);
   }
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('claude-in').value = [
+    '# Workday Agent — CLAUDE.md',
+    '',
+    '**Version:** 1.0.0 | **Updated:** 2026-03-04 | **Team:** Your Name',
+    '',
+    '## System at a Glance',
+    '',
+    'Calls the Workday RAAS API to answer people-analytics queries (headcount, geography breakdowns, employee vs contingent worker splits) via a Slack bot.',
+    '',
+    '**Tech stack:** Python 3.9, FastAPI, Slack Bolt (Socket Mode), Claude Haiku 4.5 + Claude Opus 4.6, httpx',
+    '',
+    '**Data flow:**',
+    '```',
+    'Slack DM / Channel Mention  →  Slack Bot (Socket Mode)',
+    'Slack Bot                   →  Claude Haiku 4.5 (tool-dispatch turn)',
+    'Claude Haiku                →  API Tool Call (one tool, POST /tools/call)',
+    'FastAPI :8081               →  Workday RAAS (basic auth, single HTTP request)',
+    'Tool Result                 →  Claude Opus 4.6 (synthesis turn, adaptive thinking, streaming)',
+    'Claude Opus                 →  Slack Response (≤ 2000 chars)',
+    '```',
+    '',
+    '---',
+    '',
+    '## Workday RAAS Endpoint',
+    '',
+    '```',
+    'https://&lt;host&gt;.myworkday.com/ccx/service/customreport2',
+    '    /&lt;your-tenant&gt;/&lt;your-isu&gt;/&lt;Your_Report_Name&gt;?format=json',
+    '```',
+    '',
+    '**Auth:** HTTP Basic — `&lt;your-username&gt;` / `<password>`',
+    '',
+    '**Response fields per record:**',
+    '| Field | Example |',
+    '|---|---|',
+    '| `Location_Address_-_Country` | `"United States of America"` |',
+    '| `Worker` | `"Alex Savin"` |',
+    '| `Worker_Type` | `"Employee"` or `"Contingent Worker"` |',
+    '| `location` | `"USA - Remote - LA"` |',
+    '',
+    '**No pagination** — the endpoint returns all ~1,665 records in a single response. Do not pass `page` or `page_size` params (causes 500).',
+    '',
+    '---',
+    '',
+    '## Agent Roster',
+    '',
+    '| ID | Agent | File | Role |',
+    '|----|-------|------|------|',
+    '| A | Data Collector | `agents/data_collector.py` | Fetches Workday RAAS, filters, aggregates |',
+    '| B | Environment Setup | `agents/environment_setup.py` | Validates `.env` vars and pip deps |',
+    '| C | API Server | `api/server.py` | FastAPI on :8081, exposes tools |',
+    '| — | MCP Server | `mcp/mcp_server.py` | JSON-RPC STDIO bridge to FastAPI |',
+    '| — | Slack Bot | `bot.py` | Two-turn pipeline: Haiku dispatch + Opus synthesis |',
+    '',
+    '---',
+    '',
+    '## Registered Tools',
+    '',
+    "Every tool must be `@register`'d in `utils/tool_router.py` or Claude will never see it.",
+    '',
+    '| Tool | Description |',
+    '|---|---|',
+    '| `get_worker_information` | Full records, optional `geography` + `worker_type` filter |',
+    '| `get_headcount_by_geography` | Single count for a country/location |',
+    '| `get_headcount_all_countries` | Breakdown by country, sorted descending |',
+    '| `list_countries` | All 24 countries present in workforce |',
+    '',
+    '---',
+    '',
+    '## Environment Variables',
+    '',
+    '```bash',
+    '# Workday RAAS',
+    'WORKDAY_BASE_URL=https://&lt;host&gt;.myworkday.com/ccx/service/customreport2',
+    'WORKDAY_TENANT=&lt;your-tenant&gt;',
+    'WORKDAY_ISU=&lt;your-isu&gt;',
+    'WORKDAY_REPORT=&lt;Your_Report_Name&gt;',
+    'WORKDAY_USERNAME=&lt;your-username&gt;',
+    'WORKDAY_PASSWORD=<your-password>',
+    '',
+    '# LLM',
+    'ANTHROPIC_API_KEY=sk-ant-...',
+    '',
+    '# Slack',
+    'SLACK_BOT_TOKEN=xoxb-...',
+    'SLACK_APP_TOKEN=xapp-...',
+    'SLACK_SIGNING_SECRET=...',
+    '',
+    '# Server',
+    'API_PORT=8081',
+    'API_HOST=0.0.0.0',
+    '```',
+    '',
+    '---',
+    '',
+    '## Starting Order',
+    '',
+    '```bash',
+    '# Phase 0 — env validation (blocks everything else)',
+    'python3 agents/environment_setup.py',
+    '',
+    '# Phase 1 — API server (background)',
+    'python3 -m uvicorn api.server:app --host 0.0.0.0 --port 8081',
+    '',
+    '# Verify health',
+    'curl -s http://localhost:8081/health   # → {"status":"ok"}',
+    '',
+    '# Phase 3 — Slack bot (foreground)',
+    'python3 bot.py',
+    '',
+    '# Or all at once:',
+    './start.sh',
+    '```',
+    '',
+    '---',
+    '',
+    '## Critical Rules',
+    '',
+    '| Rule | Why |',
+    '|---|---|',
+    "| Never pass `page` or `page_size` to RAAS | Workday returns 500; all records come in one response |",
+    "| Register every tool in `utils/tool_router.py` | Claude's tool list is built from this registry |",
+    '| Always use `tool_choice: {"type": "any"}` in Haiku dispatch turn | Forces a tool call; prevents hallucinated answers |',
+    '| Port 8080 is taken by another local service | Use 8081 (`API_PORT=8081`) |',
+    '| `.env` is gitignored | Never commit credentials |',
+    '',
+    '---',
+    '',
+    '## Anti-Patterns',
+    '',
+    '| What NOT to do | Consequence | Correct approach |',
+    '|---|---|---|',
+    '| Pass `page_size` or `page` params to RAAS | HTTP 500 from Workday | Call with `?format=json` only |',
+    '| Answer people queries without calling a tool | Claude may hallucinate headcount | Enforce `tool_choice: {"type": "any"}` |',
+    '| Read `Worker_Type` with wrong casing | Filter silently returns 0 | Values are `"Employee"` and `"Contingent Worker"` |',
+    '| Run on port 8080 | Conflicts with compliance-mcp-server | Use port 8081 |',
+    '',
+    '---',
+    '',
+    '## Verified Smoke Tests',
+    '',
+    '| Query | Tool Dispatched | Answer |',
+    '|---|---|---|',
+    '| "how many employees in India?" | `get_headcount_by_geography` | 313 employees |',
+    '| "headcount breakdown by country" | `get_headcount_all_countries` | 24 countries, 1,665 total |',
+    '| "employees vs contingent workers" | `get_worker_information` | 1,554 employees / 111 contingent |',
+    '',
+    '---',
+    '',
+    '## File Structure',
+    '',
+    '```',
+    'workday-agent/',
+    '├── agents/',
+    '│   ├── data_collector.py      # Agent A — Workday RAAS tools',
+    '│   └── environment_setup.py   # Agent B — env validation',
+    '├── api/',
+    '│   └── server.py              # Agent C — FastAPI :8081',
+    '├── mcp/',
+    '│   └── mcp_server.py          # JSON-RPC STDIO bridge',
+    '├── utils/',
+    '│   └── tool_router.py         # Tool registry (must register all tools here)',
+    '├── bot.py                     # Slack bot + two-turn Claude pipeline',
+    '├── start.sh                   # Ordered startup script',
+    '├── requirements.txt',
+    '├── .env                       # Local credentials (gitignored)',
+    '├── .env.example               # Template',
+    '└── .gitignore',
+    '```',
+  ].join('\n');
+});
 </script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 # Building the Fivetran Compliance Agent: A Multi-Agent Playbook
 
-**Version:** 1.0
+**Version:** 1.1
 **Last Updated:** 2026-02-27
 **Purpose:** Reconstructing this system from scratch using autonomous parallel agents
 
@@ -64,6 +64,9 @@ LangChain + LangSmith · Slack Bolt · Claude Opus 4.6 / Haiku 4.5 · Angular 17
 | Q | LangSmith Observability Agent | 6 | R |
 | R | Admin Portal Agent | 6 | Q |
 | S | Role Risk Matrix Agent | 7 | — |
+| T | Test Agent | 8 | U |
+| U | QA Agent | 8 | T |
+| V | Bug Fix Agent | 8 | — (runs after T + U complete) |
 
 ---
 
@@ -83,6 +86,8 @@ Phase 4:  [L] [M]                          ← parallel after Phase 3
 Phase 5:  [N] [O] [P]   Phase 6: [Q] [R]  ← 5 and 6 run in parallel after Phase 4
               ↓
 Phase 7:  [S]                              ← after Phase 4 (can overlap Phase 5/6)
+              ↓
+Phase 8:  [T] [U] ──────────→ [V]         ← T and U in parallel; V after both complete
 ```
 
 ---
@@ -837,6 +842,280 @@ curl -s -X POST http://localhost:8080/mcp \
 
 ---
 
+## Phase 8 — Quality Assurance
+
+Phase 8 runs after every new feature phase (Phase 5, 6, or 7) completes.
+Agents T and U run in parallel. Agent V runs after both finish.
+
+The three-agent loop is reusable — invoke it after any non-trivial code change
+by providing T and U with the specific files and scenarios relevant to the change.
+
+---
+
+### Agent T: Test Agent
+
+**Goal:** Execute smoke tests, regression tests, and stress tests for new code.
+Produce a structured PASS/FAIL report that V and U can act on.
+
+**Inputs:** New or modified files from the completed phase; running services
+**Produces:** Structured test report with per-test PASS/FAIL + exact error output
+
+**When to invoke:** After every new feature (new migration, new service, new Slack bot handler).
+Always run T and U in parallel — they are independent.
+
+**Prompt template:**
+```
+You are the Test Agent. Run smoke, regression, and stress tests for [FEATURE NAME].
+
+Working directory: /path/to/compliance-agent
+Activate venv: source .venv/bin/activate
+
+== SMOKE TESTS (happy path) ==
+[List 4-6 happy-path scenarios with exact Python or bash commands]
+
+== REGRESSION TESTS (guard against known past failures) ==
+[List 2-4 tests that verify previously broken behaviour stays fixed]
+  Known failure patterns to guard:
+  - psycopg2 + pgvector: use CAST(:param AS vector), never :param::vector
+  - SQLAlchemy ANY(:ids): use PostgreSQL array literal + ::uuid[] cast
+  - NetSuite pagination: page_size must be 200, never 1000
+  - Orphaned tool_result: _trim_history must advance to first HumanMessage
+  - views_open() must be synchronous (trigger_id expires in 3s)
+
+== STRESS TESTS (edge cases and high load) ==
+[List 2-3 edge-case scenarios: empty inputs, None values, large inputs,
+ concurrent calls, high-volume DB queries]
+
+After all tests output this report format:
+=== [FEATURE NAME] TEST RESULTS ===
+TEST N (description): PASS/FAIL — one-line reason
+...
+TOTAL: X/Y PASS
+FAILURES: detailed error output for each failure
+ROOT CAUSE (if identifiable): precise file:line + description
+```
+
+**Regression test suite — always include these:**
+```bash
+# 1. Slack bot syntax check
+python3 -c "import ast; ast.parse(open('slack_bot_local.py').read()); print('syntax OK')"
+
+# 2. DB migration idempotency — reapply should not error
+psql $DATABASE_URL -f database/migrations/<latest>.sql
+
+# 3. Feature flag OFF — verify no crash when feature is disabled
+USE_FEATURE_FLAG=false python3 -c "import slack_bot_local"
+
+# 4. MCP server still responds after change
+curl -s http://localhost:8080/health | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['status']=='ok', d"
+```
+
+**Stress test patterns:**
+```python
+# Empty / None inputs
+service.method(run_id=None, query_preview="", correction="", tool_called=None)
+
+# Very long inputs (truncation handling)
+service.method(query_preview="x" * 10000, correction="y" * 10000)
+
+# Concurrent calls (threading check)
+import threading
+threads = [threading.Thread(target=service.method, args=(...)) for _ in range(10)]
+[t.start() for t in threads]; [t.join() for t in threads]
+
+# High-similarity / low-similarity boundary (for vector search)
+results_high = service.find(query_that_should_match)    # expect ≥1 result
+results_low  = service.find("completely unrelated text") # expect 0 results
+```
+
+**Verification gate (Test Agent passes when):**
+- All smoke tests PASS
+- All regression guards PASS
+- Stress tests produce no unhandled exceptions (warnings are acceptable)
+
+---
+
+### Agent U: QA Agent
+
+**Goal:** Static code review — find bugs, edge cases, and integration issues
+that tests might not catch. Focus on correctness, not style.
+
+**Inputs:** New or modified source files from the completed phase
+**Produces:** Structured QA report (CRITICAL / MEDIUM / LOW) with exact file:line + fix
+
+**When to invoke:** In parallel with Agent T — independent of test execution.
+
+**Prompt template:**
+```
+You are the QA Agent. Perform a thorough code review of [FEATURE NAME].
+
+Read these files in full:
+  [list all new/modified files]
+
+For each file check:
+
+CORRECTNESS
+  □ Are all SQL parameters correctly bound? (named-style :param, no mixed styles)
+  □ For pgvector: are all vector casts using CAST(:param AS vector), not :param::vector?
+  □ For uuid arrays: is ANY(:ids) using a PostgreSQL array literal + ::uuid[] cast?
+  □ Are session.close() calls in finally blocks to prevent connection leaks?
+  □ Are all DB writes wrapped in try/except with session.rollback() on failure?
+  □ Is every side-effect call (DB write, API call, cache bust) non-blocking?
+
+EDGE CASES
+  □ What happens with None / empty string inputs?
+  □ What happens if the DB table is empty (zero-row query)?
+  □ What happens if the feature flag is False?
+  □ What happens on concurrent calls (thread safety)?
+  □ What happens if a downstream service (Redis, LangSmith) is unavailable?
+
+INTEGRATION
+  □ Does the feature flag actually gate all code paths?
+  □ Is the new code reachable from the Slack bot? (DM + mention paths)
+  □ Is every new MCP tool registered in utils/tool_router.py?
+  □ Do LangSmith tags fire correctly (check metadata keys)?
+
+Produce this report:
+=== [FEATURE NAME] QA REVIEW ===
+
+CRITICAL BUGS (will cause errors or data loss):
+  BUG-C1: file.py:line — description — fix
+
+MEDIUM ISSUES (incorrect behavior, won't crash):
+  BUG-M1: file.py:line — description — fix
+
+LOW / SUGGESTIONS:
+  BUG-L1: file.py:line — description — suggestion
+
+OVERALL: SHIP / NEEDS FIXES
+```
+
+**Standard QA checklist items (always check):**
+
+| Check | Common failure | Correct pattern |
+|-------|---------------|-----------------|
+| pgvector SQL cast | `:param::vector` (psycopg2 misparsed) | `CAST(:param AS vector)` |
+| UUID array in SQL | `ANY(:ids)` with Python list | `ANY(:ids::uuid[])` + `{uuid1,uuid2}` literal |
+| Session leak | Missing `finally: session.close()` | Always close in `finally` |
+| Blocking side-effect | Direct DB write in Slack handler | `threading.Thread(daemon=True)` |
+| Feature flag scope | Flag checked too late | Check at entry point, not deep in stack |
+| Empty table query | Exception on `.fetchone()[0]` | `or 0` / `or []` default |
+| Slack trigger_id | `views_open()` after `await` | Must be synchronous, within 3s |
+| History trim | Slicing mid-tool-pair | Advance to next HumanMessage boundary |
+
+---
+
+### Agent V: Bug Fix Agent
+
+**Goal:** Fix all CRITICAL and MEDIUM bugs identified by T (test failures) and
+U (QA review). Verify each fix with a live test. Never fix more than was reported.
+
+**Inputs:** Test report from Agent T + QA report from Agent U
+**Produces:** Fixed source files + live test confirmation for each fix
+
+**When to invoke:** After both T and U have completed. Pass both reports in the prompt.
+
+**Prompt template:**
+```
+You are the Bug Fix Agent. Fix the bugs listed below.
+
+== TEST FAILURES (from Test Agent) ==
+[Paste full failure block from T's report]
+
+== QA BUGS (from QA Agent — fix CRITICAL and MEDIUM only) ==
+[Paste CRITICAL and MEDIUM sections from U's report]
+
+Rules:
+1. Fix only what is listed. Do not refactor, rename, or clean up anything else.
+2. Read the file before editing — never edit blind.
+3. For each fix, run a live test to confirm it resolves the failure.
+4. If a fix introduces a new failure, revert and report it — do not compound.
+
+After all fixes, output:
+=== BUG FIX SUMMARY ===
+BUG-C1 (description): FIXED / REVERTED — what changed + live test result
+BUG-M1 (description): FIXED / REVERTED — what changed + live test result
+...
+Live test result: PASS/FAIL
+```
+
+**Known fix patterns (reference when applying):**
+
+```python
+# pgvector CAST — use SQL function form, not :: operator
+# WRONG:  ":param::vector"
+# RIGHT:  "CAST(:param AS vector)"
+
+# UUID array in SQLAlchemy text()
+# WRONG:  WHERE id = ANY(:ids)   with {"ids": python_list}
+# RIGHT:  WHERE id = ANY(:ids::uuid[])  with {"ids": "{uuid1,uuid2}"}
+
+# Session close
+# WRONG:
+session = get_session()
+session.execute(...)
+session.commit()
+# RIGHT:
+session = get_session()
+try:
+    session.execute(...)
+    session.commit()
+except Exception:
+    session.rollback()
+finally:
+    session.close()
+
+# Non-blocking side-effect
+# WRONG:  _save_to_db(data)   # blocks Slack response
+# RIGHT:  threading.Thread(target=_save_to_db, args=(data,), daemon=True).start()
+```
+
+**Verification gate (Bug Fix Agent passes when):**
+- Every CRITICAL bug has a live test showing the previously-failing scenario now passes
+- No new failures introduced
+- Slack bot restarts cleanly after edits
+
+---
+
+### Phase 8 Orchestration Example
+
+This is the exact pattern used to validate Feedback Phase C (2026-02-27):
+
+```
+Step 1: Launch T (Test Agent) and U (QA Agent) simultaneously
+        — T runs 10 smoke/regression/stress tests
+        — U does static review of correction_service.py + slack_bot_local.py changes
+
+Step 2: T finds: TEST 3 / TEST 5 / TEST 7 FAIL
+        Root cause: psycopg2 misparses :qvec::vector — treats :: as new named param
+
+        U finds independently:
+          BUG-C1: :param::vector in SELECT (lines 133/135/136) — misparsed by psycopg2
+          BUG-C2: ANY(:ids) with Python UUID list — type inference fails → uuid[] cast needed
+
+Step 3: Launch V (Bug Fix Agent) with both reports
+        V reads correction_service.py, applies CAST(:qvec AS vector) to all 4 vector sites,
+        applies ::uuid[] + array literal fix to the UPDATE statement.
+        V runs live test: store_correction() → find_similar_corrections() → PASS
+
+Step 4: Orchestrator re-runs critical tests from T's report to confirm resolution
+        Results: 6/6 PASS (store, find-match, find-no-match, format, used_count, edge-case)
+```
+
+**When to skip Phase 8:**
+- Trivial one-line changes (typo fix, comment update, log message)
+- Changes that are already covered by an existing passing test suite
+- Documentation-only changes
+
+**When to always run Phase 8:**
+- New SQL migrations
+- New service modules (e.g., `services/correction_service.py`)
+- New Slack bot handlers (action handlers, view handlers)
+- Changes to `process_with_claude()` or `_save_feedback()`
+- Any change touching pgvector queries
+
+---
+
 ## Coordination Patterns
 
 ### Pattern 1: Shared Database Session
@@ -885,6 +1164,36 @@ Every new MCP tool MUST be added to `utils/tool_router.py` intent groups.
 If not registered, the tool is silently excluded from every Claude query.
 Check: after adding a tool, verify it appears in select_tools_for_intent() output
 for a representative query string.
+
+### Pattern 6: Three-Agent QA Loop (Test → QA → Bug Fix)
+
+Use this pattern after every non-trivial feature implementation. Launch T and U in
+parallel, then V after both complete.
+
+```
+# Step 1: Launch T and U simultaneously (independent — no shared state)
+task(agent=T, prompt="Run smoke/regression/stress tests for [feature]", background=True)
+task(agent=U, prompt="Review [files] for bugs and edge cases", background=True)
+
+# Step 2: Wait for both to complete
+# Step 3: Launch V with both reports
+task(agent=V, prompt=f"Fix these bugs:\n\nT report:\n{T_output}\n\nU report:\n{U_output}")
+
+# Step 4: Orchestrator re-runs any previously-failing tests to confirm resolution
+```
+
+**Why parallel T + U?** They are completely independent — T exercises the running code
+while U reads the source. Running them together halves wall-clock time and prevents
+T's findings from anchoring U's review (independent analysis catches more bugs).
+
+**Agent V constraint:** V must fix ONLY what T and U reported. It must not refactor,
+clean up, or improve anything beyond the listed bugs — scope creep introduces new bugs.
+
+**Key signals that Phase 8 is needed:**
+- Any new `session.execute(sqla_text(...))` call with vector or UUID parameters
+- Any new `threading.Thread(...)` side-effect
+- Any new Slack modal or action handler
+- Any new feature flag added to `.env`
 
 ---
 
@@ -955,6 +1264,8 @@ These are hard-won lessons. Violating any of them has caused data loss or silent
 | 10 | `files_upload_v2()` requires `files:write` OAuth scope | Upload silently fails, fallback shown |
 | 11 | Use `HARD LIMIT` / `MAXIMUM N chars` in prompts, not soft wording | Ignored by Claude |
 | 12 | Never hardcode system names (NetSuite/Okta/Salesforce) in capabilities response | Call `list_systems` first |
+| 13 | pgvector casts in SQLAlchemy `text()`: use `CAST(:param AS vector)` never `:param::vector` | psycopg2 misparses `::` after a named param as a second param — silent type error |
+| 14 | UUID arrays in `text()`: pass `"{uuid1,uuid2}"` literal + `::uuid[]` cast, not Python list | psycopg2 cannot infer array element type from a Python list in a named parameter |
 
 ---
 
@@ -991,6 +1302,11 @@ NETSUITE_RESTLET_URL=https://...
 USE_MCP_CACHE=true
 USE_CONV_SUMMARIES=true
 USE_ANSWER_FEEDBACK=true
+USE_CORRECTION_CONTEXT=true   # Phase C — pgvector correction embeddings
+
+# Phase C tuning
+CORRECTION_MIN_SIMILARITY=0.70  # Cosine similarity threshold for correction retrieval
+CORRECTION_TOP_K=3              # Max past corrections to inject per query
 
 # Tuning
 MAX_TOKENS_SLACK=1024

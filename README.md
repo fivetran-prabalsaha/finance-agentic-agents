@@ -1,4 +1,4 @@
-# SOD Compliance & Risk Assessment System
+# SOD Compliance & Risk Assessment Agentic Framework
 
 > **Status**: ✅ Production Ready | **Version**: 3.0.0 | Last Updated: 2026-04-12
 

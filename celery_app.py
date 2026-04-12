@@ -8,11 +8,12 @@ This module defines Celery tasks for:
 4. Data synchronization
 """
 
-import os
 import logging
+import os
+from datetime import datetime
+
 from celery import Celery
 from celery.schedules import crontab
-from datetime import datetime
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -69,13 +70,13 @@ def run_compliance_scan(self):
     logger.info("Starting scheduled compliance scan")
 
     try:
-        from models.database_config import get_session
-        from repositories.user_repository import UserRepository
-        from repositories.role_repository import RoleRepository
-        from repositories.violation_repository import ViolationRepository
-        from repositories.sod_rule_repository import SODRuleRepository
-        from services.netsuite_client import NetSuiteClient
         from agents.orchestrator import create_orchestrator
+        from models.database_config import get_session
+        from repositories.role_repository import RoleRepository
+        from repositories.sod_rule_repository import SODRuleRepository
+        from repositories.user_repository import UserRepository
+        from repositories.violation_repository import ViolationRepository
+        from services.netsuite_client import NetSuiteClient
 
         # Get notification recipients from environment
         recipients = os.getenv('COMPLIANCE_NOTIFICATION_EMAILS', '').split(',')
@@ -128,10 +129,10 @@ def run_risk_assessment(self):
     logger.info("Starting scheduled risk assessment")
 
     try:
+        from agents.risk_assessor import create_risk_assessor
         from models.database_config import get_session
         from repositories.user_repository import UserRepository
         from repositories.violation_repository import ViolationRepository
-        from agents.risk_assessor import create_risk_assessor
 
         with get_session() as session:
             user_repo = UserRepository(session)
@@ -180,13 +181,13 @@ def analyze_user(self, user_email: str):
     logger.info(f"Analyzing user: {user_email}")
 
     try:
-        from models.database_config import get_session
-        from repositories.user_repository import UserRepository
-        from repositories.role_repository import RoleRepository
-        from repositories.violation_repository import ViolationRepository
-        from repositories.sod_rule_repository import SODRuleRepository
-        from services.netsuite_client import NetSuiteClient
         from agents.orchestrator import create_orchestrator
+        from models.database_config import get_session
+        from repositories.role_repository import RoleRepository
+        from repositories.sod_rule_repository import SODRuleRepository
+        from repositories.user_repository import UserRepository
+        from repositories.violation_repository import ViolationRepository
+        from services.netsuite_client import NetSuiteClient
 
         with get_session() as session:
             user_repo = UserRepository(session)
@@ -229,10 +230,10 @@ def send_violation_alert(self, violation_id: str, recipients: list):
     logger.info(f"Sending alert for violation: {violation_id}")
 
     try:
+        from agents.notifier import create_notifier
         from models.database_config import get_session
         from repositories.user_repository import UserRepository
         from repositories.violation_repository import ViolationRepository
-        from agents.notifier import create_notifier
 
         with get_session() as session:
             user_repo = UserRepository(session)
@@ -283,11 +284,11 @@ def sync_netsuite_data(self):
     logger.info("Starting NetSuite data sync")
 
     try:
-        from models.database_config import get_session
-        from repositories.user_repository import UserRepository
-        from repositories.role_repository import RoleRepository
-        from services.netsuite_client import NetSuiteClient
         from agents.data_collector import DataCollectionAgent
+        from models.database_config import get_session
+        from repositories.role_repository import RoleRepository
+        from repositories.user_repository import UserRepository
+        from services.netsuite_client import NetSuiteClient
 
         with get_session() as session:
             user_repo = UserRepository(session)
@@ -348,10 +349,12 @@ def cleanup_old_data(self, days_to_keep: int = 90):
     logger.info(f"Starting data cleanup (keeping last {days_to_keep} days)")
 
     try:
-        from models.database_config import get_session
-        from models.database import Violation, AuditTrail, ViolationStatus
-        from sqlalchemy import and_
         from datetime import timedelta
+
+        from sqlalchemy import and_
+
+        from models.database import AuditTrail, Violation, ViolationStatus
+        from models.database_config import get_session
 
         cutoff_date = datetime.now() - timedelta(days=days_to_keep)
 

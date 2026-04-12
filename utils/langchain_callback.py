@@ -13,7 +13,8 @@ Usage:
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
+
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.outputs import LLMResult
 
@@ -28,7 +29,7 @@ class TokenTrackingCallback(BaseCallbackHandler):
     into the global TokenTracker.
     """
 
-    def __init__(self, agent_name: str = "langchain_agent", operation: Optional[str] = None):
+    def __init__(self, agent_name: str = "langchain_agent", operation: str | None = None):
         """
         Args:
             agent_name: Label used in token usage reports (e.g., 'analyzer', 'risk_assessor')
@@ -70,5 +71,5 @@ class TokenTrackingCallback(BaseCallbackHandler):
         except Exception as e:
             logger.warning(f"TokenTrackingCallback failed to record usage: {e}")
 
-    def on_llm_error(self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any) -> None:
+    def on_llm_error(self, error: Exception | KeyboardInterrupt, **kwargs: Any) -> None:
         logger.warning(f"LLM error in {self.agent_name}: {error}")

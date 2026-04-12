@@ -4,13 +4,14 @@ User Reconciliation Repository
 Data access layer for Okta-NetSuite user reconciliation records
 """
 
-from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta
-from sqlalchemy.orm import Session
-from sqlalchemy import desc, and_, or_
-
-from models.database import UserReconciliation, ReconciliationStatus, RiskLevel
 import logging
+from datetime import datetime, timedelta
+from typing import Any
+
+from sqlalchemy import and_, desc
+from sqlalchemy.orm import Session
+
+from models.database import ReconciliationStatus, RiskLevel, UserReconciliation
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,7 @@ class UserReconciliationRepository:
     def __init__(self, session: Session):
         self.session = session
 
-    def create_reconciliation(self, recon_data: Dict[str, Any]) -> UserReconciliation:
+    def create_reconciliation(self, recon_data: dict[str, Any]) -> UserReconciliation:
         """Create a new reconciliation record"""
         reconciliation = UserReconciliation(
             netsuite_user_id=recon_data.get('netsuite_user_id'),
@@ -44,13 +45,13 @@ class UserReconciliationRepository:
         logger.info(f"Created reconciliation record for {reconciliation.email}: {reconciliation.reconciliation_status}")
         return reconciliation
 
-    def get_reconciliation_by_id(self, recon_id: str) -> Optional[UserReconciliation]:
+    def get_reconciliation_by_id(self, recon_id: str) -> UserReconciliation | None:
         """Get reconciliation by UUID"""
         return self.session.query(UserReconciliation).filter(
             UserReconciliation.id == recon_id
         ).first()
 
-    def get_reconciliations_by_email(self, email: str, limit: Optional[int] = None) -> List[UserReconciliation]:
+    def get_reconciliations_by_email(self, email: str, limit: int | None = None) -> list[UserReconciliation]:
         """Get reconciliation records for a specific email"""
         query = self.session.query(UserReconciliation).filter(
             UserReconciliation.email == email
@@ -61,7 +62,7 @@ class UserReconciliationRepository:
 
         return query.all()
 
-    def get_latest_reconciliation_by_email(self, email: str) -> Optional[UserReconciliation]:
+    def get_latest_reconciliation_by_email(self, email: str) -> UserReconciliation | None:
         """Get the most recent reconciliation record for an email"""
         return self.session.query(UserReconciliation).filter(
             UserReconciliation.email == email
@@ -70,8 +71,8 @@ class UserReconciliationRepository:
     def get_reconciliations_by_status(
         self,
         status: ReconciliationStatus,
-        limit: Optional[int] = None
-    ) -> List[UserReconciliation]:
+        limit: int | None = None
+    ) -> list[UserReconciliation]:
         """Get reconciliations by status"""
         query = self.session.query(UserReconciliation).filter(
             UserReconciliation.reconciliation_status == status
@@ -82,7 +83,7 @@ class UserReconciliationRepository:
 
         return query.all()
 
-    def get_orphaned_users(self, risk_level: Optional[RiskLevel] = None) -> List[UserReconciliation]:
+    def get_orphaned_users(self, risk_level: RiskLevel | None = None) -> list[UserReconciliation]:
         """Get orphaned users (active in NetSuite but deprovisioned in Okta)"""
         query = self.session.query(UserReconciliation).filter(
             UserReconciliation.reconciliation_status == ReconciliationStatus.ORPHANED
@@ -93,16 +94,16 @@ class UserReconciliationRepository:
 
         return query.order_by(desc(UserReconciliation.reconciled_at)).all()
 
-    def get_high_risk_discrepancies(self) -> List[UserReconciliation]:
+    def get_high_risk_discrepancies(self) -> list[UserReconciliation]:
         """Get all high-risk reconciliation discrepancies"""
         return self.session.query(UserReconciliation).filter(
             UserReconciliation.risk_level == RiskLevel.HIGH
         ).order_by(desc(UserReconciliation.reconciled_at)).all()
 
-    def get_reconciliations_requiring_action(self, limit: Optional[int] = None) -> List[UserReconciliation]:
+    def get_reconciliations_requiring_action(self, limit: int | None = None) -> list[UserReconciliation]:
         """Get reconciliations that require action"""
         query = self.session.query(UserReconciliation).filter(
-            UserReconciliation.requires_action == True
+            UserReconciliation.requires_action
         ).order_by(
             UserReconciliation.risk_level.desc(),
             desc(UserReconciliation.reconciled_at)
@@ -113,13 +114,13 @@ class UserReconciliationRepository:
 
         return query.all()
 
-    def get_reconciliations_by_scan(self, scan_id: str) -> List[UserReconciliation]:
+    def get_reconciliations_by_scan(self, scan_id: str) -> list[UserReconciliation]:
         """Get all reconciliations from a specific scan"""
         return self.session.query(UserReconciliation).filter(
             UserReconciliation.scan_id == scan_id
         ).order_by(UserReconciliation.email).all()
 
-    def get_recent_reconciliations(self, hours: int = 24, limit: Optional[int] = None) -> List[UserReconciliation]:
+    def get_recent_reconciliations(self, hours: int = 24, limit: int | None = None) -> list[UserReconciliation]:
         """Get reconciliations from the last N hours"""
         cutoff_date = datetime.utcnow() - timedelta(hours=hours)
         query = self.session.query(UserReconciliation).filter(
@@ -131,7 +132,7 @@ class UserReconciliationRepository:
 
         return query.all()
 
-    def get_reconciliation_summary(self, scan_id: Optional[str] = None) -> Dict[str, Any]:
+    def get_reconciliation_summary(self, scan_id: str | None = None) -> dict[str, Any]:
         """Get summary statistics for reconciliations"""
         query = self.session.query(UserReconciliation)
 
@@ -153,7 +154,7 @@ class UserReconciliationRepository:
             risk_counts[risk.value] = count
 
         # Action required count
-        action_required = query.filter(UserReconciliation.requires_action == True).count()
+        action_required = query.filter(UserReconciliation.requires_action).count()
 
         return {
             'total_reconciliations': total,
@@ -170,7 +171,7 @@ class UserReconciliationRepository:
             'low_risk': risk_counts.get('LOW', 0)
         }
 
-    def bulk_create_reconciliations(self, reconciliations_data: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def bulk_create_reconciliations(self, reconciliations_data: list[dict[str, Any]]) -> dict[str, Any]:
         """Bulk create reconciliation records"""
         created = 0
         errors = []
@@ -207,9 +208,9 @@ class UserReconciliationRepository:
         self,
         recon_id: str,
         status: ReconciliationStatus,
-        requires_action: Optional[bool] = None,
-        action_required: Optional[str] = None
-    ) -> Optional[UserReconciliation]:
+        requires_action: bool | None = None,
+        action_required: str | None = None
+    ) -> UserReconciliation | None:
         """Update reconciliation status"""
         recon = self.get_reconciliation_by_id(recon_id)
 
@@ -229,11 +230,11 @@ class UserReconciliationRepository:
 
         return None
 
-    def get_reconciliations_for_deactivation(self) -> List[UserReconciliation]:
+    def get_reconciliations_for_deactivation(self) -> list[UserReconciliation]:
         """Get reconciliations that recommend deactivation in NetSuite"""
         return self.session.query(UserReconciliation).filter(
             and_(
-                UserReconciliation.requires_action == True,
+                UserReconciliation.requires_action,
                 UserReconciliation.action_required.in_(['DEACTIVATE_NETSUITE', 'DEACTIVATE']),
                 UserReconciliation.risk_level.in_([RiskLevel.HIGH, RiskLevel.MEDIUM])
             )

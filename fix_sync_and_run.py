@@ -4,9 +4,12 @@ Fix database constraints and run full sync to fetch all 1,933 users
 """
 
 import sys
+
 from sqlalchemy import text
-from models.database_config import DatabaseConfig
+
 from agents.data_collector import DataCollectionAgent
+from models.database_config import DatabaseConfig
+
 
 def fix_database_constraints():
     """Update database constraints to match lowercase enum values"""
@@ -55,7 +58,7 @@ def run_full_sync():
     print("="*80)
 
     if result.get('success'):
-        print(f"✅ Success!")
+        print("✅ Success!")
         print(f"   Users fetched: {result.get('users_fetched', 0)}")
         print(f"   Users synced: {result.get('users_synced', 0)}")
         print(f"   Roles synced: {result.get('roles_synced', 0)}")

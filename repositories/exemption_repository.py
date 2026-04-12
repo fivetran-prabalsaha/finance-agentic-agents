@@ -5,12 +5,13 @@ Handles CRUD operations and queries for the ViolationExemption model
 """
 
 import logging
-from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
-from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_, desc
+from typing import Any
 
-from models.database import ViolationExemption, ExemptionStatus, Violation, User, SODRule
+from sqlalchemy import and_, desc
+from sqlalchemy.orm import Session
+
+from models.database import ExemptionStatus, ViolationExemption
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +36,9 @@ class ExemptionRepository:
         reason: str,
         rationale: str,
         requested_by: str,
-        business_justification: Optional[str] = None,
-        compensating_controls: Optional[str] = None,
-        embedding: Optional[List[float]] = None
+        business_justification: str | None = None,
+        compensating_controls: str | None = None,
+        embedding: list[float] | None = None
     ) -> ViolationExemption:
         """
         Create a new exemption request
@@ -80,7 +81,7 @@ class ExemptionRepository:
         self,
         exemption_id: str,
         approved_by: str,
-        approval_notes: Optional[str] = None,
+        approval_notes: str | None = None,
         expires_in_days: int = 365
     ) -> ViolationExemption:
         """
@@ -153,7 +154,7 @@ class ExemptionRepository:
         logger.info(f"Rejected exemption: {exemption_id} by {rejected_by}")
         return exemption
 
-    def get_exemption_by_id(self, exemption_id: str) -> Optional[ViolationExemption]:
+    def get_exemption_by_id(self, exemption_id: str) -> ViolationExemption | None:
         """Get exemption by ID"""
         return self.session.query(ViolationExemption).filter(
             ViolationExemption.id == exemption_id
@@ -162,8 +163,8 @@ class ExemptionRepository:
     def get_exemptions_by_user(
         self,
         user_id: str,
-        status: Optional[ExemptionStatus] = None
-    ) -> List[ViolationExemption]:
+        status: ExemptionStatus | None = None
+    ) -> list[ViolationExemption]:
         """
         Get exemptions for a specific user
 
@@ -186,8 +187,8 @@ class ExemptionRepository:
     def get_exemptions_by_rule(
         self,
         rule_id: str,
-        status: Optional[ExemptionStatus] = None
-    ) -> List[ViolationExemption]:
+        status: ExemptionStatus | None = None
+    ) -> list[ViolationExemption]:
         """
         Get exemptions for a specific rule
 
@@ -207,19 +208,19 @@ class ExemptionRepository:
 
         return query.order_by(desc(ViolationExemption.requested_at)).all()
 
-    def get_pending_exemptions(self) -> List[ViolationExemption]:
+    def get_pending_exemptions(self) -> list[ViolationExemption]:
         """Get all pending exemption requests"""
         return self.session.query(ViolationExemption).filter(
             ViolationExemption.status == ExemptionStatus.PENDING
         ).order_by(ViolationExemption.requested_at).all()
 
-    def get_approved_exemptions(self) -> List[ViolationExemption]:
+    def get_approved_exemptions(self) -> list[ViolationExemption]:
         """Get all approved exemptions"""
         return self.session.query(ViolationExemption).filter(
             ViolationExemption.status == ExemptionStatus.APPROVED
         ).order_by(desc(ViolationExemption.approved_at)).all()
 
-    def get_exemptions_needing_review(self) -> List[ViolationExemption]:
+    def get_exemptions_needing_review(self) -> list[ViolationExemption]:
         """Get exemptions that need periodic review"""
         return self.session.query(ViolationExemption).filter(
             and_(
@@ -228,7 +229,7 @@ class ExemptionRepository:
             )
         ).order_by(ViolationExemption.next_review_date).all()
 
-    def get_expiring_exemptions(self, days: int = 30) -> List[ViolationExemption]:
+    def get_expiring_exemptions(self, days: int = 30) -> list[ViolationExemption]:
         """
         Get exemptions expiring within specified days
 
@@ -284,7 +285,7 @@ class ExemptionRepository:
             raise ValueError(f"Exemption {exemption_id} not found")
 
         if exemption.status != ExemptionStatus.APPROVED:
-            raise ValueError(f"Can only revoke APPROVED exemptions")
+            raise ValueError("Can only revoke APPROVED exemptions")
 
         exemption.status = ExemptionStatus.REVOKED
         exemption.exemption_metadata = exemption.exemption_metadata or {}
@@ -301,7 +302,7 @@ class ExemptionRepository:
     def update_exemption_embedding(
         self,
         exemption_id: str,
-        embedding: List[float]
+        embedding: list[float]
     ) -> ViolationExemption:
         """
         Update exemption embedding (for Phase 3: Learning Loop)
@@ -325,7 +326,7 @@ class ExemptionRepository:
         logger.info(f"Updated embedding for exemption: {exemption_id}")
         return exemption
 
-    def get_exemption_stats(self) -> Dict[str, Any]:
+    def get_exemption_stats(self) -> dict[str, Any]:
         """Get exemption statistics"""
         total = self.session.query(ViolationExemption).count()
         pending = self.session.query(ViolationExemption).filter(

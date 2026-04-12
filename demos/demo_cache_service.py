@@ -17,11 +17,11 @@ from pathlib import Path
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from services.cache_service import CacheService
+from agents.notifier import NotificationAgent
 from models.database_config import DatabaseConfig
 from repositories.user_repository import UserRepository
 from repositories.violation_repository import ViolationRepository
-from agents.notifier import NotificationAgent
+from services.cache_service import CacheService
 
 
 def print_header(title: str):
@@ -134,7 +134,7 @@ def main():
     analysis1 = notifier._generate_ai_analysis(test_user, violations[:3], role_names)
     duration1 = time.time() - start_time
 
-    print(f"\n📝 Analysis generated:")
+    print("\n📝 Analysis generated:")
     print(f"   Length: {len(analysis1)} characters")
     print(f"   Duration: {duration1:.2f} seconds")
     print(f"\n   Preview: {analysis1[:200]}...")
@@ -150,7 +150,7 @@ def main():
     analysis2 = notifier._generate_ai_analysis(test_user, violations[:3], role_names)
     duration2 = time.time() - start_time
 
-    print(f"\n📝 Analysis retrieved:")
+    print("\n📝 Analysis retrieved:")
     print(f"   Length: {len(analysis2)} characters")
     print(f"   Duration: {duration2:.2f} seconds")
     print(f"   Speedup: {duration1/max(duration2, 0.001):.1f}x faster")
@@ -194,11 +194,11 @@ def main():
 
     # With cache
     start_time = time.time()
-    for i in range(num_requests):
+    for _i in range(num_requests):
         notifier._generate_ai_analysis(test_user, violations[:3], role_names)
     actual_with_cache = time.time() - start_time
 
-    print(f"\n📊 Performance Metrics:")
+    print("\n📊 Performance Metrics:")
     print_metric("Requests", str(num_requests))
     print_metric("Without cache (estimated)", f"{estimated_without_cache:.2f}", "seconds")
     print_metric("With cache (actual)", f"{actual_with_cache:.2f}", "seconds")
@@ -211,7 +211,7 @@ def main():
     cost_with_cache = cost_per_analysis * 1  # Only first call costs money
     cost_saved = cost_without_cache - cost_with_cache
 
-    print(f"\n💰 Cost Savings (estimated):")
+    print("\n💰 Cost Savings (estimated):")
     print_metric("Without cache", f"${cost_without_cache:.2f}")
     print_metric("With cache", f"${cost_with_cache:.2f}")
     print_metric("Saved", f"${cost_saved:.2f}")

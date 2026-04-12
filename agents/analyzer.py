@@ -10,21 +10,22 @@ This agent is responsible for:
 6. Using Claude Opus for complex reasoning
 """
 
-import logging
 import json
-from typing import Dict, Any, List, Optional, Tuple
+import logging
 from datetime import datetime
 from pathlib import Path
+from typing import Any
+
 from langchain_anthropic import ChatAnthropic
-from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import SystemMessage
 from langchain_core.output_parsers import JsonOutputParser
+from langchain_core.prompts import ChatPromptTemplate
 
-from models.database import ViolationSeverity, ViolationStatus
-from repositories.violation_repository import ViolationRepository
-from repositories.user_repository import UserRepository
+from models.database import ViolationSeverity
 from repositories.role_repository import RoleRepository
 from repositories.sod_rule_repository import SODRuleRepository
+from repositories.user_repository import UserRepository
+from repositories.violation_repository import ViolationRepository
 from utils.langchain_callback import TokenTrackingCallback
 
 logger = logging.getLogger(__name__)
@@ -52,7 +53,7 @@ class SODAnalysisAgent:
         role_repo: RoleRepository,
         violation_repo: ViolationRepository,
         sod_rule_repo: SODRuleRepository,
-        sod_rules_path: Optional[str] = None,
+        sod_rules_path: str | None = None,
         llm_model: str = "claude-opus-4.6",  # Use Opus for complex reasoning
         exception_repo=None  # Optional ExceptionRepository for business justification checks
     ):
@@ -104,10 +105,10 @@ class SODAnalysisAgent:
         logger.info(f"Loaded {len(self.sod_rules)} SOD rules")
         logger.info(f"Stored {len(self.rule_id_to_uuid)} SOD rules in database")
 
-    def _load_sod_rules(self, rules_path: str) -> List[Dict[str, Any]]:
+    def _load_sod_rules(self, rules_path: str) -> list[dict[str, Any]]:
         """Load SOD rules from JSON file"""
         try:
-            with open(rules_path, 'r') as f:
+            with open(rules_path) as f:
                 rules = json.load(f)
             logger.info(f"Loaded {len(rules)} SOD rules from {rules_path}")
             return rules
@@ -115,7 +116,7 @@ class SODAnalysisAgent:
             logger.error(f"Failed to load SOD rules: {str(e)}")
             return []
 
-    def _store_sod_rules_in_db(self) -> Dict[str, str]:
+    def _store_sod_rules_in_db(self) -> dict[str, str]:
         """
         Store SOD rules in database and create mapping from rule_id to UUID
 
@@ -138,7 +139,7 @@ class SODAnalysisAgent:
         logger.info(f"Created rule ID mappings for {len(mapping)} rules")
         return mapping
 
-    def analyze_all_users(self, scan_id: Optional[str] = None) -> Dict[str, Any]:
+    def analyze_all_users(self, scan_id: str | None = None) -> dict[str, Any]:
         """
         Analyze all active users for SOD violations
 
@@ -199,7 +200,7 @@ class SODAnalysisAgent:
                 'message': 'SOD analysis failed'
             }
 
-    def _analyze_user(self, user: Any, scan_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    def _analyze_user(self, user: Any, scan_id: str | None = None) -> list[dict[str, Any]]:
         """
         Analyze a single user for SOD violations
 
@@ -244,12 +245,12 @@ class SODAnalysisAgent:
     def _check_rule_violation(
         self,
         user: Any,
-        user_roles: List[Any],
-        user_role_names: List[str],
+        user_roles: list[Any],
+        user_role_names: list[str],
         user_permissions: set,
-        rule: Dict[str, Any],
-        scan_id: Optional[str] = None
-    ) -> Optional[Dict[str, Any]]:
+        rule: dict[str, Any],
+        scan_id: str | None = None
+    ) -> dict[str, Any] | None:
         """
         Check if user violates a specific SOD rule
 
@@ -326,7 +327,7 @@ class SODAnalysisAgent:
             if create_roles and approve_roles and rule['rule_type'] == 'FINANCIAL':
                 rule_violated = True
                 conflicting_items = create_roles + approve_roles
-                logger.info(f"Role-based violation detected: Create + Approve roles")
+                logger.info("Role-based violation detected: Create + Approve roles")
 
         # 4. Legacy IT_ACCESS check for specific business roles
         if not rule_violated and rule['rule_type'] == 'IT_ACCESS' and 'Administrator' in user_role_names:
@@ -384,7 +385,7 @@ class SODAnalysisAgent:
 
         # Store in database
         try:
-            violation_obj = self.violation_repo.create_violation(violation_data)
+            self.violation_repo.create_violation(violation_data)
             logger.info(
                 f"Violation detected: {user.email} - {rule['rule_name']} "
                 f"(severity: {rule['severity']}, risk: {risk_score})"
@@ -420,8 +421,8 @@ class SODAnalysisAgent:
     def _calculate_violation_risk_score(
         self,
         user: Any,
-        rule: Dict[str, Any],
-        conflicting_items: List[str]
+        rule: dict[str, Any],
+        conflicting_items: list[str]
     ) -> float:
         """
         Calculate risk score for a violation (0-100)
@@ -469,7 +470,7 @@ class SODAnalysisAgent:
         self,
         user_email: str,
         include_remediation: bool = True
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Use Claude Opus to perform deep analysis on a specific user with AI reasoning
 
@@ -597,7 +598,7 @@ Provide comprehensive analysis in this JSON format:
                 'message': 'AI analysis failed'
             }
 
-    def get_analysis_summary(self) -> Dict[str, Any]:
+    def get_analysis_summary(self) -> dict[str, Any]:
         """
         Get summary of all violations in the system
 
@@ -688,7 +689,7 @@ Provide comprehensive analysis in this JSON format:
 
         return user.job_function in it_functions
 
-    def _is_financial_rule(self, rule: Dict[str, Any]) -> bool:
+    def _is_financial_rule(self, rule: dict[str, Any]) -> bool:
         """
         Check if rule is related to financial operations
 
@@ -732,7 +733,7 @@ Provide comprehensive analysis in this JSON format:
 
         return False
 
-    def _has_business_justification(self, user: Any, rule: Dict[str, Any]) -> bool:
+    def _has_business_justification(self, user: Any, rule: dict[str, Any]) -> bool:
         """
         Check if user has a documented, active approved exception for this rule combination.
 

@@ -5,17 +5,26 @@ Defines models for storing approved SOD exceptions with compensating controls,
 tracking their effectiveness, and learning from precedents.
 """
 
-from datetime import datetime
-from typing import List
-from sqlalchemy import (
-    Column, String, Integer, Boolean, DateTime, Text, JSON, DECIMAL,
-    ForeignKey, Index, Date, CheckConstraint
-)
-from sqlalchemy.orm import relationship
-from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
-import uuid
 import enum
+import uuid
+from datetime import datetime
+
+from sqlalchemy import (
+    DECIMAL,
+    Boolean,
+    CheckConstraint,
+    Column,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+)
 from sqlalchemy import Enum as SQLEnum
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
+from sqlalchemy.orm import relationship
 
 from models.database_config import Base
 

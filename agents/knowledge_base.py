@@ -9,14 +9,15 @@ This agent is responsible for:
 5. Rule matching and retrieval
 """
 
-import logging
 import json
-from typing import Dict, Any, List, Optional, Tuple
+import logging
 from datetime import datetime
 from pathlib import Path
+from typing import Any
+
 import numpy as np
 from langchain_anthropic import ChatAnthropic
-from langchain_core.embeddings import Embeddings
+
 try:
     from langchain_huggingface import HuggingFaceEmbeddings
 except ImportError:
@@ -24,7 +25,6 @@ except ImportError:
     from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_core.prompts import ChatPromptTemplate
 
-from models.database import SODRule
 from repositories.role_repository import RoleRepository
 
 logger = logging.getLogger(__name__)
@@ -36,7 +36,7 @@ class KnowledgeBaseAgent:
     def __init__(
         self,
         role_repo: RoleRepository,
-        sod_rules_path: Optional[str] = None,
+        sod_rules_path: str | None = None,
         llm_model: str = "claude-sonnet-4.5-20250929",
         embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     ):
@@ -69,10 +69,10 @@ class KnowledgeBaseAgent:
         logger.info(f"Knowledge Base Agent initialized with {len(self.sod_rules)} rules")
         logger.info(f"Created {len(self.rule_embeddings)} rule embeddings")
 
-    def _load_sod_rules(self, rules_path: str) -> List[Dict[str, Any]]:
+    def _load_sod_rules(self, rules_path: str) -> list[dict[str, Any]]:
         """Load SOD rules from JSON file"""
         try:
-            with open(rules_path, 'r') as f:
+            with open(rules_path) as f:
                 rules = json.load(f)
             logger.info(f"Loaded {len(rules)} SOD rules from {rules_path}")
             return rules
@@ -80,7 +80,7 @@ class KnowledgeBaseAgent:
             logger.error(f"Failed to load SOD rules: {str(e)}")
             return []
 
-    def _create_rule_embeddings(self) -> Dict[str, np.ndarray]:
+    def _create_rule_embeddings(self) -> dict[str, np.ndarray]:
         """
         Create vector embeddings for all SOD rules
 
@@ -101,7 +101,7 @@ class KnowledgeBaseAgent:
         logger.info(f"Created embeddings for {len(rule_embeddings)} rules")
         return rule_embeddings
 
-    def _rule_to_text(self, rule: Dict[str, Any]) -> str:
+    def _rule_to_text(self, rule: dict[str, Any]) -> str:
         """
         Convert rule to rich text representation for embedding
 
@@ -132,7 +132,7 @@ class KnowledgeBaseAgent:
         query: str,
         top_k: int = 5,
         min_similarity: float = 0.5
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Find SOD rules similar to a query using semantic search
 
@@ -175,8 +175,8 @@ class KnowledgeBaseAgent:
 
     def find_rules_for_permissions(
         self,
-        permissions: List[str]
-    ) -> List[Dict[str, Any]]:
+        permissions: list[str]
+    ) -> list[dict[str, Any]]:
         """
         Find SOD rules that might be violated by a set of permissions
 
@@ -212,7 +212,7 @@ class KnowledgeBaseAgent:
         logger.info(f"Found {len(applicable_rules)} applicable rules")
         return applicable_rules
 
-    def get_rules_by_type(self, rule_type: str) -> List[Dict[str, Any]]:
+    def get_rules_by_type(self, rule_type: str) -> list[dict[str, Any]]:
         """
         Get all rules of a specific type
 
@@ -226,7 +226,7 @@ class KnowledgeBaseAgent:
         logger.info(f"Found {len(rules)} rules of type {rule_type}")
         return rules
 
-    def get_rules_by_severity(self, severity: str) -> List[Dict[str, Any]]:
+    def get_rules_by_severity(self, severity: str) -> list[dict[str, Any]]:
         """
         Get all rules of a specific severity
 
@@ -240,7 +240,7 @@ class KnowledgeBaseAgent:
         logger.info(f"Found {len(rules)} rules with severity {severity}")
         return rules
 
-    def get_rule_by_id(self, rule_id: str) -> Optional[Dict[str, Any]]:
+    def get_rule_by_id(self, rule_id: str) -> dict[str, Any] | None:
         """
         Get a specific rule by ID
 
@@ -255,7 +255,7 @@ class KnowledgeBaseAgent:
                 return rule
         return None
 
-    def explain_rule_with_ai(self, rule_id: str) -> Dict[str, Any]:
+    def explain_rule_with_ai(self, rule_id: str) -> dict[str, Any]:
         """
         Use Claude to provide detailed explanation of a rule
 
@@ -333,7 +333,7 @@ Provide explanation in this format:
         self,
         violation_description: str,
         top_k: int = 3
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Find similar violations based on description using semantic search
 
@@ -357,8 +357,8 @@ Provide explanation in this format:
 
     def recommend_rules_for_role_combination(
         self,
-        role_names: List[str]
-    ) -> Dict[str, Any]:
+        role_names: list[str]
+    ) -> dict[str, Any]:
         """
         Recommend which SOD rules to check for a role combination
 
@@ -433,7 +433,7 @@ Provide explanation in this format:
             'timestamp': datetime.now().isoformat()
         }
 
-    def get_knowledge_base_stats(self) -> Dict[str, Any]:
+    def get_knowledge_base_stats(self) -> dict[str, Any]:
         """
         Get statistics about the knowledge base
 

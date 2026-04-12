@@ -3,9 +3,9 @@ Test script for Autonomous Data Collection Agent
 
 Run with: python -m pytest tests/test_collection_agent.py -v
 """
+
 import pytest
-import time
-from datetime import datetime
+
 from agents.data_collector import DataCollectionAgent
 from models.database_config import DatabaseConfig, init_database
 
@@ -47,7 +47,7 @@ def test_manual_sync(agent):
     assert 'sync_id' in result
 
     if result['success']:
-        print(f"✅ Manual sync completed successfully")
+        print("✅ Manual sync completed successfully")
         print(f"   • Sync ID: {result['sync_id']}")
         print(f"   • Duration: {result['duration']:.2f}s")
         print(f"   • Users Fetched: {result['users_fetched']}")
@@ -74,13 +74,13 @@ def test_get_sync_status(agent):
     assert 'recent_syncs' in status
     assert 'statistics_7d' in status
 
-    print(f"✅ Status retrieved successfully")
+    print("✅ Status retrieved successfully")
     print(f"   • Agent Running: {status['is_running']}")
     print(f"   • Recent Syncs: {len(status['recent_syncs'])}")
 
     if status['last_successful_sync']:
         last = status['last_successful_sync']
-        print(f"   • Last Successful Sync:")
+        print("   • Last Successful Sync:")
         print(f"     - Completed: {last['completed_at']}")
         print(f"     - Duration: {last.get('duration', 'N/A')}s")
         print(f"     - Users: {last.get('users_synced', 0)}")

@@ -4,16 +4,16 @@ LLM Provider Factory
 Creates LLM provider instances based on configuration
 """
 
-from typing import Dict, Type, Optional
 import logging
 
-from .base import BaseLLMProvider, LLMConfig, LLMProvider as LLMProviderEnum
+from .base import BaseLLMProvider, LLMConfig
+from .base import LLMProvider as LLMProviderEnum
 from .providers.anthropic_provider import AnthropicProvider
-from .providers.openai_provider import OpenAIProvider
-from .providers.google_provider import GoogleProvider
-from .providers.cohere_provider import CohereProvider
 from .providers.azure_provider import AzureProvider
+from .providers.cohere_provider import CohereProvider
+from .providers.google_provider import GoogleProvider
 from .providers.local_provider import LocalProvider
+from .providers.openai_provider import OpenAIProvider
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ class LLMProviderFactory:
     """
 
     # Registry of available providers
-    _providers: Dict[str, Type[BaseLLMProvider]] = {
+    _providers: dict[str, type[BaseLLMProvider]] = {
         LLMProviderEnum.ANTHROPIC.value: AnthropicProvider,
         LLMProviderEnum.OPENAI.value: OpenAIProvider,
         LLMProviderEnum.GOOGLE.value: GoogleProvider,
@@ -75,7 +75,7 @@ class LLMProviderFactory:
     def register_provider(
         cls,
         name: str,
-        provider_class: Type[BaseLLMProvider]
+        provider_class: type[BaseLLMProvider]
     ) -> None:
         """
         Register a custom provider
@@ -104,7 +104,7 @@ class LLMProviderFactory:
         return list(cls._providers.keys())
 
     @classmethod
-    def get_provider_class(cls, provider_name: str) -> Optional[Type[BaseLLMProvider]]:
+    def get_provider_class(cls, provider_name: str) -> type[BaseLLMProvider] | None:
         """
         Get provider class by name
 

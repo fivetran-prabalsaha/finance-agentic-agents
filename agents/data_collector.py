@@ -7,18 +7,19 @@ to the local database, ensuring data is always fresh and complete.
 
 import logging
 import os
-from datetime import datetime, timedelta
-from typing import Dict, Any, Optional, List
+from datetime import datetime
+from typing import Any
+
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
-from models.database_config import DatabaseConfig
-from repositories.user_repository import UserRepository
-from repositories.role_repository import RoleRepository
-from repositories.sync_metadata_repository import SyncMetadataRepository
 from agents.analyzer import SODAnalysisAgent
 from connectors.netsuite_connector import NetSuiteConnector
+from models.database_config import DatabaseConfig
+from repositories.role_repository import RoleRepository
+from repositories.sync_metadata_repository import SyncMetadataRepository
+from repositories.user_repository import UserRepository
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +38,7 @@ class DataCollectionAgent:
 
     def __init__(
         self,
-        db_config: Optional[DatabaseConfig] = None,
+        db_config: DatabaseConfig | None = None,
         enable_scheduler: bool = True
     ):
         """
@@ -64,8 +65,8 @@ class DataCollectionAgent:
         }
 
         # SOD Analysis Agent
-        from repositories.violation_repository import ViolationRepository
         from repositories.sod_rule_repository import SODRuleRepository
+        from repositories.violation_repository import ViolationRepository
 
         self.violation_repo = ViolationRepository(self.session)
         self.rule_repo = SODRuleRepository(self.session)
@@ -126,7 +127,7 @@ class DataCollectionAgent:
             self.is_running = False
             logger.info("✅ DataCollectionAgent stopped")
 
-    def full_sync(self, system_name: str = 'netsuite', triggered_by: str = 'scheduler') -> Dict[str, Any]:
+    def full_sync(self, system_name: str = 'netsuite', triggered_by: str = 'scheduler') -> dict[str, Any]:
         """
         Perform full sync of all data from external system
 
@@ -296,7 +297,7 @@ class DataCollectionAgent:
                 'error': str(e)
             }
 
-    def incremental_sync(self, system_name: str = 'netsuite', triggered_by: str = 'scheduler') -> Dict[str, Any]:
+    def incremental_sync(self, system_name: str = 'netsuite', triggered_by: str = 'scheduler') -> dict[str, Any]:
         """
         Perform incremental sync (only changed data since last sync)
 
@@ -405,7 +406,7 @@ class DataCollectionAgent:
             self._send_alert(f"Incremental sync failed: {e}")
             return {'success': False, 'error': str(e)}
 
-    def manual_sync(self, system_name: str = 'netsuite', sync_type: str = 'full') -> Dict[str, Any]:
+    def manual_sync(self, system_name: str = 'netsuite', sync_type: str = 'full') -> dict[str, Any]:
         """
         Manually trigger a sync
 
@@ -423,7 +424,7 @@ class DataCollectionAgent:
         else:
             return self.incremental_sync(system_name, triggered_by='manual')
 
-    def get_sync_status(self, system_name: Optional[str] = None) -> Dict[str, Any]:
+    def get_sync_status(self, system_name: str | None = None) -> dict[str, Any]:
         """
         Get current sync status and recent history
 
@@ -545,7 +546,7 @@ class DataCollectionAgent:
 
 
 # Global instance
-_agent_instance: Optional[DataCollectionAgent] = None
+_agent_instance: DataCollectionAgent | None = None
 
 
 def get_collection_agent() -> DataCollectionAgent:

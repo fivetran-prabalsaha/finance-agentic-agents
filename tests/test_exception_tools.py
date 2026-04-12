@@ -19,12 +19,12 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from mcp.mcp_tools import (
-    record_exception_approval_handler,
     find_similar_exceptions_handler,
     get_exception_details_handler,
+    get_exception_effectiveness_stats_handler,
     list_approved_exceptions_handler,
+    record_exception_approval_handler,
     record_exception_violation_handler,
-    get_exception_effectiveness_stats_handler
 )
 
 

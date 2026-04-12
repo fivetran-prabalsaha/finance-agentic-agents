@@ -19,17 +19,18 @@ Options:
     --force-refresh  Force regeneration of all embeddings (default: only new/updated)
 """
 
-import sys
-import os
-import logging
-import json
 import argparse
-from pathlib import Path
+import json
+import logging
+import os
+import sys
 from datetime import datetime
-from typing import Dict, List, Any, Optional
+from pathlib import Path
+from typing import Any
+
 import psycopg2
-from psycopg2.extras import Json
 from dotenv import load_dotenv
+from psycopg2.extras import Json
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -95,7 +96,7 @@ class KnowledgeBaseEnricher:
             self.conn.close()
             logger.info("✓ Database connection closed")
 
-    def generate_embedding(self, text: str) -> List[float]:
+    def generate_embedding(self, text: str) -> list[float]:
         """
         Generate embedding vector for text
 
@@ -113,7 +114,7 @@ class KnowledgeBaseEnricher:
             logger.error(f"✗ Failed to generate embedding: {e}")
             raise
 
-    def upsert_document(self, doc_data: Dict[str, Any]):
+    def upsert_document(self, doc_data: dict[str, Any]):
         """
         Upsert document to knowledge_base_documents table
 
@@ -473,7 +474,7 @@ Level Risk Adjustments: {level_adjustments if level_adjustments else 'Standard'}
             return
 
         try:
-            with open(conflict_file, 'r') as f:
+            with open(conflict_file) as f:
                 data = json.load(f)
 
             conflicts = data.get('conflicts', [])

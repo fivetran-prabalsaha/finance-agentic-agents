@@ -4,13 +4,14 @@ Deactivation Log Repository
 Data access layer for user deactivation audit logs
 """
 
-from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta
-from sqlalchemy.orm import Session
-from sqlalchemy import desc, and_, or_
-
-from models.database import DeactivationLog, DeactivationAction, ExecutionMethod
 import logging
+from datetime import datetime, timedelta
+from typing import Any
+
+from sqlalchemy import and_, desc
+from sqlalchemy.orm import Session
+
+from models.database import DeactivationAction, DeactivationLog, ExecutionMethod
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,7 @@ class DeactivationLogRepository:
     def __init__(self, session: Session):
         self.session = session
 
-    def create_log(self, log_data: Dict[str, Any]) -> DeactivationLog:
+    def create_log(self, log_data: dict[str, Any]) -> DeactivationLog:
         """Create a new deactivation log entry"""
         log = DeactivationLog(
             netsuite_user_id=log_data.get('netsuite_user_id'),
@@ -47,13 +48,13 @@ class DeactivationLogRepository:
         logger.info(f"Created deactivation log for {log.email}: {log.action} - {log.status}")
         return log
 
-    def get_log_by_id(self, log_id: str) -> Optional[DeactivationLog]:
+    def get_log_by_id(self, log_id: str) -> DeactivationLog | None:
         """Get log by UUID"""
         return self.session.query(DeactivationLog).filter(
             DeactivationLog.id == log_id
         ).first()
 
-    def get_logs_by_email(self, email: str, limit: Optional[int] = None) -> List[DeactivationLog]:
+    def get_logs_by_email(self, email: str, limit: int | None = None) -> list[DeactivationLog]:
         """Get all logs for a specific email"""
         query = self.session.query(DeactivationLog).filter(
             DeactivationLog.email == email
@@ -64,7 +65,7 @@ class DeactivationLogRepository:
 
         return query.all()
 
-    def get_logs_by_approval(self, approval_request_id: str) -> List[DeactivationLog]:
+    def get_logs_by_approval(self, approval_request_id: str) -> list[DeactivationLog]:
         """Get all logs for a specific approval request"""
         return self.session.query(DeactivationLog).filter(
             DeactivationLog.approval_request_id == approval_request_id
@@ -73,8 +74,8 @@ class DeactivationLogRepository:
     def get_logs_by_action(
         self,
         action: DeactivationAction,
-        limit: Optional[int] = None
-    ) -> List[DeactivationLog]:
+        limit: int | None = None
+    ) -> list[DeactivationLog]:
         """Get logs by action type"""
         query = self.session.query(DeactivationLog).filter(
             DeactivationLog.action == action
@@ -88,8 +89,8 @@ class DeactivationLogRepository:
     def get_logs_by_status(
         self,
         status: str,
-        limit: Optional[int] = None
-    ) -> List[DeactivationLog]:
+        limit: int | None = None
+    ) -> list[DeactivationLog]:
         """Get logs by status (SUCCESS, FAILED, PENDING)"""
         query = self.session.query(DeactivationLog).filter(
             DeactivationLog.status == status
@@ -100,7 +101,7 @@ class DeactivationLogRepository:
 
         return query.all()
 
-    def get_failed_deactivations(self, hours: Optional[int] = None) -> List[DeactivationLog]:
+    def get_failed_deactivations(self, hours: int | None = None) -> list[DeactivationLog]:
         """Get failed deactivation attempts"""
         query = self.session.query(DeactivationLog).filter(
             DeactivationLog.status == 'FAILED'
@@ -112,7 +113,7 @@ class DeactivationLogRepository:
 
         return query.order_by(desc(DeactivationLog.performed_at)).all()
 
-    def get_recent_logs(self, hours: int = 24, limit: Optional[int] = None) -> List[DeactivationLog]:
+    def get_recent_logs(self, hours: int = 24, limit: int | None = None) -> list[DeactivationLog]:
         """Get logs from the last N hours"""
         cutoff_date = datetime.utcnow() - timedelta(hours=hours)
         query = self.session.query(DeactivationLog).filter(
@@ -128,8 +129,8 @@ class DeactivationLogRepository:
         self,
         start_date: datetime,
         end_date: datetime,
-        limit: Optional[int] = None
-    ) -> List[DeactivationLog]:
+        limit: int | None = None
+    ) -> list[DeactivationLog]:
         """Get logs within a date range"""
         query = self.session.query(DeactivationLog).filter(
             and_(
@@ -143,7 +144,7 @@ class DeactivationLogRepository:
 
         return query.all()
 
-    def get_logs_by_performer(self, performed_by: str, limit: Optional[int] = None) -> List[DeactivationLog]:
+    def get_logs_by_performer(self, performed_by: str, limit: int | None = None) -> list[DeactivationLog]:
         """Get logs by who performed the action"""
         query = self.session.query(DeactivationLog).filter(
             DeactivationLog.performed_by == performed_by
@@ -154,7 +155,7 @@ class DeactivationLogRepository:
 
         return query.all()
 
-    def get_deactivation_statistics(self, days: int = 30) -> Dict[str, Any]:
+    def get_deactivation_statistics(self, days: int = 30) -> dict[str, Any]:
         """Get deactivation statistics for the last N days"""
         cutoff_date = datetime.utcnow() - timedelta(days=days)
         query = self.session.query(DeactivationLog).filter(
@@ -197,13 +198,13 @@ class DeactivationLogRepository:
             }
         }
 
-    def get_user_deactivation_history(self, email: str) -> List[DeactivationLog]:
+    def get_user_deactivation_history(self, email: str) -> list[DeactivationLog]:
         """Get complete deactivation history for a user"""
         return self.session.query(DeactivationLog).filter(
             DeactivationLog.email == email
         ).order_by(DeactivationLog.performed_at).all()
 
-    def bulk_create_logs(self, logs_data: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def bulk_create_logs(self, logs_data: list[dict[str, Any]]) -> dict[str, Any]:
         """Bulk create log entries"""
         created = 0
         errors = []
@@ -225,7 +226,7 @@ class DeactivationLogRepository:
             'errors': errors
         }
 
-    def get_logs_pending_completion(self, hours: int = 24) -> List[DeactivationLog]:
+    def get_logs_pending_completion(self, hours: int = 24) -> list[DeactivationLog]:
         """Get logs still in PENDING status after N hours"""
         cutoff_date = datetime.utcnow() - timedelta(hours=hours)
         return self.session.query(DeactivationLog).filter(
@@ -239,9 +240,9 @@ class DeactivationLogRepository:
         self,
         log_id: str,
         status: str,
-        error_message: Optional[str] = None,
-        netsuite_status_after: Optional[str] = None
-    ) -> Optional[DeactivationLog]:
+        error_message: str | None = None,
+        netsuite_status_after: str | None = None
+    ) -> DeactivationLog | None:
         """Update log status"""
         log = self.get_log_by_id(log_id)
 
@@ -265,12 +266,12 @@ class DeactivationLogRepository:
         self,
         start_date: datetime,
         end_date: datetime
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Generate comprehensive audit report for a date range"""
         logs = self.get_logs_by_date_range(start_date, end_date)
 
-        unique_users = set(log.email for log in logs)
-        unique_performers = set(log.performed_by for log in logs if log.performed_by)
+        unique_users = {log.email for log in logs}
+        unique_performers = {log.performed_by for log in logs if log.performed_by}
 
         # Group by approval request
         approval_groups = {}

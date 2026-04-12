@@ -11,13 +11,12 @@ This service provides:
 
 import logging
 import os
-from typing import List, Dict, Any, Optional, Tuple
-from datetime import datetime, timedelta
-import numpy as np
 from enum import Enum
+from typing import Any
 
-from sqlalchemy.orm import Session
+import numpy as np
 from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
@@ -36,10 +35,10 @@ class EmbeddingService:
     def __init__(
         self,
         provider: str = "huggingface",
-        model_name: Optional[str] = None,
+        model_name: str | None = None,
         dimension: int = 384,
         cache_embeddings: bool = True,
-        session: Optional[Session] = None
+        session: Session | None = None
     ):
         """
         Initialize Embedding Service
@@ -55,7 +54,7 @@ class EmbeddingService:
         self.dimension = dimension
         self.cache_embeddings = cache_embeddings
         self.session = session
-        self._embedding_cache: Dict[str, np.ndarray] = {}
+        self._embedding_cache: dict[str, np.ndarray] = {}
 
         # Initialize embedding model based on provider
         self.model = self._initialize_model(model_name)
@@ -65,7 +64,7 @@ class EmbeddingService:
             f"(dim={self.dimension}, cache={cache_embeddings})"
         )
 
-    def _initialize_model(self, model_name: Optional[str] = None):
+    def _initialize_model(self, model_name: str | None = None):
         """Initialize embedding model based on provider"""
         if self.provider == EmbeddingProvider.HUGGINGFACE:
             return self._init_huggingface(model_name)
@@ -78,7 +77,7 @@ class EmbeddingService:
         else:
             raise ValueError(f"Unsupported provider: {self.provider}")
 
-    def _init_huggingface(self, model_name: Optional[str]) -> Any:
+    def _init_huggingface(self, model_name: str | None) -> Any:
         """Initialize HuggingFace embeddings (free, local)"""
         try:
             from langchain_huggingface import HuggingFaceEmbeddings
@@ -97,7 +96,7 @@ class EmbeddingService:
         logger.info(f"Initialized HuggingFace: {model_name or default_model}")
         return model
 
-    def _init_voyage(self, model_name: Optional[str]) -> Any:
+    def _init_voyage(self, model_name: str | None) -> Any:
         """Initialize Voyage AI embeddings (production quality)"""
         try:
             import voyageai
@@ -113,11 +112,11 @@ class EmbeddingService:
                     self.client = client
                     self.model = model
 
-                def embed_query(self, text: str) -> List[float]:
+                def embed_query(self, text: str) -> list[float]:
                     result = self.client.embed([text], model=self.model)
                     return result.embeddings[0]
 
-                def embed_documents(self, texts: List[str]) -> List[List[float]]:
+                def embed_documents(self, texts: list[str]) -> list[list[float]]:
                     result = self.client.embed(texts, model=self.model)
                     return result.embeddings
 
@@ -131,7 +130,7 @@ class EmbeddingService:
             logger.error(f"Failed to initialize Voyage AI: {str(e)}")
             raise
 
-    def _init_openai(self, model_name: Optional[str]) -> Any:
+    def _init_openai(self, model_name: str | None) -> Any:
         """Initialize OpenAI embeddings"""
         from langchain_openai import OpenAIEmbeddings
 
@@ -145,7 +144,7 @@ class EmbeddingService:
         logger.info(f"Initialized OpenAI: {model_name or default_model}")
         return model
 
-    def _init_cohere(self, model_name: Optional[str]) -> Any:
+    def _init_cohere(self, model_name: str | None) -> Any:
         """Initialize Cohere embeddings"""
         from langchain_cohere import CohereEmbeddings
 
@@ -159,7 +158,7 @@ class EmbeddingService:
         logger.info(f"Initialized Cohere: {model_name or default_model}")
         return model
 
-    def embed_text(self, text: str, cache_key: Optional[str] = None) -> np.ndarray:
+    def embed_text(self, text: str, cache_key: str | None = None) -> np.ndarray:
         """
         Generate embedding for a single text
 
@@ -194,7 +193,7 @@ class EmbeddingService:
             logger.error(f"Failed to generate embedding: {str(e)}")
             raise
 
-    def embed_texts(self, texts: List[str]) -> List[np.ndarray]:
+    def embed_texts(self, texts: list[str]) -> list[np.ndarray]:
         """
         Generate embeddings for multiple texts (batch processing)
 
@@ -216,7 +215,7 @@ class EmbeddingService:
             logger.error(f"Failed to generate batch embeddings: {str(e)}")
             raise
 
-    def embed_rule(self, rule: Dict[str, Any]) -> np.ndarray:
+    def embed_rule(self, rule: dict[str, Any]) -> np.ndarray:
         """
         Generate embedding for an SOD rule
 
@@ -230,7 +229,7 @@ class EmbeddingService:
         cache_key = f"rule_{rule.get('rule_id', '')}"
         return self.embed_text(rule_text, cache_key=cache_key)
 
-    def embed_violation(self, violation: Dict[str, Any]) -> np.ndarray:
+    def embed_violation(self, violation: dict[str, Any]) -> np.ndarray:
         """
         Generate embedding for a violation
 
@@ -244,7 +243,7 @@ class EmbeddingService:
         cache_key = f"violation_{violation.get('id', '')}"
         return self.embed_text(violation_text, cache_key=cache_key)
 
-    def embed_exemption(self, exemption: Dict[str, Any]) -> np.ndarray:
+    def embed_exemption(self, exemption: dict[str, Any]) -> np.ndarray:
         """
         Generate embedding for an exemption rationale
 
@@ -264,8 +263,8 @@ class EmbeddingService:
         table_name: str,
         top_k: int = 5,
         min_similarity: float = 0.5,
-        filters: Optional[Dict[str, Any]] = None
-    ) -> List[Dict[str, Any]]:
+        filters: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
         """
         Perform similarity search using pgvector
 
@@ -328,7 +327,7 @@ class EmbeddingService:
         query: str,
         top_k: int = 5,
         min_similarity: float = 0.5
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Find similar SOD rules"""
         query_embedding = self.embed_text(query)
         return self.similarity_search(
@@ -343,7 +342,7 @@ class EmbeddingService:
         violation_description: str,
         top_k: int = 5,
         min_similarity: float = 0.5
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Find similar historical violations"""
         query_embedding = self.embed_text(violation_description)
         return self.similarity_search(
@@ -358,7 +357,7 @@ class EmbeddingService:
         query: str,
         top_k: int = 5,
         min_similarity: float = 0.5
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Find similar exemption cases"""
         query_embedding = self.embed_text(query)
         return self.similarity_search(
@@ -370,7 +369,7 @@ class EmbeddingService:
 
     # Helper methods for text conversion
 
-    def _rule_to_text(self, rule: Dict[str, Any]) -> str:
+    def _rule_to_text(self, rule: dict[str, Any]) -> str:
         """Convert rule to rich text for embedding"""
         text_parts = [
             f"Rule: {rule.get('rule_name', '')}",
@@ -388,7 +387,7 @@ class EmbeddingService:
 
         return " | ".join(text_parts)
 
-    def _violation_to_text(self, violation: Dict[str, Any]) -> str:
+    def _violation_to_text(self, violation: dict[str, Any]) -> str:
         """Convert violation to rich text for embedding"""
         text_parts = [
             f"Violation: {violation.get('title', '')}",
@@ -399,7 +398,7 @@ class EmbeddingService:
         ]
         return " | ".join(text_parts)
 
-    def _exemption_to_text(self, exemption: Dict[str, Any]) -> str:
+    def _exemption_to_text(self, exemption: dict[str, Any]) -> str:
         """Convert exemption to rich text for embedding"""
         text_parts = [
             f"Exemption Reason: {exemption.get('reason', '')}",
@@ -426,7 +425,7 @@ class EmbeddingService:
         self._embedding_cache.clear()
         logger.info("Embedding cache cleared")
 
-    def get_cache_stats(self) -> Dict[str, Any]:
+    def get_cache_stats(self) -> dict[str, Any]:
         """Get cache statistics"""
         return {
             "cache_size": len(self._embedding_cache),
@@ -439,7 +438,7 @@ class EmbeddingService:
 # Factory function
 def create_embedding_service(
     provider: str = None,
-    session: Optional[Session] = None
+    session: Session | None = None
 ) -> EmbeddingService:
     """
     Create a configured Embedding Service instance

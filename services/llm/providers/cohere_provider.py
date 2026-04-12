@@ -2,9 +2,9 @@
 Cohere Provider Implementation
 """
 
-import time
-from typing import List, Dict, Optional, Any
 import logging
+import time
+from typing import Any
 
 try:
     import cohere
@@ -14,8 +14,7 @@ except ImportError:
     logger = logging.getLogger(__name__)
     logger.warning("Cohere package not installed. Run: pip install cohere")
 
-from ..base import BaseLLMProvider, LLMMessage, LLMResponse, LLMConfig
-from ..base import LLMConnectionError
+from ..base import BaseLLMProvider, LLMConfig, LLMConnectionError, LLMMessage, LLMResponse
 
 logger = logging.getLogger(__name__)
 
@@ -40,9 +39,9 @@ class CohereProvider(BaseLLMProvider):
 
     def generate(
         self,
-        messages: List[LLMMessage],
-        temperature: Optional[float] = None,
-        max_tokens: Optional[int] = None,
+        messages: list[LLMMessage],
+        temperature: float | None = None,
+        max_tokens: int | None = None,
         **kwargs
     ) -> LLMResponse:
         """Generate completion using Cohere"""
@@ -103,7 +102,7 @@ class CohereProvider(BaseLLMProvider):
             logger.error(f"Cohere API error: {str(e)}")
             raise LLMConnectionError(f"Cohere API error: {str(e)}")
 
-    def generate_stream(self, messages: List[LLMMessage], temperature: Optional[float] = None, max_tokens: Optional[int] = None, **kwargs):
+    def generate_stream(self, messages: list[LLMMessage], temperature: float | None = None, max_tokens: int | None = None, **kwargs):
         """Generate completion with streaming"""
         # Simplified - implement as needed
         response = self.generate(messages, temperature, max_tokens, **kwargs)
@@ -113,7 +112,7 @@ class CohereProvider(BaseLLMProvider):
         """Count tokens (approximation)"""
         return len(text) // 4
 
-    def get_model_info(self) -> Dict[str, Any]:
+    def get_model_info(self) -> dict[str, Any]:
         """Get model information"""
         return {
             'provider': self.provider_name,

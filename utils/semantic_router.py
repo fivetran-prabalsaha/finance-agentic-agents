@@ -19,8 +19,7 @@ Usage:
 """
 
 import logging
-import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 
@@ -33,7 +32,7 @@ logger = logging.getLogger(__name__)
 # than queries match API-style descriptions.
 # ---------------------------------------------------------------------------
 
-TOOL_EXEMPLARS: Dict[str, str] = {
+TOOL_EXEMPLARS: dict[str, str] = {
     # ── Violations ──────────────────────────────────────────────────────────
     "get_user_violations": (
         "Get all SOD violations for a specific user. "
@@ -174,8 +173,8 @@ TOOL_EXEMPLARS: Dict[str, str] = {
     ),
 
     # ── Reporting ────────────────────────────────────────────────────────────
-    "get_violation_stats": (
-        "Get aggregate violation statistics for reporting. "
+    "get_violation_summary": (
+        "Get a human-readable violation summary grouped by severity for reporting. "
         "Examples: violation summary for the report, how many violations by severity, "
         "compliance statistics overview"
     ),
@@ -260,15 +259,15 @@ class SemanticToolRouter:
 
     def __init__(
         self,
-        tools: List[Dict[str, Any]],
-        always_include: Optional[List[str]] = None,
+        tools: list[dict[str, Any]],
+        always_include: list[str] | None = None,
     ):
         self.tools = tools
         self.always_include = always_include or ["initialize_session", "check_my_approval_authority"]
-        self._tool_index: Dict[str, Dict] = {t["name"]: t for t in tools if "name" in t}
+        self._tool_index: dict[str, dict] = {t["name"]: t for t in tools if "name" in t}
         self._model = None
-        self._tool_names: List[str] = []
-        self._embeddings: Optional[np.ndarray] = None  # shape (n_tools, dim)
+        self._tool_names: list[str] = []
+        self._embeddings: np.ndarray | None = None  # shape (n_tools, dim)
         self._build_index()
 
     def _load_model(self):
@@ -278,7 +277,7 @@ class SemanticToolRouter:
             logger.info(f"SemanticToolRouter: loaded {self.MODEL_NAME}")
         return self._model
 
-    def _tool_text(self, tool: Dict[str, Any]) -> str:
+    def _tool_text(self, tool: dict[str, Any]) -> str:
         """
         Build the text document that represents a tool in embedding space.
         Combines the exemplar (if defined) with the live description from the schema.
@@ -318,7 +317,7 @@ class SemanticToolRouter:
         self,
         query: str,
         k: int = 8,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Return the top-k most relevant tools for `query`.
         always_include tools are appended at the end if not already in the list.
@@ -364,7 +363,7 @@ class SemanticToolRouter:
             logger.error(f"SemanticToolRouter.select failed: {e}")
             return []
 
-    def update_tools(self, tools: List[Dict[str, Any]]) -> None:
+    def update_tools(self, tools: list[dict[str, Any]]) -> None:
         """Rebuild the index when the tool list changes (e.g. after /tools/refresh)."""
         self.tools = tools
         self._tool_index = {t["name"]: t for t in tools if "name" in t}
@@ -375,10 +374,10 @@ class SemanticToolRouter:
 # Module-level singleton — built once when the bot starts
 # ---------------------------------------------------------------------------
 
-_router_instance: Optional[SemanticToolRouter] = None
+_router_instance: SemanticToolRouter | None = None
 
 
-def get_router(tools: Optional[List[Dict[str, Any]]] = None) -> Optional[SemanticToolRouter]:
+def get_router(tools: list[dict[str, Any]] | None = None) -> SemanticToolRouter | None:
     """
     Return the module-level SemanticToolRouter singleton.
     If tools is provided and no instance exists yet, build it now.
@@ -391,10 +390,10 @@ def get_router(tools: Optional[List[Dict[str, Any]]] = None) -> Optional[Semanti
 
 def semantic_select_tools(
     user_message: str,
-    all_tools: List[Dict[str, Any]],
-    always_include: Optional[List[str]] = None,
+    all_tools: list[dict[str, Any]],
+    always_include: list[str] | None = None,
     max_tools: int = 8,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Drop-in replacement for select_tools_for_intent().
 
@@ -403,7 +402,7 @@ def semantic_select_tools(
     """
     global _router_instance
     try:
-        if _router_instance is None or set(t["name"] for t in all_tools) != set(_router_instance._tool_index.keys()):
+        if _router_instance is None or {t["name"] for t in all_tools} != set(_router_instance._tool_index.keys()):
             _router_instance = SemanticToolRouter(all_tools, always_include=always_include)
         return _router_instance.select(user_message, k=max_tools)
     except Exception as e:

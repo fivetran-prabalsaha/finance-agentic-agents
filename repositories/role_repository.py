@@ -5,10 +5,11 @@ Handles all database operations for Role model
 """
 
 import logging
-from typing import List, Optional, Dict, Any
 from datetime import datetime
-from sqlalchemy.orm import Session
+from typing import Any
+
 from sqlalchemy import or_
+from sqlalchemy.orm import Session
 
 from models.database import Role
 
@@ -27,7 +28,7 @@ class RoleRepository:
         """
         self.session = session
 
-    def create_role(self, role_data: Dict[str, Any]) -> Role:
+    def create_role(self, role_data: dict[str, Any]) -> Role:
         """
         Create a new role
 
@@ -53,7 +54,7 @@ class RoleRepository:
         logger.info(f"Created role: {role.role_name}")
         return role
 
-    def get_role_by_id(self, role_id: str) -> Optional[Role]:
+    def get_role_by_id(self, role_id: str) -> Role | None:
         """
         Get role by role_id
 
@@ -65,7 +66,7 @@ class RoleRepository:
         """
         return self.session.query(Role).filter(Role.role_id == role_id).first()
 
-    def get_role_by_uuid(self, uuid: str) -> Optional[Role]:
+    def get_role_by_uuid(self, uuid: str) -> Role | None:
         """
         Get role by UUID (database ID)
 
@@ -77,7 +78,7 @@ class RoleRepository:
         """
         return self.session.query(Role).filter(Role.id == uuid).first()
 
-    def get_role_by_name(self, role_name: str) -> Optional[Role]:
+    def get_role_by_name(self, role_name: str) -> Role | None:
         """
         Get role by name
 
@@ -89,7 +90,7 @@ class RoleRepository:
         """
         return self.session.query(Role).filter(Role.role_name == role_name).first()
 
-    def get_all_roles(self, is_custom: Optional[bool] = None) -> List[Role]:
+    def get_all_roles(self, is_custom: bool | None = None) -> list[Role]:
         """
         Get all roles with optional filter
 
@@ -106,7 +107,7 @@ class RoleRepository:
 
         return query.order_by(Role.role_name).all()
 
-    def upsert_role(self, role_data: Dict[str, Any]) -> Role:
+    def upsert_role(self, role_data: dict[str, Any]) -> Role:
         """
         Create or update role (upsert)
 
@@ -135,7 +136,7 @@ class RoleRepository:
         self.session.commit()
         return role
 
-    def bulk_upsert_roles(self, roles_data: List[Dict[str, Any]]) -> int:
+    def bulk_upsert_roles(self, roles_data: list[dict[str, Any]]) -> int:
         """
         Bulk create or update roles
 
@@ -157,7 +158,7 @@ class RoleRepository:
         logger.info(f"Bulk upserted {count}/{len(roles_data)} roles")
         return count
 
-    def search_roles(self, search_term: str, limit: int = 100) -> List[Role]:
+    def search_roles(self, search_term: str, limit: int = 100) -> list[Role]:
         """
         Search roles by name
 
@@ -177,7 +178,7 @@ class RoleRepository:
             .all()
         )
 
-    def get_roles_with_high_permissions(self, min_permissions: int = 100) -> List[Role]:
+    def get_roles_with_high_permissions(self, min_permissions: int = 100) -> list[Role]:
         """
         Get roles with many permissions
 
@@ -207,7 +208,7 @@ class RoleRepository:
             self.session.commit()
             logger.info(f"Deleted role: {role.role_name}")
 
-    def get_role_count(self, is_custom: Optional[bool] = None) -> int:
+    def get_role_count(self, is_custom: bool | None = None) -> int:
         """
         Get total role count
 
@@ -224,7 +225,7 @@ class RoleRepository:
 
         return query.count()
 
-    def get_admin_roles(self) -> List[Role]:
+    def get_admin_roles(self) -> list[Role]:
         """
         Get roles with 'admin' in the name
 
@@ -237,7 +238,7 @@ class RoleRepository:
             .all()
         )
 
-    def get_finance_roles(self) -> List[Role]:
+    def get_finance_roles(self) -> list[Role]:
         """
         Get finance-related roles
 

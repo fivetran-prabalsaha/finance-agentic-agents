@@ -22,14 +22,14 @@ Author: Prabal Saha
 Date: 2026-02-12
 """
 
+import argparse
+import json
 import os
 import sys
-import json
-import argparse
-from pathlib import Path
-from typing import Dict, List, Set, Tuple, Any
 from collections import defaultdict
 from datetime import datetime
+from pathlib import Path
+from typing import Any
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -54,7 +54,7 @@ class FivetranPermissionAnalyzer:
         self.permission_matrix = {}
         self.conflicts = []
 
-    def fetch_fivetran_roles(self) -> Dict[str, Any]:
+    def fetch_fivetran_roles(self) -> dict[str, Any]:
         """
         Fetch all Fivetran roles and permissions from NetSuite
 
@@ -93,7 +93,7 @@ class FivetranPermissionAnalyzer:
 
         # Print summary
         metadata = self.roles_data['metadata']
-        print(f"\n✅ Successfully fetched roles")
+        print("\n✅ Successfully fetched roles")
         print(f"   • Total roles: {metadata['total_roles']}")
         print(f"   • Execution time: {metadata['execution_time_ms']}ms")
         print(f"   • Governance used: {metadata['governance_used']} units")
@@ -131,11 +131,11 @@ class FivetranPermissionAnalyzer:
                     'permission_level': perm_level
                 })
 
-        print(f"\n✅ Permission matrix built")
+        print("\n✅ Permission matrix built")
         print(f"   • Unique permissions: {len(self.permission_matrix)}")
         print(f"   • Permissions shared across roles: {sum(1 for p in self.permission_matrix.values() if len(p) > 1)}")
 
-    def analyze_conflicts(self) -> List[Dict[str, Any]]:
+    def analyze_conflicts(self) -> list[dict[str, Any]]:
         """
         Analyze permission matrix for potential SOD conflicts
 
@@ -184,7 +184,7 @@ class FivetranPermissionAnalyzer:
         for role in self.roles_data['roles']:
             all_roles.add(role['role_name'])
 
-        role_list = sorted(list(all_roles))
+        role_list = sorted(all_roles)
 
         for i, role1 in enumerate(role_list):
             for role2 in role_list[i+1:]:
@@ -192,7 +192,7 @@ class FivetranPermissionAnalyzer:
                 if conflict:
                     self.conflicts.append(conflict)
 
-        print(f"\n✅ Conflict analysis complete")
+        print("\n✅ Conflict analysis complete")
         print(f"   • Total conflicts found: {len(self.conflicts)}")
 
         return self.conflicts
@@ -201,8 +201,8 @@ class FivetranPermissionAnalyzer:
         self,
         role1: str,
         role2: str,
-        permission_categories: Dict[str, List[Dict]]
-    ) -> Dict[str, Any]:
+        permission_categories: dict[str, list[dict]]
+    ) -> dict[str, Any]:
         """
         Check if two roles have conflicting permissions
 
@@ -262,8 +262,8 @@ class FivetranPermissionAnalyzer:
     def _get_role_categories(
         self,
         role_name: str,
-        permission_categories: Dict[str, List[Dict]]
-    ) -> Set[str]:
+        permission_categories: dict[str, list[dict]]
+    ) -> set[str]:
         """Get all permission categories for a role"""
         categories = set()
         for category, perms in permission_categories.items():
@@ -276,9 +276,9 @@ class FivetranPermissionAnalyzer:
         self,
         role1: str,
         role2: str,
-        categories: List[str],
-        permission_categories: Dict[str, List[Dict]]
-    ) -> List[str]:
+        categories: list[str],
+        permission_categories: dict[str, list[dict]]
+    ) -> list[str]:
         """Get list of specific conflicting permissions"""
         conflicting = []
         for category in categories:
@@ -289,7 +289,7 @@ class FivetranPermissionAnalyzer:
                         conflicting.append(perm_info['permission'])
         return list(set(conflicting))
 
-    def generate_sod_rules(self) -> List[Dict[str, Any]]:
+    def generate_sod_rules(self) -> list[dict[str, Any]]:
         """
         Generate SOD rules from identified conflicts
 
@@ -351,7 +351,7 @@ class FivetranPermissionAnalyzer:
         # 2. Export permission matrix
         matrix_file = output_path / f"permission_matrix_{timestamp}.json"
         # Convert defaultdict to regular dict for JSON serialization
-        matrix_dict = {k: v for k, v in self.permission_matrix.items()}
+        matrix_dict = dict(self.permission_matrix.items())
         with open(matrix_file, 'w') as f:
             json.dump(matrix_dict, f, indent=2)
         print(f"✅ Permission matrix: {matrix_file}")

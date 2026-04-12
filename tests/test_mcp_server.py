@@ -4,17 +4,14 @@ Test script for MCP Server
 
 Tests all MCP endpoints and tool calls
 """
-import sys
 import os
-import asyncio
-import json
+import sys
 from pathlib import Path
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import requests
-
 
 # Configuration
 BASE_URL = os.getenv('MCP_SERVER_URL', 'http://localhost:8080')

@@ -2,8 +2,9 @@
 """Test with offset to skip past inactive users"""
 
 import os
-from requests_oauthlib import OAuth1Session
+
 from dotenv import load_dotenv
+from requests_oauthlib import OAuth1Session
 
 load_dotenv()
 

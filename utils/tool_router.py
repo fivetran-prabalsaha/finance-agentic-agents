@@ -11,9 +11,9 @@ Usage:
     # Pass relevant_tools to Claude instead of all_tools
 """
 
-import re
 import logging
-from typing import Dict, List, Any, Optional
+import re
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 # Tool groups — map intent keywords to tool name sets
 # ---------------------------------------------------------------------------
 
-TOOL_GROUPS: Dict[str, List[str]] = {
+TOOL_GROUPS: dict[str, list[str]] = {
     "access_review": [
         "get_user_violations",
         "analyze_access_request",
@@ -91,7 +91,7 @@ TOOL_GROUPS: Dict[str, List[str]] = {
 # Intent classifiers — simple keyword/regex matching
 # ---------------------------------------------------------------------------
 
-INTENT_PATTERNS: Dict[str, List[str]] = {
+INTENT_PATTERNS: dict[str, list[str]] = {
     "access_review": [
         r"\bcan\b.*\bassign\b",
         r"\bshould\b.*\bget\b.*\brole\b",
@@ -186,7 +186,7 @@ INTENT_PATTERNS: Dict[str, List[str]] = {
 }
 
 
-def classify_intent(user_message: str) -> List[str]:
+def classify_intent(user_message: str) -> list[str]:
     """
     Classify the user message into one or more intent groups.
 
@@ -217,10 +217,10 @@ def classify_intent(user_message: str) -> List[str]:
 
 def select_tools_for_intent(
     user_message: str,
-    all_tools: List[Dict[str, Any]],
-    always_include: Optional[List[str]] = None,
+    all_tools: list[dict[str, Any]],
+    always_include: list[str] | None = None,
     max_tools: int = 8
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Return the subset of MCP tools relevant to the user's intent.
 
@@ -246,7 +246,7 @@ def select_tools_for_intent(
     # Collect relevant tool names first, always_include appended at the end.
     # Keeping always_include at the front buried intent-specific tools at rank 3+
     # and tanked MRR — the relevant tool should be as close to rank 1 as possible.
-    selected_names: List[str] = []
+    selected_names: list[str] = []
     for intent in intents:
         for name in TOOL_GROUPS.get(intent, []):
             if name not in selected_names and name not in always_include:

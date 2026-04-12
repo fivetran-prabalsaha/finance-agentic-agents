@@ -13,9 +13,10 @@ from pathlib import Path
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from sqlalchemy import create_engine, text
-from dotenv import load_dotenv
 import logging
+
+from dotenv import load_dotenv
+from sqlalchemy import create_engine, text
 
 logging.basicConfig(
     level=logging.INFO,
@@ -35,7 +36,7 @@ def run_migration():
         logger.error("DATABASE_URL not found in environment")
         return False
 
-    logger.info(f"Connecting to database...")
+    logger.info("Connecting to database...")
 
     # Create engine
     engine = create_engine(database_url)
@@ -49,7 +50,7 @@ def run_migration():
 
     logger.info(f"Reading migration: {migration_file}")
 
-    with open(migration_file, 'r') as f:
+    with open(migration_file) as f:
         migration_sql = f.read()
 
     # Execute migration

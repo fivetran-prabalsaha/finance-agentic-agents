@@ -4,10 +4,9 @@ Seed Job Role Mappings
 Seeds the job_role_mappings table with data from data/job_role_mappings.json
 """
 
-import sys
-import os
 import json
 import logging
+import sys
 from pathlib import Path
 
 # Add parent directory to path for imports
@@ -27,7 +26,7 @@ def load_job_role_mappings_json():
     if not json_path.exists():
         raise FileNotFoundError(f"Job role mappings file not found: {json_path}")
 
-    with open(json_path, 'r') as f:
+    with open(json_path) as f:
         data = json.load(f)
 
     return data

@@ -4,17 +4,26 @@ SQLAlchemy ORM Models for SOD Compliance System
 Defines all database tables and relationships
 """
 
-from datetime import datetime
-from typing import List
-from sqlalchemy import (
-    Column, String, Integer, Boolean, DateTime, Text, JSON,
-    ForeignKey, Index, Float, Enum as SQLEnum
-)
-from sqlalchemy.orm import relationship
-from sqlalchemy.dialects.postgresql import UUID, JSONB, ARRAY
-from pgvector.sqlalchemy import Vector
-import uuid
 import enum
+import uuid
+from datetime import datetime
+
+from pgvector.sqlalchemy import Vector
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+)
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
+from sqlalchemy.orm import relationship
 
 from models.database_config import Base
 
@@ -752,14 +761,3 @@ class JobRoleMapping(Base):
 
 
 # Import exception models (must be after User and CompensatingControl are defined)
-from models.approved_exception import (
-    ExceptionStatus,
-    ImplementationStatus,
-    RemediationStatus,
-    ReviewOutcome,
-    ApprovedExceptionModel,
-    ExceptionControlModel,
-    ExceptionViolationModel,
-    ExceptionReviewModel,
-    CompensatingControl as CompensatingControlRef  # Reference only if not already defined above
-)

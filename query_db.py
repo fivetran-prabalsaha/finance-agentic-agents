@@ -5,10 +5,12 @@ Usage: python query_db.py
 """
 
 import sys
-from models.database_config import get_db_config, get_db_session
-from models.database import User, Role, UserRole, Violation, SODRule
+
 from sqlalchemy import text
 from tabulate import tabulate
+
+from models.database import Role, SODRule, User, Violation
+from models.database_config import get_db_config
 
 
 def test_connection():
@@ -140,7 +142,7 @@ def run_custom_query(session):
                 print("No rows returned")
         else:
             session.commit()
-            print(f"✓ Query executed successfully")
+            print("✓ Query executed successfully")
     except Exception as e:
         print(f"✗ Query failed: {str(e)}")
         session.rollback()

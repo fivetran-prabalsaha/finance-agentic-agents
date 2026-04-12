@@ -3,10 +3,10 @@
 Comprehensive Smoke Test for SOD Compliance System
 Tests: Agents, Database, Cache, Vector Store, LLM
 """
-import sys
 import os
-from datetime import datetime
+import sys
 import traceback
+from datetime import datetime
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -54,8 +54,9 @@ def test_database_connection():
     """Test 1: Database Connection"""
     print_header("TEST 1: Database Connection")
     try:
-        from models.database import get_session
         from sqlalchemy import text
+
+        from models.database import get_session
 
         session = get_session()
         result = session.execute(text("SELECT 1")).scalar()
@@ -74,8 +75,9 @@ def test_database_tables():
     """Test 2: Database Tables & Data"""
     print_header("TEST 2: Database Tables & Data")
     try:
-        from models.database import get_session
         from sqlalchemy import text
+
+        from models.database import get_session
 
         session = get_session()
 
@@ -116,8 +118,9 @@ def test_vector_store():
     """Test 3: pgvector & Embeddings"""
     print_header("TEST 3: pgvector Vector Store")
     try:
-        from models.database import get_session
         from sqlalchemy import text
+
+        from models.database import get_session
 
         session = get_session()
 
@@ -234,9 +237,10 @@ def test_data_collector_agent():
     """Test 7: Data Collection Agent"""
     print_header("TEST 7: Data Collection Agent")
     try:
+        from sqlalchemy import text
+
         from agents.data_collector import DataCollectionAgent
         from models.database import get_session
-        from sqlalchemy import text
 
         agent = DataCollectionAgent()
 
@@ -273,14 +277,14 @@ def test_analyzer_agent():
     print_header("TEST 8: SOD Analyzer Agent")
     try:
         from agents.analyzer import SODAnalyzer
-        from repositories.sod_rule_repository import SODRuleRepository
         from models.database import get_session
+        from repositories.sod_rule_repository import SODRuleRepository
 
         session = get_session()
 
         # Initialize analyzer
         sod_repo = SODRuleRepository(session)
-        analyzer = SODAnalyzer(sod_repo)
+        SODAnalyzer(sod_repo)
 
         # Get active rules
         rules = sod_repo.get_active_rules()
@@ -312,10 +316,10 @@ def test_notifier_agent():
     print_header("TEST 9: Notification Agent")
     try:
         from agents.notifier import NotificationAgent
-        from repositories.violation_repository import ViolationRepository
-        from repositories.user_repository import UserRepository
-        from repositories.job_role_mapping_repository import JobRoleMappingRepository
         from models.database import get_session
+        from repositories.job_role_mapping_repository import JobRoleMappingRepository
+        from repositories.user_repository import UserRepository
+        from repositories.violation_repository import ViolationRepository
 
         session = get_session()
 
@@ -324,7 +328,7 @@ def test_notifier_agent():
         user_repo = UserRepository(session)
         job_role_repo = JobRoleMappingRepository(session)
 
-        agent = NotificationAgent(
+        NotificationAgent(
             violation_repo=violation_repo,
             user_repo=user_repo,
             job_role_mapping_repo=job_role_repo,
@@ -345,7 +349,6 @@ def test_cache_system():
     print_header("TEST 10: Cache System")
     try:
         from functools import lru_cache
-        import time
 
         # Test Python's built-in LRU cache
         @lru_cache(maxsize=128)
@@ -353,10 +356,10 @@ def test_cache_system():
             return x * 2
 
         # Call function twice
-        result1 = cached_function(42)
+        cached_function(42)
         cache_info1 = cached_function.cache_info()
 
-        result2 = cached_function(42)
+        cached_function(42)
         cache_info2 = cached_function.cache_info()
 
         # Second call should be from cache
@@ -413,10 +416,10 @@ def test_repositories():
     print_header("TEST 12: Data Repositories")
     try:
         from models.database import get_session
+        from repositories.job_role_mapping_repository import JobRoleMappingRepository
+        from repositories.sod_rule_repository import SODRuleRepository
         from repositories.user_repository import UserRepository
         from repositories.violation_repository import ViolationRepository
-        from repositories.sod_rule_repository import SODRuleRepository
-        from repositories.job_role_mapping_repository import JobRoleMappingRepository
 
         session = get_session()
 

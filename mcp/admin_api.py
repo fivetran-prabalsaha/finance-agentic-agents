@@ -11,17 +11,17 @@ Authority levels (derived from NetSuite roles):
   L5 — CFO / C-Suite    → full access (feature flags, API key rotation, LLM config)
 """
 
-import os
 import logging
+import os
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 
 try:
-    from jose import jwt, JWTError
+    from jose import JWTError, jwt
     _JWT_AVAILABLE = True
 except ImportError:
     _JWT_AVAILABLE = False
@@ -66,7 +66,7 @@ class LoginRequest(BaseModel):
 class LoginResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
-    user: Dict[str, Any]
+    user: dict[str, Any]
 
 
 class MeResponse(BaseModel):
@@ -74,64 +74,64 @@ class MeResponse(BaseModel):
     name: str
     level: int
     level_label: str
-    roles: List[str]
-    job_title: Optional[str] = None
-    department: Optional[str] = None
+    roles: list[str]
+    job_title: str | None = None
+    department: str | None = None
 
 
 class ThresholdUpdate(BaseModel):
-    critical: Optional[int] = None
-    high: Optional[int] = None
-    medium: Optional[int] = None
+    critical: int | None = None
+    high: int | None = None
+    medium: int | None = None
 
 
 class NotificationUpdate(BaseModel):
-    notify_critical_immediately: Optional[bool] = None
-    notify_high_daily: Optional[bool] = None
-    notify_medium_weekly: Optional[bool] = None
-    slack_channel: Optional[str] = None
+    notify_critical_immediately: bool | None = None
+    notify_high_daily: bool | None = None
+    notify_medium_weekly: bool | None = None
+    slack_channel: str | None = None
 
 
 class SchedulingUpdate(BaseModel):
-    scan_interval_hours: Optional[int] = None
-    full_sync_cron_hour: Optional[int] = None
-    full_sync_cron_minute: Optional[int] = None
-    incremental_sync_hours: Optional[int] = None
-    redis_cache_ttl_seconds: Optional[int] = None
+    scan_interval_hours: int | None = None
+    full_sync_cron_hour: int | None = None
+    full_sync_cron_minute: int | None = None
+    incremental_sync_hours: int | None = None
+    redis_cache_ttl_seconds: int | None = None
 
 
 class FeatureFlagUpdate(BaseModel):
-    enable_vector_search: Optional[bool] = None
-    enable_historical_analysis: Optional[bool] = None
-    enable_ml_scoring: Optional[bool] = None
-    use_mcp_cache: Optional[bool] = None
-    use_conv_summaries: Optional[bool] = None
+    enable_vector_search: bool | None = None
+    enable_historical_analysis: bool | None = None
+    enable_ml_scoring: bool | None = None
+    use_mcp_cache: bool | None = None
+    use_conv_summaries: bool | None = None
 
 
 class LlmConfigUpdate(BaseModel):
-    fast_model: Optional[str] = None
-    reasoning_model: Optional[str] = None
-    max_tokens: Optional[int] = None
-    temperature: Optional[float] = None
+    fast_model: str | None = None
+    reasoning_model: str | None = None
+    max_tokens: int | None = None
+    temperature: float | None = None
 
 
 class SODRuleUpdate(BaseModel):
-    rule_name: Optional[str] = None
-    description: Optional[str] = None
-    severity: Optional[str] = None
-    is_active: Optional[bool] = None
+    rule_name: str | None = None
+    description: str | None = None
+    severity: str | None = None
+    is_active: bool | None = None
 
 
 class ViolationStatusUpdate(BaseModel):
     new_status: str
-    notes: Optional[str] = None
+    notes: str | None = None
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _compute_level(roles: List[str]) -> int:
+def _compute_level(roles: list[str]) -> int:
     """Map a user's NetSuite role list to portal authority level (3-5)."""
     best = 0
     for role in roles:
@@ -145,7 +145,7 @@ def _level_label(level: int) -> str:
     return {5: "C-Suite", 4: "Controller / VP", 3: "Director"}.get(level, "No Access")
 
 
-def _create_token(payload: Dict[str, Any]) -> str:
+def _create_token(payload: dict[str, Any]) -> str:
     if not _JWT_AVAILABLE:
         raise HTTPException(status_code=500, detail="JWT library not installed. Run: pip install python-jose[cryptography]")
     exp = datetime.utcnow() + timedelta(hours=JWT_EXPIRE_HOURS)
@@ -153,7 +153,7 @@ def _create_token(payload: Dict[str, Any]) -> str:
     return jwt.encode(data, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
-def _decode_token(token: str) -> Dict[str, Any]:
+def _decode_token(token: str) -> dict[str, Any]:
     if not _JWT_AVAILABLE:
         raise HTTPException(status_code=500, detail="JWT library not installed.")
     try:
@@ -171,8 +171,8 @@ def _decode_token(token: str) -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 def _get_current_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-) -> Dict[str, Any]:
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+) -> dict[str, Any]:
     if not credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -184,7 +184,7 @@ def _get_current_user(
 
 def _require_level(min_level: int):
     """Dependency factory that enforces minimum authority level."""
-    def _check(user: Dict[str, Any] = Depends(_get_current_user)):
+    def _check(user: dict[str, Any] = Depends(_get_current_user)):
         if user.get("level", 0) < min_level:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -270,7 +270,7 @@ async def login(body: LoginRequest):
 
 
 @auth_router.get("/me", response_model=MeResponse)
-async def me(user: Dict[str, Any] = Depends(_get_current_user)):
+async def me(user: dict[str, Any] = Depends(_get_current_user)):
     """Return current user info from JWT."""
     return MeResponse(
         email=user["sub"],
@@ -288,9 +288,9 @@ async def me(user: Dict[str, Any] = Depends(_get_current_user)):
 # ---------------------------------------------------------------------------
 
 @admin_router.get("/system-health")
-async def system_health(user: Dict[str, Any] = Depends(_require_level(3))):
+async def system_health(user: dict[str, Any] = Depends(_require_level(3))):
     """Return health status of all integrations."""
-    health: Dict[str, Any] = {
+    health: dict[str, Any] = {
         "timestamp": datetime.utcnow().isoformat(),
         "integrations": {},
         "mcp_server": "healthy",
@@ -346,7 +346,7 @@ async def system_health(user: Dict[str, Any] = Depends(_require_level(3))):
 # ---------------------------------------------------------------------------
 
 @admin_router.get("/config")
-async def get_config(user: Dict[str, Any] = Depends(_require_level(3))):
+async def get_config(user: dict[str, Any] = Depends(_require_level(3))):
     """Return all non-secret configuration items."""
 
     def _mask(val: str) -> str:
@@ -431,10 +431,10 @@ async def get_config(user: Dict[str, Any] = Depends(_require_level(3))):
 @admin_router.patch("/config/thresholds")
 async def update_thresholds(
     body: ThresholdUpdate,
-    user: Dict[str, Any] = Depends(_require_level(4)),
+    user: dict[str, Any] = Depends(_require_level(4)),
 ):
     """Update risk score thresholds (writes to .env equivalent; restarts needed for full effect)."""
-    updates: Dict[str, str] = {}
+    updates: dict[str, str] = {}
     if body.critical is not None:
         os.environ["CRITICAL_THRESHOLD"] = str(body.critical)
         updates["critical"] = body.critical
@@ -452,10 +452,10 @@ async def update_thresholds(
 @admin_router.patch("/config/notifications")
 async def update_notifications(
     body: NotificationUpdate,
-    user: Dict[str, Any] = Depends(_require_level(4)),
+    user: dict[str, Any] = Depends(_require_level(4)),
 ):
     """Update notification settings."""
-    updates: Dict[str, Any] = {}
+    updates: dict[str, Any] = {}
     if body.notify_critical_immediately is not None:
         os.environ["NOTIFY_CRITICAL_IMMEDIATELY"] = str(body.notify_critical_immediately).lower()
         updates["notify_critical_immediately"] = body.notify_critical_immediately
@@ -476,10 +476,10 @@ async def update_notifications(
 @admin_router.patch("/config/scheduling")
 async def update_scheduling(
     body: SchedulingUpdate,
-    user: Dict[str, Any] = Depends(_require_level(4)),
+    user: dict[str, Any] = Depends(_require_level(4)),
 ):
     """Update sync schedule and cache TTL settings."""
-    updates: Dict[str, Any] = {}
+    updates: dict[str, Any] = {}
     if body.scan_interval_hours is not None:
         os.environ["SCAN_INTERVAL_HOURS"] = str(body.scan_interval_hours)
         updates["scan_interval_hours"] = body.scan_interval_hours
@@ -494,10 +494,10 @@ async def update_scheduling(
 @admin_router.patch("/config/feature-flags")
 async def update_feature_flags(
     body: FeatureFlagUpdate,
-    user: Dict[str, Any] = Depends(_require_level(5)),
+    user: dict[str, Any] = Depends(_require_level(5)),
 ):
     """Update feature flags — requires CFO-level (L5)."""
-    updates: Dict[str, Any] = {}
+    updates: dict[str, Any] = {}
     flag_map = {
         "enable_vector_search": ("ENABLE_VECTOR_SEARCH", body.enable_vector_search),
         "enable_historical_analysis": ("ENABLE_HISTORICAL_ANALYSIS", body.enable_historical_analysis),
@@ -517,10 +517,10 @@ async def update_feature_flags(
 @admin_router.patch("/config/llm")
 async def update_llm_config(
     body: LlmConfigUpdate,
-    user: Dict[str, Any] = Depends(_require_level(5)),
+    user: dict[str, Any] = Depends(_require_level(5)),
 ):
     """Update LLM model selection and token limits — requires L5."""
-    updates: Dict[str, Any] = {}
+    updates: dict[str, Any] = {}
     if body.fast_model is not None:
         os.environ["CLAUDE_MODEL_FAST"] = body.fast_model
         updates["fast_model"] = body.fast_model
@@ -540,12 +540,12 @@ async def update_llm_config(
 
 @admin_router.post("/config/test-connection")
 async def test_connection(
-    payload: Dict[str, str],
-    user: Dict[str, Any] = Depends(_require_level(4)),
+    payload: dict[str, str],
+    user: dict[str, Any] = Depends(_require_level(4)),
 ):
     """Test connectivity for a given integration (netsuite | okta | slack | database)."""
     integration = payload.get("integration", "").lower()
-    result: Dict[str, Any] = {"integration": integration, "tested_at": datetime.utcnow().isoformat()}
+    result: dict[str, Any] = {"integration": integration, "tested_at": datetime.utcnow().isoformat()}
 
     if integration == "database":
         try:
@@ -571,7 +571,7 @@ async def test_connection(
     elif integration == "okta":
         try:
             from connectors.okta_connector import OktaConnector
-            connector = OktaConnector()
+            OktaConnector()
             result["status"] = "ok"
         except Exception as e:
             result["status"] = "error"
@@ -589,7 +589,7 @@ async def test_connection(
 # ---------------------------------------------------------------------------
 
 @admin_router.get("/sod-rules")
-async def list_sod_rules(user: Dict[str, Any] = Depends(_require_level(3))):
+async def list_sod_rules(user: dict[str, Any] = Depends(_require_level(3))):
     """Return all SOD rules."""
     db = SessionLocal()
     try:
@@ -620,7 +620,7 @@ async def list_sod_rules(user: Dict[str, Any] = Depends(_require_level(3))):
 async def update_sod_rule(
     rule_id: str,
     body: SODRuleUpdate,
-    user: Dict[str, Any] = Depends(_require_level(4)),
+    user: dict[str, Any] = Depends(_require_level(4)),
 ):
     """Edit SOD rule (severity, description, active flag) — L4+ required."""
     db = SessionLocal()
@@ -631,7 +631,7 @@ async def update_sod_rule(
         if not rule:
             raise HTTPException(status_code=404, detail=f"SOD rule {rule_id} not found")
 
-        updates: Dict[str, Any] = {}
+        updates: dict[str, Any] = {}
         if body.rule_name is not None:
             rule.rule_name = body.rule_name
             updates["rule_name"] = body.rule_name
@@ -660,12 +660,12 @@ async def update_sod_rule(
 
 @admin_router.get("/violations")
 async def list_violations(
-    severity: Optional[str] = None,
-    status_filter: Optional[str] = None,
-    department: Optional[str] = None,
+    severity: str | None = None,
+    status_filter: str | None = None,
+    department: str | None = None,
     limit: int = 50,
     offset: int = 0,
-    user: Dict[str, Any] = Depends(_require_level(3)),
+    user: dict[str, Any] = Depends(_require_level(3)),
 ):
     """Return paginated violations with optional filters."""
     db = SessionLocal()
@@ -673,7 +673,7 @@ async def list_violations(
         from repositories.violation_repository import ViolationRepository
         repo = ViolationRepository(db)
 
-        kwargs: Dict[str, Any] = {"limit": limit, "offset": offset}
+        kwargs: dict[str, Any] = {"limit": limit, "offset": offset}
         if severity:
             kwargs["severity"] = severity
 
@@ -705,7 +705,7 @@ async def list_violations(
 async def update_violation_status(
     violation_id: str,
     body: ViolationStatusUpdate,
-    user: Dict[str, Any] = Depends(_require_level(4)),
+    user: dict[str, Any] = Depends(_require_level(4)),
 ):
     """Update violation status (OPEN → IN_REVIEW → RESOLVED)."""
     db = SessionLocal()
@@ -727,16 +727,16 @@ async def update_violation_status(
 
 @admin_router.get("/exceptions")
 async def list_exceptions(
-    status_filter: Optional[str] = None,
+    status_filter: str | None = None,
     limit: int = 50,
     offset: int = 0,
-    user: Dict[str, Any] = Depends(_require_level(3)),
+    user: dict[str, Any] = Depends(_require_level(3)),
 ):
     """Return paginated approved exceptions."""
     db = SessionLocal()
     try:
-        from repositories.exception_repository import ExceptionRepository
         from models.approved_exception import ExceptionStatus
+        from repositories.exception_repository import ExceptionRepository
         repo = ExceptionRepository(db)
 
         status_enum = None
@@ -777,7 +777,7 @@ async def list_exceptions(
 
 
 @admin_router.get("/exceptions/due-review")
-async def exceptions_due_review(user: Dict[str, Any] = Depends(_require_level(3))):
+async def exceptions_due_review(user: dict[str, Any] = Depends(_require_level(3))):
     """Return exceptions where next_review_date <= today."""
     db = SessionLocal()
     try:
@@ -811,7 +811,7 @@ async def exceptions_due_review(user: Dict[str, Any] = Depends(_require_level(3)
 async def audit_trail(
     limit: int = 100,
     offset: int = 0,
-    user: Dict[str, Any] = Depends(_require_level(4)),
+    user: dict[str, Any] = Depends(_require_level(4)),
 ):
     """Return paginated audit log from audit_trail_repository."""
     db = SessionLocal()
@@ -846,7 +846,7 @@ async def audit_trail(
 @admin_router.get("/token-analytics")
 async def token_analytics(
     days: int = 30,
-    user: Dict[str, Any] = Depends(_require_level(4)),
+    user: dict[str, Any] = Depends(_require_level(4)),
 ):
     """Return LLM token usage and cost summary for the last N days."""
     try:

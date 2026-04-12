@@ -11,10 +11,8 @@ Usage:
 """
 
 import json
-import re
-from pathlib import Path
 from collections import defaultdict
-from typing import Dict, List, Set
+from pathlib import Path
 
 # Permission category patterns
 CATEGORY_PATTERNS = {
@@ -75,7 +73,7 @@ CATEGORY_PATTERNS = {
 }
 
 
-def categorize_permission(perm_id: str, perm_name: str) -> List[str]:
+def categorize_permission(perm_id: str, perm_name: str) -> list[str]:
     """
     Categorize a permission based on its ID and name
 
@@ -115,7 +113,7 @@ def categorize_permission(perm_id: str, perm_name: str) -> List[str]:
     return categories
 
 
-def determine_risk_level(categories: List[str], perm_level: str) -> str:
+def determine_risk_level(categories: list[str], perm_level: str) -> str:
     """Determine risk level based on categories and permission level"""
 
     # High-risk categories
@@ -149,10 +147,10 @@ def determine_risk_level(categories: List[str], perm_level: str) -> str:
         return 'MINIMAL'
 
 
-def analyze_permissions(roles_file: Path) -> Dict:
+def analyze_permissions(roles_file: Path) -> dict:
     """Analyze all permissions from roles file"""
 
-    with open(roles_file, 'r') as f:
+    with open(roles_file) as f:
         data = json.load(f)
 
     # Collect all unique permissions
@@ -186,13 +184,13 @@ def analyze_permissions(roles_file: Path) -> Dict:
     for perm_id, perm_data in permissions.items():
         usage = permission_usage[perm_id]
         perm_data['used_by_roles'] = list(usage['roles'])
-        perm_data['levels_granted'] = sorted(list(usage['levels']))
+        perm_data['levels_granted'] = sorted(usage['levels'])
         perm_data['usage_count'] = len(usage['roles'])
 
     return permissions
 
 
-def generate_analysis_report(permissions: Dict) -> str:
+def generate_analysis_report(permissions: dict) -> str:
     """Generate a markdown report of the analysis"""
 
     report = []

@@ -8,6 +8,7 @@ Usage:
 
 import os
 import sys
+
 import requests
 from dotenv import load_dotenv
 
@@ -64,7 +65,7 @@ def test_mcp_tool_call():
             result = response.json()
             if "result" in result and "tools" in result["result"]:
                 tool_count = len(result["result"]["tools"])
-                print(f"✅ MCP tool call successful")
+                print("✅ MCP tool call successful")
                 print(f"   Found {tool_count} available tools")
                 return True
             else:
@@ -86,7 +87,7 @@ def test_anthropic_api_key():
         return False
 
     if not ANTHROPIC_API_KEY.startswith("sk-ant-"):
-        print(f"❌ ANTHROPIC_API_KEY has invalid format (should start with 'sk-ant-')")
+        print("❌ ANTHROPIC_API_KEY has invalid format (should start with 'sk-ant-')")
         return False
 
     print(f"✅ ANTHROPIC_API_KEY is set (ends with: ...{ANTHROPIC_API_KEY[-8:]})")

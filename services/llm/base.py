@@ -4,16 +4,16 @@ Abstract Base Class for LLM Providers
 Defines a unified interface for interacting with different LLM providers
 """
 
-from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Any, Union
-from dataclasses import dataclass
-from enum import Enum
 import logging
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from enum import StrEnum
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
-class LLMProvider(str, Enum):
+class LLMProvider(StrEnum):
     """Supported LLM providers"""
     ANTHROPIC = "anthropic"
     OPENAI = "openai"
@@ -30,8 +30,8 @@ class LLMMessage:
     """Unified message format"""
     role: str  # system, user, assistant
     content: str
-    name: Optional[str] = None
-    metadata: Optional[Dict[str, Any]] = None
+    name: str | None = None
+    metadata: dict[str, Any] | None = None
 
 
 @dataclass
@@ -41,10 +41,10 @@ class LLMResponse:
     provider: str
     model: str
     finish_reason: str
-    usage: Dict[str, int]  # {input_tokens, output_tokens, total_tokens}
-    cost: Optional[float] = None
-    latency_ms: Optional[float] = None
-    metadata: Optional[Dict[str, Any]] = None
+    usage: dict[str, int]  # {input_tokens, output_tokens, total_tokens}
+    cost: float | None = None
+    latency_ms: float | None = None
+    metadata: dict[str, Any] | None = None
 
 
 @dataclass
@@ -53,13 +53,13 @@ class LLMConfig:
     provider: str
     model: str
     api_key: str
-    api_base: Optional[str] = None
+    api_base: str | None = None
     temperature: float = 0.0
     max_tokens: int = 4096
     timeout: int = 120
     max_retries: int = 3
     streaming: bool = False
-    extra_params: Optional[Dict[str, Any]] = None
+    extra_params: dict[str, Any] | None = None
 
 
 class BaseLLMProvider(ABC):
@@ -90,9 +90,9 @@ class BaseLLMProvider(ABC):
     @abstractmethod
     def generate(
         self,
-        messages: List[LLMMessage],
-        temperature: Optional[float] = None,
-        max_tokens: Optional[int] = None,
+        messages: list[LLMMessage],
+        temperature: float | None = None,
+        max_tokens: int | None = None,
         **kwargs
     ) -> LLMResponse:
         """
@@ -112,9 +112,9 @@ class BaseLLMProvider(ABC):
     @abstractmethod
     def generate_stream(
         self,
-        messages: List[LLMMessage],
-        temperature: Optional[float] = None,
-        max_tokens: Optional[int] = None,
+        messages: list[LLMMessage],
+        temperature: float | None = None,
+        max_tokens: int | None = None,
         **kwargs
     ):
         """
@@ -145,7 +145,7 @@ class BaseLLMProvider(ABC):
         pass
 
     @abstractmethod
-    def get_model_info(self) -> Dict[str, Any]:
+    def get_model_info(self) -> dict[str, Any]:
         """
         Get model information
 
@@ -183,7 +183,7 @@ class BaseLLMProvider(ABC):
 
         return input_cost + output_cost
 
-    def format_messages(self, messages: List[LLMMessage]) -> List[Dict[str, str]]:
+    def format_messages(self, messages: list[LLMMessage]) -> list[dict[str, str]]:
         """
         Format messages to standard dict format
 
@@ -202,7 +202,7 @@ class BaseLLMProvider(ABC):
             for msg in messages
         ]
 
-    def validate_messages(self, messages: List[LLMMessage]) -> None:
+    def validate_messages(self, messages: list[LLMMessage]) -> None:
         """
         Validate message format
 

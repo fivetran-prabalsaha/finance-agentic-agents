@@ -4,11 +4,12 @@ Okta API Client
 Handles authentication and API calls to Okta
 """
 
-import os
-import requests
-from typing import Dict, List, Optional, Any
-from datetime import datetime
 import logging
+import os
+from datetime import datetime
+from typing import Any
+
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -18,8 +19,8 @@ class OktaClient:
 
     def __init__(
         self,
-        domain: Optional[str] = None,
-        api_token: Optional[str] = None
+        domain: str | None = None,
+        api_token: str | None = None
     ):
         """
         Initialize Okta client
@@ -43,9 +44,9 @@ class OktaClient:
 
     def get_users(
         self,
-        status: Optional[str] = None,
+        status: str | None = None,
         limit: int = 200
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get users from Okta
 
@@ -98,7 +99,7 @@ class OktaClient:
             'count': len(users)
         }
 
-    def _parse_next_link(self, link_header: str) -> Optional[str]:
+    def _parse_next_link(self, link_header: str) -> str | None:
         """Parse the Link header to extract next page URL"""
         if not link_header:
             return None
@@ -112,7 +113,7 @@ class OktaClient:
 
         return None
 
-    def get_user_by_email(self, email: str) -> Optional[Dict]:
+    def get_user_by_email(self, email: str) -> dict | None:
         """
         Get single user by email
 
@@ -135,7 +136,7 @@ class OktaClient:
             logger.error(f"Okta API error: {str(e)}")
             raise
 
-    def get_user_by_id(self, user_id: str) -> Optional[Dict]:
+    def get_user_by_id(self, user_id: str) -> dict | None:
         """
         Get single user by Okta ID
 
@@ -158,19 +159,19 @@ class OktaClient:
             logger.error(f"Okta API error: {str(e)}")
             raise
 
-    def get_active_users(self) -> Dict[str, Any]:
+    def get_active_users(self) -> dict[str, Any]:
         """Get all active users"""
         return self.get_users(status='ACTIVE')
 
-    def get_deprovisioned_users(self) -> Dict[str, Any]:
+    def get_deprovisioned_users(self) -> dict[str, Any]:
         """Get all deprovisioned users"""
         return self.get_users(status='DEPROVISIONED')
 
-    def get_suspended_users(self) -> Dict[str, Any]:
+    def get_suspended_users(self) -> dict[str, Any]:
         """Get all suspended users"""
         return self.get_users(status='SUSPENDED')
 
-    def get_user_groups(self, user_id: str) -> Dict[str, Any]:
+    def get_user_groups(self, user_id: str) -> dict[str, Any]:
         """
         Get groups for a specific user
 
@@ -201,7 +202,7 @@ class OktaClient:
                 'groups': []
             }
 
-    def transform_user_data(self, okta_user: Dict) -> Dict[str, Any]:
+    def transform_user_data(self, okta_user: dict) -> dict[str, Any]:
         """
         Transform Okta user data to our database schema
 
@@ -233,7 +234,7 @@ class OktaClient:
             'okta_groups': []  # Will be populated separately if needed
         }
 
-    def _parse_datetime(self, date_string: Optional[str]) -> Optional[datetime]:
+    def _parse_datetime(self, date_string: str | None) -> datetime | None:
         """Parse ISO 8601 datetime string"""
         if not date_string:
             return None
@@ -245,7 +246,7 @@ class OktaClient:
             logger.warning(f"Failed to parse datetime: {date_string}")
             return None
 
-    def fetch_all_users_with_groups(self) -> Dict[str, Any]:
+    def fetch_all_users_with_groups(self) -> dict[str, Any]:
         """
         Fetch all users from Okta with their group memberships
 
@@ -286,7 +287,7 @@ class OktaClient:
             'count': len(users_with_groups)
         }
 
-    def test_connection(self) -> Dict[str, Any]:
+    def test_connection(self) -> dict[str, Any]:
         """
         Test Okta API connection
 

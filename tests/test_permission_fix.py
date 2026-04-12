@@ -13,7 +13,6 @@ Usage:
 
 import os
 import sys
-from typing import Dict, Any
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -53,13 +52,13 @@ class PermissionFixTester:
             )
 
             if not result['success']:
-                print(f"❌ FAIL: Could not fetch user")
+                print("❌ FAIL: Could not fetch user")
                 print(f"   Error: {result.get('error', 'Unknown')}")
                 continue
 
             users = result['data']['users']
             if not users:
-                print(f"❌ FAIL: User not found")
+                print("❌ FAIL: User not found")
                 continue
 
             # May return multiple users (duplicates)
@@ -73,7 +72,7 @@ class PermissionFixTester:
                 print(f"   Roles: {len(roles)}")
 
                 if not roles:
-                    print(f"   ⚠️  WARNING: No roles found")
+                    print("   ⚠️  WARNING: No roles found")
                     continue
 
                 # Check each role for permissions
@@ -106,7 +105,7 @@ class PermissionFixTester:
                         print(f"   ❌ {role_name}: 0 permissions (MISSING)")
 
                 # Summary
-                print(f"\n   📊 Summary:")
+                print("\n   📊 Summary:")
                 print(f"      Total Roles:              {len(roles)}")
                 print(f"      Roles with Permissions:   {roles_with_permissions}")
                 print(f"      Roles without Permissions: {roles_without_permissions}")
@@ -114,11 +113,11 @@ class PermissionFixTester:
 
                 # Status
                 if roles_without_permissions == 0 and total_permissions > 0:
-                    print(f"\n   ✅ STATUS: PASS - All roles have permissions")
+                    print("\n   ✅ STATUS: PASS - All roles have permissions")
                 elif roles_with_permissions > 0:
-                    print(f"\n   ⚠️  STATUS: PARTIAL - Some roles missing permissions")
+                    print("\n   ⚠️  STATUS: PARTIAL - Some roles missing permissions")
                 else:
-                    print(f"\n   ❌ STATUS: FAIL - No permissions found")
+                    print("\n   ❌ STATUS: FAIL - No permissions found")
 
     def test_sod_analysis_accuracy(self):
         """Test that SOD analysis can now work with permission data"""
@@ -154,7 +153,7 @@ class PermissionFixTester:
             )
 
             if not result['success'] or not result['data']['users']:
-                print(f"   ❌ Could not fetch user")
+                print("   ❌ Could not fetch user")
                 continue
 
             # Get all permissions across all roles
@@ -191,11 +190,11 @@ class PermissionFixTester:
                         print(f"      ❌ Cannot check: {perm_needed} (not in permission list)")
 
                 if len(found) == len(needed):
-                    print(f"      ✅ Rule can be fully checked")
+                    print("      ✅ Rule can be fully checked")
                 elif len(found) > 0:
                     print(f"      ⚠️  Rule partially checkable ({len(found)}/{len(needed)})")
                 else:
-                    print(f"      ❌ Rule cannot be checked")
+                    print("      ❌ Rule cannot be checked")
                 print()
 
     def test_governance_usage(self):

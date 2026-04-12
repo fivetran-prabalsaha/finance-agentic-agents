@@ -9,11 +9,12 @@ Provides utilities for:
 """
 
 import logging
-from typing import List, Dict, Any, Optional, Tuple
 from enum import Enum
+from typing import Any
+
 import numpy as np
+from sqlalchemy import text
 from sqlalchemy.orm import Session
-from sqlalchemy import text, and_, or_
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +33,7 @@ class VectorSearchConfig:
         self,
         metric: DistanceMetric = DistanceMetric.COSINE,
         min_similarity: float = 0.5,
-        max_distance: Optional[float] = None,
+        max_distance: float | None = None,
         enable_explain: bool = False
     ):
         """
@@ -70,7 +71,7 @@ def similarity_to_cosine(similarity: float) -> float:
     return 1 - similarity
 
 
-def normalize_vector(vector: List[float]) -> List[float]:
+def normalize_vector(vector: list[float]) -> list[float]:
     """Normalize vector to unit length"""
     arr = np.array(vector, dtype=np.float32)
     norm = np.linalg.norm(arr)
@@ -86,7 +87,7 @@ class VectorSearcher:
     def __init__(
         self,
         session: Session,
-        config: Optional[VectorSearchConfig] = None
+        config: VectorSearchConfig | None = None
     ):
         """
         Initialize Vector Searcher
@@ -100,13 +101,13 @@ class VectorSearcher:
 
     def search(
         self,
-        query_vector: List[float],
+        query_vector: list[float],
         table_name: str,
         embedding_column: str = "embedding",
         top_k: int = 5,
-        filters: Optional[Dict[str, Any]] = None,
-        select_columns: Optional[List[str]] = None
-    ) -> List[Dict[str, Any]]:
+        filters: dict[str, Any] | None = None,
+        select_columns: list[str] | None = None
+    ) -> list[dict[str, Any]]:
         """
         Perform similarity search
 
@@ -204,12 +205,12 @@ class VectorSearcher:
 
     def batch_search(
         self,
-        query_vectors: List[List[float]],
+        query_vectors: list[list[float]],
         table_name: str,
         embedding_column: str = "embedding",
         top_k: int = 5,
-        filters: Optional[Dict[str, Any]] = None
-    ) -> List[List[Dict[str, Any]]]:
+        filters: dict[str, Any] | None = None
+    ) -> list[list[dict[str, Any]]]:
         """
         Perform batch similarity search for multiple query vectors
 
@@ -238,13 +239,13 @@ class VectorSearcher:
 
     def search_with_reranking(
         self,
-        query_vector: List[float],
+        query_vector: list[float],
         table_name: str,
         top_k: int = 5,
         rerank_top_k: int = 20,
-        rerank_func: Optional[callable] = None,
-        filters: Optional[Dict[str, Any]] = None
-    ) -> List[Dict[str, Any]]:
+        rerank_func: callable | None = None,
+        filters: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
         """
         Perform similarity search with re-ranking
 
@@ -280,15 +281,15 @@ class VectorSearcher:
 
     def hybrid_search(
         self,
-        query_vector: List[float],
+        query_vector: list[float],
         text_query: str,
         table_name: str,
-        text_columns: List[str],
+        text_columns: list[str],
         vector_weight: float = 0.7,
         text_weight: float = 0.3,
         top_k: int = 5,
-        filters: Optional[Dict[str, Any]] = None
-    ) -> List[Dict[str, Any]]:
+        filters: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
         """
         Perform hybrid search combining vector similarity and text search
 
@@ -362,7 +363,7 @@ class VectorSearcher:
 # Helper Functions
 
 def compute_similarity_matrix(
-    vectors: List[List[float]],
+    vectors: list[list[float]],
     metric: DistanceMetric = DistanceMetric.COSINE
 ) -> np.ndarray:
     """
@@ -404,10 +405,10 @@ def compute_similarity_matrix(
 
 
 def find_duplicates(
-    vectors: List[List[float]],
+    vectors: list[list[float]],
     similarity_threshold: float = 0.95,
     metric: DistanceMetric = DistanceMetric.COSINE
-) -> List[Tuple[int, int, float]]:
+) -> list[tuple[int, int, float]]:
     """
     Find potential duplicate vectors based on high similarity
 
@@ -432,9 +433,9 @@ def find_duplicates(
 
 
 def cluster_vectors(
-    vectors: List[List[float]],
+    vectors: list[list[float]],
     n_clusters: int = 5
-) -> Dict[int, List[int]]:
+) -> dict[int, list[int]]:
     """
     Perform simple clustering on vectors using K-means
 

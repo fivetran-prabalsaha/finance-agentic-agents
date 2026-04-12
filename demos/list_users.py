@@ -3,6 +3,7 @@ Quick utility to list users from NetSuite to find correct names/emails
 """
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from services.netsuite_client import NetSuiteClient
@@ -25,7 +26,7 @@ if result.get('success'):
         roles = user.get('roles_count', 0)
         print(f"{i:<4} {name:<40} {email:<50} {roles:>6}")
 
-    print(f"\nSearch for 'Prabal' or 'Robin' in the list above.")
-    print(f"If found, use the exact name or email address for the analysis.\n")
+    print("\nSearch for 'Prabal' or 'Robin' in the list above.")
+    print("If found, use the exact name or email address for the analysis.\n")
 else:
     print(f"Error: {result.get('error')}\n")

@@ -9,26 +9,23 @@ This API provides endpoints for:
 5. Notifications
 """
 
-import os
 import logging
-from typing import List, Optional
-from datetime import datetime
 from contextlib import asynccontextmanager
+from datetime import datetime
 
-from fastapi import FastAPI, HTTPException, Depends, status, BackgroundTasks, Query
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr
 
-from models.database_config import get_session, DatabaseConfig
-from repositories.user_repository import UserRepository
+from agents.notifier import create_notifier
+from agents.orchestrator import create_orchestrator
+from agents.risk_assessor import create_risk_assessor
+from models.database_config import DatabaseConfig, get_session
 from repositories.role_repository import RoleRepository
+from repositories.user_repository import UserRepository
 from repositories.violation_repository import ViolationRepository
 from services.netsuite_client import NetSuiteClient
-from agents.orchestrator import create_orchestrator
-from agents.analyzer import create_analyzer
-from agents.risk_assessor import create_risk_assessor
-from agents.notifier import create_notifier
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -78,8 +75,8 @@ app.add_middleware(
 class UserResponse(BaseModel):
     user_id: str
     email: str
-    name: Optional[str]
-    department: Optional[str]
+    name: str | None
+    department: str | None
     status: str
     roles_count: int
 
@@ -103,8 +100,8 @@ class RiskScoreResponse(BaseModel):
 
 
 class ScanRequest(BaseModel):
-    scan_id: Optional[str] = None
-    notify_recipients: Optional[List[EmailStr]] = []
+    scan_id: str | None = None
+    notify_recipients: list[EmailStr] | None = []
 
 
 class UserScanRequest(BaseModel):
@@ -112,8 +109,8 @@ class UserScanRequest(BaseModel):
 
 
 class NotificationRequest(BaseModel):
-    recipients: List[EmailStr]
-    channels: List[str] = ["EMAIL", "SLACK"]
+    recipients: list[EmailStr]
+    channels: list[str] = ["EMAIL", "SLACK"]
 
 
 class HealthResponse(BaseModel):
@@ -303,8 +300,8 @@ async def get_user_risk(user_email: str, repos=Depends(get_repositories)):
 
 @app.get("/api/violations", tags=["Violations"])
 async def list_violations(
-    severity: Optional[str] = None,
-    status: Optional[str] = None,
+    severity: str | None = None,
+    status: str | None = None,
     limit: int = Query(100, ge=1, le=1000),
     repos=Depends(get_repositories)
 ):

@@ -5,18 +5,14 @@ Demonstrates the ReportGeneratorAgent's ability to generate different types
 of reports tailored to specific audiences with custom focus areas.
 """
 
-import sys
 import os
+import sys
 from datetime import datetime
 
 # Add parent directory to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from agents.report_generator import (
-    ReportGeneratorAgent,
-    ReportType,
-    AudienceType
-)
+from agents.report_generator import AudienceType, ReportGeneratorAgent, ReportType
 
 
 def get_sample_analysis_data():

@@ -14,12 +14,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from mcp.mcp_tools import (
-    check_my_approval_authority_handler,
-    request_exception_approval_handler,
-    # Also import Phase 2 tools for verification
-    list_approved_exceptions_handler
-)
+from mcp.mcp_tools import check_my_approval_authority_handler, request_exception_approval_handler
 
 
 async def test_check_authority_cfo():

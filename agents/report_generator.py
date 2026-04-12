@@ -5,19 +5,20 @@ This agent uses Claude to generate customized reports based on user preferences.
 """
 
 import logging
-from typing import Dict, Any, List, Optional
-from enum import Enum
 from datetime import datetime
+from enum import StrEnum
+from typing import Any
 
 from langchain_anthropic import ChatAnthropic
-from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
+
 from utils.langchain_callback import TokenTrackingCallback
 
 logger = logging.getLogger(__name__)
 
 
-class ReportType(str, Enum):
+class ReportType(StrEnum):
     """Report types available"""
     EXECUTIVE_SUMMARY = "executive_summary"
     DETAILED_ANALYSIS = "detailed_analysis"
@@ -27,7 +28,7 @@ class ReportType(str, Enum):
     TREND_ANALYSIS = "trend_analysis"
 
 
-class ReportFormat(str, Enum):
+class ReportFormat(StrEnum):
     """Output formats"""
     MARKDOWN = "markdown"
     JSON = "json"
@@ -35,7 +36,7 @@ class ReportFormat(str, Enum):
     TEXT = "text"
 
 
-class AudienceType(str, Enum):
+class AudienceType(StrEnum):
     """Target audience"""
     EXECUTIVES = "executives"
     COMPLIANCE_TEAM = "compliance_team"
@@ -69,14 +70,14 @@ class ReportGeneratorAgent:
 
     def generate_custom_report(
         self,
-        analysis_data: Dict[str, Any],
+        analysis_data: dict[str, Any],
         report_type: ReportType = ReportType.EXECUTIVE_SUMMARY,
         audience: AudienceType = AudienceType.EXECUTIVES,
-        focus_areas: Optional[List[str]] = None,
-        include_sections: Optional[List[str]] = None,
-        exclude_sections: Optional[List[str]] = None,
-        custom_instructions: Optional[str] = None
-    ) -> Dict[str, Any]:
+        focus_areas: list[str] | None = None,
+        include_sections: list[str] | None = None,
+        exclude_sections: list[str] | None = None,
+        custom_instructions: str | None = None
+    ) -> dict[str, Any]:
         """
         Generate a customized compliance report
 
@@ -138,10 +139,10 @@ class ReportGeneratorAgent:
         self,
         report_type: ReportType,
         audience: AudienceType,
-        focus_areas: Optional[List[str]],
-        include_sections: Optional[List[str]],
-        exclude_sections: Optional[List[str]],
-        custom_instructions: Optional[str]
+        focus_areas: list[str] | None,
+        include_sections: list[str] | None,
+        exclude_sections: list[str] | None,
+        custom_instructions: str | None
     ) -> ChatPromptTemplate:
         """Build dynamic prompt based on user preferences"""
 
@@ -263,7 +264,7 @@ Focus on patterns, trends, and predictive analysis.
 
         return f"{base_message}\n\n{report_instructions.get(report_type, '')}\n\nAUDIENCE: {audience_tone.get(audience, '')}"
 
-    def _format_analysis_data(self, data: Dict[str, Any]) -> str:
+    def _format_analysis_data(self, data: dict[str, Any]) -> str:
         """Format analysis data for the prompt"""
         formatted = []
 
@@ -302,8 +303,8 @@ Focus on patterns, trends, and predictive analysis.
 
     def generate_composite_report_with_llm(
         self,
-        analysis_results: Dict[str, Any],
-        customization: Dict[str, Any]
+        analysis_results: dict[str, Any],
+        customization: dict[str, Any]
     ) -> str:
         """
         Generate a fully customized composite report using Claude

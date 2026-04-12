@@ -12,9 +12,9 @@ Usage:
     python -m eval.golden_set --dry-run  # print examples, don't push
 """
 
-import sys
 import json
-from typing import List, Dict, Any
+import sys
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # Tool-selection golden set
@@ -25,7 +25,7 @@ from typing import List, Dict, Any
 #                    2 = primary match, 1 = useful secondary, 0 = irrelevant
 # ---------------------------------------------------------------------------
 
-TOOL_SELECTION_EXAMPLES: List[Dict[str, Any]] = [
+TOOL_SELECTION_EXAMPLES: list[dict[str, Any]] = [
     # ── Violation queries ──────────────────────────────────────────────────
     {
         "query": "does alice@fivetran.com have any SOD violations?",
@@ -215,7 +215,7 @@ TOOL_SELECTION_EXAMPLES: List[Dict[str, Any]] = [
 #   expected_facts : list of facts the answer MUST contain (for faithfulness eval)
 # ---------------------------------------------------------------------------
 
-ANSWER_QUALITY_EXAMPLES: List[Dict[str, Any]] = [
+ANSWER_QUALITY_EXAMPLES: list[dict[str, Any]] = [
     {
         "query": "how many total violations do we have?",
         "expected_facts": [
@@ -325,7 +325,7 @@ def push_to_langsmith(dry_run: bool = False) -> None:
         existing = [d for d in client.list_datasets() if d.name == name]
         if existing:
             client.delete_dataset(dataset_id=existing[0].id)
-            print(f"  Deleted existing dataset.")
+            print("  Deleted existing dataset.")
 
         dataset = client.create_dataset(name, description=config["description"])
         client.create_examples(

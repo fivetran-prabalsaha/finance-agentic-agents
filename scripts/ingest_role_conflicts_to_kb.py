@@ -7,18 +7,18 @@ Reads the role conflict analysis JSON and:
 2. Creates embeddings and stores in vector DB for semantic search
 """
 
-import sys
 import json
-from pathlib import Path
+import sys
 from datetime import datetime
-from typing import List, Dict
+from pathlib import Path
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from sqlalchemy import text
+
 from models.database_config import DatabaseConfig
 from services.embedding_service import EmbeddingService
-from sqlalchemy import text
 
 
 class RoleConflictIngestion:
@@ -43,7 +43,7 @@ class RoleConflictIngestion:
 
         # Read JSON file
         print(f"📖 Reading analysis from: {json_file_path}")
-        with open(json_file_path, 'r') as f:
+        with open(json_file_path) as f:
             analysis_data = json.load(f)
 
         print(f"   Found {len(analysis_data)} roles in analysis")
@@ -68,7 +68,7 @@ class RoleConflictIngestion:
         print("✅ INGESTION COMPLETE")
         print("=" * 80)
 
-    def _insert_structured_data(self, roles_with_conflicts: List[Dict]):
+    def _insert_structured_data(self, roles_with_conflicts: list[dict]):
         """Insert conflict data into role_internal_conflicts table"""
 
         # Clear existing data
@@ -104,7 +104,7 @@ class RoleConflictIngestion:
         self.session.commit()
         print(f"   ✅ Inserted {total_conflicts} conflict records for {len(roles_with_conflicts)} roles")
 
-    def _insert_vector_embeddings(self, roles_with_conflicts: List[Dict], all_roles: List[Dict]):
+    def _insert_vector_embeddings(self, roles_with_conflicts: list[dict], all_roles: list[dict]):
         """Create and insert embeddings into knowledge_base table"""
 
         documents = []
@@ -224,7 +224,7 @@ Analysis Date: {datetime.now().strftime('%Y-%m-%d')}
             }
         })
 
-        print(f"   Created 1 summary embedding")
+        print("   Created 1 summary embedding")
         print()
 
         # Generate embeddings and insert
@@ -271,7 +271,7 @@ Analysis Date: {datetime.now().strftime('%Y-%m-%d')}
         self.session.commit()
         print(f"   ✅ Inserted {len(documents)} documents into vector knowledge base")
 
-    def _group_conflicts_by_pattern(self, roles_with_conflicts: List[Dict]) -> Dict:
+    def _group_conflicts_by_pattern(self, roles_with_conflicts: list[dict]) -> dict:
         """Group conflicts by pattern to create pattern-level embeddings"""
         patterns = {}
 
@@ -291,7 +291,7 @@ Analysis Date: {datetime.now().strftime('%Y-%m-%d')}
 
         return patterns
 
-    def _get_pattern_description(self, pattern_info: Dict) -> str:
+    def _get_pattern_description(self, pattern_info: dict) -> str:
         """Get detailed description for a conflict pattern"""
         category = pattern_info['category']
 
@@ -317,7 +317,7 @@ Analysis Date: {datetime.now().strftime('%Y-%m-%d')}
 
         return strategies.get(category, 'Split this role into separate functions and assign to different users.')
 
-    def _get_top_roles_summary(self, roles_with_conflicts: List[Dict]) -> str:
+    def _get_top_roles_summary(self, roles_with_conflicts: list[dict]) -> str:
         """Generate summary of most problematic roles"""
         sorted_roles = sorted(roles_with_conflicts, key=lambda x: len(x['conflicts']), reverse=True)
 
@@ -327,7 +327,7 @@ Analysis Date: {datetime.now().strftime('%Y-%m-%d')}
 
         return "\n".join(lines)
 
-    def _get_safe_roles_summary(self, safe_roles: List[Dict]) -> str:
+    def _get_safe_roles_summary(self, safe_roles: list[dict]) -> str:
         """Generate summary of safe roles"""
         # Get roles sorted by permission count
         sorted_roles = sorted(safe_roles, key=lambda x: x['permission_count'], reverse=True)

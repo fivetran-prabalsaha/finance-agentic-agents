@@ -7,11 +7,11 @@ The HTTP version (run_mcp_server.py) is for API/web integration.
 
 Claude Desktop expects MCP servers to communicate via stdio.
 """
-import os
-import sys
 import asyncio
 import json
+import sys
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 # Add project root to path
@@ -23,6 +23,7 @@ load_dotenv()
 
 # Suppress most logging for stdio (only errors to stderr)
 import logging
+
 logging.basicConfig(
     level=logging.ERROR,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -34,10 +35,7 @@ async def main():
     """Main entry point for stdio MCP server"""
     try:
         # Import here to avoid loading issues
-        from mcp.mcp_tools import (
-            get_tool_handler,
-            TOOLS
-        )
+        from mcp.mcp_tools import TOOLS, get_tool_handler
 
         # Simple stdio loop
         print("MCP Stdio Server Ready", file=sys.stderr)

@@ -20,15 +20,14 @@ Date: 2026-02-12
 Version: 2.0 (Level-Based)
 """
 
-import os
-import sys
-import json
 import argparse
+import json
+import os
 import re
-from pathlib import Path
-from typing import Dict, List, Set, Tuple, Any, Optional
+import sys
 from collections import defaultdict
 from datetime import datetime
+from pathlib import Path
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -61,11 +60,11 @@ class LevelBasedSODAnalyzer:
         self.categorized_permissions = {}
         self.permission_metadata = {}
 
-    def _load_json(self, filename: str) -> Dict:
+    def _load_json(self, filename: str) -> dict:
         """Load JSON configuration file"""
         filepath = self.config_dir / filename
         try:
-            with open(filepath, 'r') as f:
+            with open(filepath) as f:
                 return json.load(f)
         except FileNotFoundError:
             print(f"ERROR: Configuration file not found: {filepath}")
@@ -74,7 +73,7 @@ class LevelBasedSODAnalyzer:
             print(f"ERROR: Invalid JSON in {filepath}: {e}")
             sys.exit(1)
 
-    def fetch_roles_from_netsuite(self, client: NetSuiteClient, restlet_url: str) -> Dict:
+    def fetch_roles_from_netsuite(self, client: NetSuiteClient, restlet_url: str) -> dict:
         """Fetch roles from NetSuite with filtering"""
         print("=" * 80)
         print("STEP 1: Fetching Roles from NetSuite")
@@ -83,7 +82,7 @@ class LevelBasedSODAnalyzer:
         role_prefix = self.role_filter['role_name_prefix']
         exclude_suffixes = self.role_filter['exclude_suffixes']
 
-        print(f"\nRole filter:")
+        print("\nRole filter:")
         print(f"   • Prefix: {role_prefix}")
         print(f"   • Exclude suffixes: {', '.join(exclude_suffixes)}")
 
@@ -118,7 +117,7 @@ class LevelBasedSODAnalyzer:
         filtered_count = len(self.roles_data['roles'])
         excluded_count = original_count - filtered_count
 
-        print(f"\n✅ Successfully fetched roles")
+        print("\n✅ Successfully fetched roles")
         print(f"   • Total roles: {original_count}")
         print(f"   • Excluded (OLD, etc.): {excluded_count}")
         print(f"   • Active roles for analysis: {filtered_count}")
@@ -188,11 +187,11 @@ class LevelBasedSODAnalyzer:
                     'conflicts_with': []
                 }
 
-        print(f"✅ Categorization complete")
+        print("✅ Categorization complete")
         print(f"   • Categorized: {categorized_count} ({(categorized_count/len(all_permissions)*100):.1f}%)")
         print(f"   • Uncategorized: {len(all_permissions) - categorized_count}")
 
-    def analyze_role_pair_with_levels(self, role1: Dict, role2: Dict) -> List[Dict]:
+    def analyze_role_pair_with_levels(self, role1: dict, role2: dict) -> list[dict]:
         """
         Analyze role pair with LEVEL-based conflict detection
 
@@ -234,7 +233,7 @@ class LevelBasedSODAnalyzer:
             })
 
         # Check each conflict rule
-        for rule_id, rule in self.conflict_rules.items():
+        for _rule_id, rule in self.conflict_rules.items():
             cat1 = rule['category1']
             cat2 = rule['category2']
 
@@ -266,8 +265,8 @@ class LevelBasedSODAnalyzer:
 
         return conflicts
 
-    def _check_level_conflict(self, perm1: Dict, perm2: Dict, rule: Dict,
-                             role1_name: str, role2_name: str) -> Optional[Dict]:
+    def _check_level_conflict(self, perm1: dict, perm2: dict, rule: dict,
+                             role1_name: str, role2_name: str) -> dict | None:
         """
         Check if two permissions conflict based on level matrix
 
@@ -325,7 +324,7 @@ class LevelBasedSODAnalyzer:
             'resolution_strategies': rule['resolution_strategies'].get(severity, {})
         }
 
-    def analyze_all_role_pairs(self) -> List[Dict]:
+    def analyze_all_role_pairs(self) -> list[dict]:
         """Analyze all role pairs for conflicts"""
         print("\n" + "=" * 80)
         print("STEP 3: Analyzing Role Pairs with Level-Based Detection")
@@ -352,7 +351,7 @@ class LevelBasedSODAnalyzer:
         for conflict in all_conflicts:
             severity_counts[conflict['severity']] += 1
 
-        print(f"\n✅ Analysis complete")
+        print("\n✅ Analysis complete")
         print(f"   • Total conflicts found: {len(all_conflicts)}")
         print(f"   • CRITICAL: {severity_counts.get('CRIT', 0)}")
         print(f"   • HIGH: {severity_counts.get('HIGH', 0)}")
@@ -361,7 +360,7 @@ class LevelBasedSODAnalyzer:
 
         return all_conflicts
 
-    def generate_resolution_for_conflict(self, conflict: Dict) -> Dict:
+    def generate_resolution_for_conflict(self, conflict: dict) -> dict:
         """Generate resolution options with compensating controls"""
         severity = conflict['severity']
         resolution_strategies = conflict['resolution_strategies']
@@ -414,7 +413,7 @@ class LevelBasedSODAnalyzer:
             'resolution_options': resolution_strategies.get('resolution_options', [])
         }
 
-    def validate_job_role(self, job_title: str, requested_roles: List[str]) -> Dict:
+    def validate_job_role(self, job_title: str, requested_roles: list[str]) -> dict:
         """Validate if role combination is typical for job title"""
         print("\n" + "=" * 80)
         print("STEP 4: Job Role Validation")
@@ -427,7 +426,7 @@ class LevelBasedSODAnalyzer:
         job_role_key = job_title.lower().replace(' ', '_').replace('/', '_')
 
         if job_role_key not in self.job_role_mappings['job_roles']:
-            print(f"⚠️  Job title not found in mappings")
+            print("⚠️  Job title not found in mappings")
             return {
                 'found': False,
                 'is_typical_combination': False,
@@ -440,7 +439,7 @@ class LevelBasedSODAnalyzer:
         # Check if requested roles are typical
         typical_roles = [r['role'] for r in job_role.get('typical_netsuite_roles', [])]
 
-        all_typical = all(role in typical_roles for role in requested_roles)
+        all(role in typical_roles for role in requested_roles)
 
         # Find acceptable combinations
         acceptable_combos = job_role.get('acceptable_role_combinations', [])
@@ -452,7 +451,7 @@ class LevelBasedSODAnalyzer:
                 break
 
         if matching_combo:
-            print(f"✅ Role combination found in acceptable list")
+            print("✅ Role combination found in acceptable list")
             print(f"   Business justification: {matching_combo.get('business_justification', 'N/A')}")
             print(f"   Requires compensating controls: {matching_combo.get('requires_compensating_controls', False)}")
 
@@ -465,7 +464,7 @@ class LevelBasedSODAnalyzer:
                 'recommendation': 'APPROVE_WITH_CONDITIONS' if matching_combo.get('requires_compensating_controls') else 'APPROVE'
             }
         else:
-            print(f"⚠️  Role combination not in acceptable list")
+            print("⚠️  Role combination not in acceptable list")
             print(f"   Typical roles for {job_title}: {', '.join(typical_roles)}")
 
             return {
@@ -476,7 +475,7 @@ class LevelBasedSODAnalyzer:
                 'reason': 'Requested combination not standard for this job title'
             }
 
-    def analyze_access_request(self, job_title: str, requested_roles: List[str]) -> Dict:
+    def analyze_access_request(self, job_title: str, requested_roles: list[str]) -> dict:
         """
         Complete access request analysis with job role context
 
@@ -502,7 +501,7 @@ class LevelBasedSODAnalyzer:
                     break
 
         if len(requested_role_objects) != len(requested_roles):
-            print(f"\n❌ ERROR: Some requested roles not found in NetSuite data")
+            print("\n❌ ERROR: Some requested roles not found in NetSuite data")
             return {'error': 'Roles not found'}
 
         # Analyze conflicts between requested roles

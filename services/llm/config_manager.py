@@ -4,14 +4,13 @@ LLM Configuration Manager
 Handles configuration loading, encryption, and decryption of API keys
 """
 
-import os
-import yaml
 import json
-from typing import Dict, Any, Optional
-from pathlib import Path
 import logging
+import os
+from typing import Any
+
+import yaml
 from cryptography.fernet import Fernet
-import base64
 
 from .base import LLMConfig
 from .factory import LLMProviderFactory
@@ -22,7 +21,7 @@ logger = logging.getLogger(__name__)
 class ConfigEncryption:
     """Handles encryption/decryption of sensitive configuration data"""
 
-    def __init__(self, master_key: Optional[str] = None):
+    def __init__(self, master_key: str | None = None):
         """
         Initialize encryption handler
 
@@ -112,8 +111,8 @@ class LLMConfigManager:
 
     def __init__(
         self,
-        config_path: Optional[str] = None,
-        master_key: Optional[str] = None
+        config_path: str | None = None,
+        master_key: str | None = None
     ):
         """
         Initialize config manager
@@ -128,7 +127,7 @@ class LLMConfigManager:
         )
 
         self.encryption = ConfigEncryption(master_key)
-        self.config_data: Dict[str, Any] = {}
+        self.config_data: dict[str, Any] = {}
 
         if os.path.exists(self.config_path):
             self.load_config()
@@ -138,7 +137,7 @@ class LLMConfigManager:
     def load_config(self) -> None:
         """Load configuration from file"""
         try:
-            with open(self.config_path, 'r') as f:
+            with open(self.config_path) as f:
                 if self.config_path.endswith('.yaml') or self.config_path.endswith('.yml'):
                     self.config_data = yaml.safe_load(f)
                 elif self.config_path.endswith('.json'):
@@ -152,7 +151,7 @@ class LLMConfigManager:
             logger.error(f"Failed to load config: {str(e)}")
             raise
 
-    def save_config(self, config_path: Optional[str] = None) -> None:
+    def save_config(self, config_path: str | None = None) -> None:
         """
         Save configuration to file
 
@@ -174,7 +173,7 @@ class LLMConfigManager:
             logger.error(f"Failed to save config: {str(e)}")
             raise
 
-    def get_provider_config(self, provider_name: Optional[str] = None) -> LLMConfig:
+    def get_provider_config(self, provider_name: str | None = None) -> LLMConfig:
         """
         Get LLM configuration for a specific provider
 
@@ -231,7 +230,7 @@ class LLMConfigManager:
             extra_params=provider_config.get('extra_params')
         )
 
-    def get_llm_provider(self, provider_name: Optional[str] = None):
+    def get_llm_provider(self, provider_name: str | None = None):
         """
         Get instantiated LLM provider
 
@@ -312,7 +311,7 @@ class LLMConfigManager:
         self.config_data['default_provider'] = provider_name
         logger.info(f"Set default provider to '{provider_name}'")
 
-    def get_default_provider(self) -> Optional[str]:
+    def get_default_provider(self) -> str | None:
         """
         Get default provider name
 
@@ -324,8 +323,8 @@ class LLMConfigManager:
 
 # Convenience function
 def get_llm_from_config(
-    config_path: Optional[str] = None,
-    provider: Optional[str] = None
+    config_path: str | None = None,
+    provider: str | None = None
 ):
     """
     Convenience function to get LLM provider from config file

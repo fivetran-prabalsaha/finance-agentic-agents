@@ -2,13 +2,20 @@
 Local LLM Provider Implementation (Ollama, vLLM, etc.)
 """
 
-import time
-import requests
-from typing import List, Dict, Optional, Any
 import logging
+import time
+from typing import Any
 
-from ..base import BaseLLMProvider, LLMMessage, LLMResponse, LLMConfig
-from ..base import LLMConnectionError, LLMTimeoutError
+import requests
+
+from ..base import (
+    BaseLLMProvider,
+    LLMConfig,
+    LLMConnectionError,
+    LLMMessage,
+    LLMResponse,
+    LLMTimeoutError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -53,15 +60,15 @@ class LocalProvider(BaseLLMProvider):
 
     def generate(
         self,
-        messages: List[LLMMessage],
-        temperature: Optional[float] = None,
-        max_tokens: Optional[int] = None,
+        messages: list[LLMMessage],
+        temperature: float | None = None,
+        max_tokens: int | None = None,
         **kwargs
     ) -> LLMResponse:
         """Generate completion using local LLM"""
         self.validate_messages(messages)
 
-        start_time = time.time()
+        time.time()
 
         if self.server_type == 'ollama':
             return self._generate_ollama(messages, temperature, max_tokens, **kwargs)
@@ -70,9 +77,9 @@ class LocalProvider(BaseLLMProvider):
 
     def _generate_ollama(
         self,
-        messages: List[LLMMessage],
-        temperature: Optional[float],
-        max_tokens: Optional[int],
+        messages: list[LLMMessage],
+        temperature: float | None,
+        max_tokens: int | None,
         **kwargs
     ) -> LLMResponse:
         """Generate using Ollama API"""
@@ -145,9 +152,9 @@ class LocalProvider(BaseLLMProvider):
 
     def _generate_openai_compatible(
         self,
-        messages: List[LLMMessage],
-        temperature: Optional[float],
-        max_tokens: Optional[int],
+        messages: list[LLMMessage],
+        temperature: float | None,
+        max_tokens: int | None,
         **kwargs
     ) -> LLMResponse:
         """Generate using OpenAI-compatible API"""
@@ -204,9 +211,9 @@ class LocalProvider(BaseLLMProvider):
 
     def generate_stream(
         self,
-        messages: List[LLMMessage],
-        temperature: Optional[float] = None,
-        max_tokens: Optional[int] = None,
+        messages: list[LLMMessage],
+        temperature: float | None = None,
+        max_tokens: int | None = None,
         **kwargs
     ):
         """Generate completion with streaming"""
@@ -248,7 +255,7 @@ class LocalProvider(BaseLLMProvider):
         # Rough approximation
         return len(text) // 4
 
-    def get_model_info(self) -> Dict[str, Any]:
+    def get_model_info(self) -> dict[str, Any]:
         """Get model information"""
         return {
             'provider': self.provider_name,
@@ -269,7 +276,7 @@ class LocalProvider(BaseLLMProvider):
                 LLMMessage(role='user', content='Hello')
             ]
 
-            response = self.generate(
+            self.generate(
                 messages=test_messages,
                 max_tokens=10
             )

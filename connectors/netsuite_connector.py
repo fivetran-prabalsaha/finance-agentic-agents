@@ -2,12 +2,13 @@
 NetSuite Connector - Wraps existing NetSuite client for MCP integration
 """
 import logging
-from typing import List, Dict, Any, Optional
 from datetime import datetime
 from datetime import datetime as _datetime
+from typing import Any
+
+from services.netsuite_client import NetSuiteClient
 
 from .base_connector import BaseConnector
-from services.netsuite_client import NetSuiteClient
 
 logger = logging.getLogger(__name__)
 
@@ -63,9 +64,9 @@ class NetSuiteConnector(BaseConnector):
         self,
         include_permissions: bool = True,
         include_inactive: bool = False,
-        last_modified_after: Optional[_datetime] = None,
+        last_modified_after: _datetime | None = None,
         **kwargs
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Fetch all users with their roles from NetSuite
 
@@ -108,7 +109,7 @@ class NetSuiteConnector(BaseConnector):
         search_value: str,
         search_type: str = 'both',
         include_permissions: bool = True
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """
         Search for a specific user in NetSuite
 
@@ -140,10 +141,10 @@ class NetSuiteConnector(BaseConnector):
 
     def sync_to_database_sync(
         self,
-        users_data: List[Dict[str, Any]],
+        users_data: list[dict[str, Any]],
         user_repo,
         role_repo
-    ) -> List[Any]:
+    ) -> list[Any]:
         """
         Sync NetSuite users to local database
 
@@ -289,7 +290,7 @@ class NetSuiteConnector(BaseConnector):
         """Get system type"""
         return "ERP"
 
-    def get_last_sync_date_sync(self, violation_repo) -> Optional[datetime]:
+    def get_last_sync_date_sync(self, violation_repo) -> datetime | None:
         """
         Get the date of the last sync/review
 
@@ -301,8 +302,8 @@ class NetSuiteConnector(BaseConnector):
         """
         try:
             # Use SyncMetadataRepository to get last sync date
-            from repositories.sync_metadata_repository import SyncMetadataRepository
             from models.database_config import DatabaseConfig
+            from repositories.sync_metadata_repository import SyncMetadataRepository
 
             db_config = DatabaseConfig()
             session = db_config.get_session()

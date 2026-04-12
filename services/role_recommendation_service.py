@@ -6,8 +6,9 @@ with similar job titles currently have.
 """
 
 import logging
-from typing import List, Dict, Any, Optional
 from collections import Counter
+from typing import Any
+
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -22,10 +23,10 @@ class RoleRecommendationService:
     def recommend_roles_by_job_title(
         self,
         job_title: str,
-        department: Optional[str] = None,
+        department: str | None = None,
         min_similarity_threshold: float = 0.6,
         check_conflicts: bool = True
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Recommend roles based on what peers with similar job titles have
 
@@ -104,8 +105,8 @@ class RoleRecommendationService:
         self,
         job_title: str,
         min_similarity: float,
-        department: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        department: str | None = None
+    ) -> list[dict[str, Any]]:
         """
         Find users with similar job titles and optionally same department
 
@@ -163,7 +164,7 @@ class RoleRecommendationService:
         logger.info(f"Found {len(peers)} peers with similar titles")
         return peers
 
-    def _extract_key_terms(self, job_title: str) -> List[str]:
+    def _extract_key_terms(self, job_title: str) -> list[str]:
         """
         Extract key terms from job title for matching
 
@@ -187,7 +188,7 @@ class RoleRecommendationService:
 
         return key_terms
 
-    def _get_user_roles(self, user_id: int) -> List[str]:
+    def _get_user_roles(self, user_id: int) -> list[str]:
         """Get list of role names for a user"""
         from sqlalchemy import text
 
@@ -202,7 +203,7 @@ class RoleRecommendationService:
         result = self.session.execute(query, {'user_id': user_id})
         return [row[0] for row in result]
 
-    def _check_role_conflicts(self, job_title: str, role_names: List[str]) -> Optional[Dict[str, Any]]:
+    def _check_role_conflicts(self, job_title: str, role_names: list[str]) -> dict[str, Any] | None:
         """
         Check if role combination has SOD conflicts
 
@@ -215,7 +216,6 @@ class RoleRecommendationService:
         """
         try:
             import subprocess
-            import json
 
             # Use the analyze_access_request script
             roles_arg = ",".join(role_names)
@@ -294,7 +294,7 @@ class RoleRecommendationService:
         else:
             return self._format_detailed(result)
 
-    def _format_summary(self, result: Dict[str, Any]) -> str:
+    def _format_summary(self, result: dict[str, Any]) -> str:
         """Format as brief summary"""
         output = f"**Role Recommendations for: {result['job_title_searched']}**\n\n"
         output += f"Based on {result['peers_analyzed']} existing employee(s):\n\n"
@@ -302,14 +302,14 @@ class RoleRecommendationService:
         for rec in result['recommended_roles']:
             output += f"• {rec['role_name']} ({rec['percentage']}% of peers)\n"
 
-        output += f"\n**Basis:** "
+        output += "\n**Basis:** "
         for peer in result['peer_details']:
             output += f"{peer['name']}, "
         output = output.rstrip(', ')
 
         return output
 
-    def _format_detailed(self, result: Dict[str, Any]) -> str:
+    def _format_detailed(self, result: dict[str, Any]) -> str:
         """Format with detailed peer breakdown"""
         output = f"**Role Recommendations for: {result['job_title_searched']}**\n\n"
         output += f"**Peers Analyzed:** {result['peers_analyzed']}\n\n"

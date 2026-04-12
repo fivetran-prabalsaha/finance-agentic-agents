@@ -6,9 +6,10 @@ Written non-blocking to Postgres and to LangSmith (create_feedback) after
 each button click. Negative feedback also busts the Redis MCP cache.
 """
 
-from datetime import datetime
 import uuid
-from sqlalchemy import Column, String, Text, DateTime, Index
+from datetime import datetime
+
+from sqlalchemy import Column, DateTime, Index, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 
 from models.database_config import Base

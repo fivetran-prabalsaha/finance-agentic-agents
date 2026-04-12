@@ -5,8 +5,10 @@ Usage: python quick_query.py "SELECT * FROM users LIMIT 5"
 """
 
 import sys
-from models.database_config import get_db_config
+
 from sqlalchemy import text
+
+from models.database_config import get_db_config
 
 
 def run_query(query_string):

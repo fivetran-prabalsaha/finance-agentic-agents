@@ -16,7 +16,7 @@ Flow:
 
 import logging
 import os
-from typing import List, Dict, Any, Optional
+from typing import Any
 
 import numpy as np
 from sqlalchemy import text as sqla_text
@@ -40,7 +40,7 @@ def store_correction(
     user_email: str,
     query_preview: str,
     correction: str,
-    tool_called: Optional[str] = None,
+    tool_called: str | None = None,
 ) -> None:
     """
     Embed the original user query and persist into correction_embeddings.
@@ -100,7 +100,7 @@ def find_similar_corrections(
     query: str,
     top_k: int = _TOP_K,
     min_similarity: float = _MIN_SIMILARITY,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     Search correction_embeddings for stored corrections that are semantically
     similar to the current user query.
@@ -175,7 +175,7 @@ def find_similar_corrections(
         return []
 
 
-def format_corrections_for_context(corrections: List[Dict[str, Any]]) -> str:
+def format_corrections_for_context(corrections: list[dict[str, Any]]) -> str:
     """
     Format a list of corrections into a few-shot block for injection into
     dynamic_context inside the system message.

@@ -16,10 +16,10 @@ Usage:
     # Limit (first N rows, for testing):
     python3 scripts/embed_corrections.py --limit 10
 """
-import sys
-import os
 import argparse
 import logging
+import os
+import sys
 
 # Make compliance-agent the working module root
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -31,6 +31,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
 
@@ -40,8 +41,9 @@ def main():
     parser.add_argument("--limit", type=int, default=0, help="Max rows to process (0=all)")
     args = parser.parse_args()
 
-    from models.database_config import DatabaseConfig
     from sqlalchemy import text as sqla_text
+
+    from models.database_config import DatabaseConfig
 
     session = DatabaseConfig().get_session()
 

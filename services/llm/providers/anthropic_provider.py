@@ -2,16 +2,23 @@
 Anthropic Claude Provider Implementation
 """
 
-import time
-from typing import List, Dict, Optional, Any
 import logging
+import time
+from typing import Any
 
-from anthropic import Anthropic, APIError, APIConnectionError, RateLimitError, APITimeoutError
-import anthropic
+from anthropic import Anthropic, APIConnectionError, APIError, APITimeoutError, RateLimitError
 from langsmith import traceable
 
-from ..base import BaseLLMProvider, LLMMessage, LLMResponse, LLMConfig
-from ..base import LLMConnectionError, LLMAuthenticationError, LLMRateLimitError, LLMTimeoutError
+from ..base import (
+    BaseLLMProvider,
+    LLMAuthenticationError,
+    LLMConfig,
+    LLMConnectionError,
+    LLMMessage,
+    LLMRateLimitError,
+    LLMResponse,
+    LLMTimeoutError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -60,9 +67,9 @@ class AnthropicProvider(BaseLLMProvider):
     @traceable(run_type="llm", name="anthropic_provider.generate")
     def generate(
         self,
-        messages: List[LLMMessage],
-        temperature: Optional[float] = None,
-        max_tokens: Optional[int] = None,
+        messages: list[LLMMessage],
+        temperature: float | None = None,
+        max_tokens: int | None = None,
         **kwargs
     ) -> LLMResponse:
         """Generate completion using Claude"""
@@ -159,9 +166,9 @@ class AnthropicProvider(BaseLLMProvider):
     @traceable(run_type="llm", name="anthropic_provider.stream")
     def generate_stream(
         self,
-        messages: List[LLMMessage],
-        temperature: Optional[float] = None,
-        max_tokens: Optional[int] = None,
+        messages: list[LLMMessage],
+        temperature: float | None = None,
+        max_tokens: int | None = None,
         **kwargs
     ):
         """Generate completion with streaming"""
@@ -199,8 +206,7 @@ class AnthropicProvider(BaseLLMProvider):
 
         try:
             with self.client.messages.stream(**params) as stream:
-                for text in stream.text_stream:
-                    yield text
+                yield from stream.text_stream
 
         except Exception as e:
             logger.error(f"Anthropic streaming error: {str(e)}")
@@ -216,7 +222,7 @@ class AnthropicProvider(BaseLLMProvider):
         # Rough approximation: 4 characters per token
         return len(text) // 4
 
-    def get_model_info(self) -> Dict[str, Any]:
+    def get_model_info(self) -> dict[str, Any]:
         """Get model information"""
         return {
             'provider': self.provider_name,
@@ -240,7 +246,7 @@ class AnthropicProvider(BaseLLMProvider):
                 LLMMessage(role='user', content='Hello')
             ]
 
-            response = self.generate(
+            self.generate(
                 messages=test_messages,
                 max_tokens=10
             )

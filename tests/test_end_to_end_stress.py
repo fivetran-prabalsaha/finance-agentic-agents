@@ -15,23 +15,24 @@ Tests the entire compliance system under load:
 import os
 import sys
 import time
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 os.environ['DATABASE_URL'] = 'postgresql://compliance_user:compliance_pass@localhost:5432/compliance_db'
 
-from models.database_config import DatabaseConfig
-from repositories.user_repository import UserRepository
-from repositories.role_repository import RoleRepository
-from repositories.violation_repository import ViolationRepository
-from repositories.sod_rule_repository import SODRuleRepository
-from services.netsuite_client import NetSuiteClient
-from agents.data_collector import DataCollectionAgent
 from agents.analyzer import create_analyzer
-from agents.risk_assessor import create_risk_assessor
+from agents.data_collector import DataCollectionAgent
 from agents.notifier import create_notifier
+from agents.risk_assessor import create_risk_assessor
+from models.database_config import DatabaseConfig
+from repositories.role_repository import RoleRepository
+from repositories.sod_rule_repository import SODRuleRepository
+from repositories.user_repository import UserRepository
+from repositories.violation_repository import ViolationRepository
+from services.netsuite_client import NetSuiteClient
+
 
 def print_header(title):
     print("\n" + "="*80)
@@ -65,7 +66,7 @@ def test_data_collection(netsuite_client, test_emails):
 
     elapsed = time.time() - start_time
 
-    print(f"\n📊 Data Collection Metrics:")
+    print("\n📊 Data Collection Metrics:")
     print_metric("Users fetched", len(results))
     print_metric("Time elapsed", f"{elapsed:.2f}", "seconds")
     print_metric("Avg time per user", f"{elapsed/len(test_emails):.2f}", "seconds")
@@ -85,15 +86,15 @@ def test_sod_analysis(analyzer, user_repo, test_emails):
 
     if result['success']:
         stats = result['stats']
-        print(f"   ✅ Analysis completed successfully")
-        print(f"\n📊 Analysis Metrics:")
+        print("   ✅ Analysis completed successfully")
+        print("\n📊 Analysis Metrics:")
         print_metric("Users analyzed", stats['users_analyzed'])
         print_metric("Violations detected", stats['violations_detected'])
         print_metric("Time elapsed", f"{elapsed:.2f}", "seconds")
         print_metric("Avg time per user", f"{elapsed/stats['users_analyzed']:.3f}", "seconds")
 
         # Check specific users
-        print(f"\n🔍 Checking test users:")
+        print("\n🔍 Checking test users:")
         for email in test_emails:
             user = user_repo.get_user_by_email(email)
             if user:
@@ -116,7 +117,7 @@ def test_risk_assessment(risk_assessor, user_repo, test_emails):
     start_time = time.time()
 
     # Test individual user risk scores
-    print(f"\n🔍 Individual User Risk Scores:")
+    print("\n🔍 Individual User Risk Scores:")
     user_scores = []
     for email in test_emails:
         user = user_repo.get_user_by_email(email)
@@ -129,7 +130,7 @@ def test_risk_assessment(risk_assessor, user_repo, test_emails):
                 print(f"   {user.name}: {score}/100 ({level})")
 
     # Test organization risk
-    print(f"\n🏢 Organization Risk Assessment:")
+    print("\n🏢 Organization Risk Assessment:")
     org_result = risk_assessor.assess_organization_risk()
 
     elapsed = time.time() - start_time
@@ -139,13 +140,13 @@ def test_risk_assessment(risk_assessor, user_repo, test_emails):
         print(f"   ✅ Risk Score: {org_result['organization_risk_score']}/100")
 
         dist = org_result['risk_distribution']
-        print(f"\n📊 Risk Distribution:")
+        print("\n📊 Risk Distribution:")
         print_metric("Critical users", dist.get('CRITICAL', 0))
         print_metric("High risk users", dist.get('HIGH', 0))
         print_metric("Medium risk users", dist.get('MEDIUM', 0))
         print_metric("Low risk users", dist.get('LOW', 0))
 
-    print(f"\n📊 Risk Assessment Metrics:")
+    print("\n📊 Risk Assessment Metrics:")
     print_metric("Time elapsed", f"{elapsed:.2f}", "seconds")
     if user_scores:
         print_metric("Avg user risk", f"{sum(user_scores)/len(user_scores):.1f}", "/100")
@@ -169,7 +170,7 @@ def test_comparison_table_with_ai(notifier, test_emails):
 
     print(f"\n{comparison_table}")
 
-    print(f"\n📊 Comparison Table Metrics:")
+    print("\n📊 Comparison Table Metrics:")
     print_metric("Users compared", len(test_emails))
     print_metric("Table size", len(comparison_table), "characters")
     print_metric("Time elapsed", f"{elapsed:.2f}", "seconds")
@@ -199,7 +200,7 @@ def test_performance_at_scale(analyzer, user_repo):
 
     elapsed = time.time() - start_time
 
-    print(f"\n📊 Scale Test Results:")
+    print("\n📊 Scale Test Results:")
     print_metric("Users analyzed", analyzed_count)
     print_metric("Violations detected", violation_count)
     print_metric("Time elapsed", f"{elapsed:.2f}", "seconds")
@@ -238,7 +239,7 @@ def test_ai_analysis_performance(notifier, user_repo, test_emails):
 
     elapsed = time.time() - start_time
 
-    print(f"\n📊 AI Analysis Metrics:")
+    print("\n📊 AI Analysis Metrics:")
     print_metric("Analyses generated", analysis_count)
     print_metric("Time elapsed", f"{elapsed:.2f}", "seconds")
     print_metric("Avg time per analysis", f"{elapsed/max(analysis_count, 1):.2f}", "seconds")
@@ -267,7 +268,7 @@ def main():
     sod_rule_repo = SODRuleRepository(session)
 
     # Create agents
-    data_collector = DataCollectionAgent(netsuite_client=netsuite_client)
+    DataCollectionAgent(netsuite_client=netsuite_client)
     analyzer = create_analyzer(
         user_repo=user_repo,
         role_repo=role_repo,
@@ -285,7 +286,7 @@ def main():
 
     init_elapsed = time.time() - init_start
 
-    print(f"   ✅ All agents initialized")
+    print("   ✅ All agents initialized")
     print(f"   ⏱️  Initialization time: {init_elapsed:.2f} seconds")
 
     # Test users (mix of compliant and non-compliant)
@@ -336,27 +337,27 @@ def main():
     print_header("FINAL SUMMARY")
 
     print(f"\n⏱️  Total Test Duration: {total_elapsed:.2f} seconds")
-    print(f"\n📊 Component Performance:")
+    print("\n📊 Component Performance:")
     for component, duration in metrics.items():
         pct = (duration / total_elapsed) * 100
         print(f"   {component:25} {duration:6.2f}s ({pct:5.1f}%)")
 
-    print(f"\n✅ System Status:")
-    print(f"   Database: Connected")
-    print(f"   NetSuite API: Operational")
-    print(f"   All 6 Agents: Initialized")
+    print("\n✅ System Status:")
+    print("   Database: Connected")
+    print("   NetSuite API: Operational")
+    print("   All 6 Agents: Initialized")
     print(f"   SOD Rules: {len(analyzer.sod_rules)} loaded")
     print(f"   AI Analysis: {'Enabled' if notifier.ai_enabled else 'Disabled'}")
 
-    print(f"\n🎯 Test Results:")
-    print(f"   ✅ Data collection successful")
-    print(f"   ✅ SOD analysis functional")
-    print(f"   ✅ Risk assessment operational")
-    print(f"   ✅ User comparison tables working")
-    print(f"   ✅ AI-powered analysis functional")
-    print(f"   ✅ System scales to 50+ users")
+    print("\n🎯 Test Results:")
+    print("   ✅ Data collection successful")
+    print("   ✅ SOD analysis functional")
+    print("   ✅ Risk assessment operational")
+    print("   ✅ User comparison tables working")
+    print("   ✅ AI-powered analysis functional")
+    print("   ✅ System scales to 50+ users")
 
-    print(f"\n📈 Performance Highlights:")
+    print("\n📈 Performance Highlights:")
     if 'data_collection' in metrics:
         print(f"   • Data collection: {metrics['data_collection']/len(test_emails):.2f}s per user")
     if 'sod_analysis' in metrics and analysis_result and analysis_result['success']:

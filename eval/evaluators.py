@@ -12,11 +12,11 @@ Metrics implemented:
   - faithfulness      : LLM-as-judge (Haiku) — does the answer contain expected facts?
 """
 
-import math
 import json
 import logging
+import math
 import os
-from typing import Any, Dict, List
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +33,8 @@ def hit_rate_at_k(k: int = 10):
     outputs must contain:    selected_tool_names: list[str]
     reference_outputs must contain: expected_tool: str
     """
-    def evaluator(outputs: Dict[str, Any], reference_outputs: Dict[str, Any]) -> Dict:
-        selected: List[str] = outputs.get("selected_tool_names", [])[:k]
+    def evaluator(outputs: dict[str, Any], reference_outputs: dict[str, Any]) -> dict:
+        selected: list[str] = outputs.get("selected_tool_names", [])[:k]
         expected: str = reference_outputs.get("expected_tool", "")
         score = 1.0 if expected in selected else 0.0
         return {"key": f"hit_rate_at_{k}", "score": score}
@@ -47,7 +47,7 @@ def hit_rate_at_k(k: int = 10):
 # MRR — Mean Reciprocal Rank
 # ---------------------------------------------------------------------------
 
-def mrr_evaluator(outputs: Dict[str, Any], reference_outputs: Dict[str, Any]) -> Dict:
+def mrr_evaluator(outputs: dict[str, Any], reference_outputs: dict[str, Any]) -> dict:
     """
     Score = 1 / rank of the first occurrence of `expected_tool` in the returned list.
     Score = 0.0 if the tool is absent.
@@ -55,7 +55,7 @@ def mrr_evaluator(outputs: Dict[str, Any], reference_outputs: Dict[str, Any]) ->
     outputs must contain:    selected_tool_names: list[str]
     reference_outputs must contain: expected_tool: str
     """
-    selected: List[str] = outputs.get("selected_tool_names", [])
+    selected: list[str] = outputs.get("selected_tool_names", [])
     expected: str = reference_outputs.get("expected_tool", "")
     try:
         rank = selected.index(expected) + 1  # 1-indexed
@@ -77,9 +77,9 @@ def ndcg_at_k(k: int = 10):
     reference_outputs must contain:
         relevant_tools: dict[str, int]  # tool_name → relevance score (0/1/2)
     """
-    def evaluator(outputs: Dict[str, Any], reference_outputs: Dict[str, Any]) -> Dict:
-        selected: List[str] = outputs.get("selected_tool_names", [])[:k]
-        relevance: Dict[str, int] = reference_outputs.get("relevant_tools", {})
+    def evaluator(outputs: dict[str, Any], reference_outputs: dict[str, Any]) -> dict:
+        selected: list[str] = outputs.get("selected_tool_names", [])[:k]
+        relevance: dict[str, int] = reference_outputs.get("relevant_tools", {})
 
         # DCG: sum of (relevance / log2(rank + 1)) for each position
         dcg = sum(
@@ -114,9 +114,9 @@ def precision_at_k(k: int = 5):
     reference_outputs must contain:
         relevant_tools: dict[str, int]
     """
-    def evaluator(outputs: Dict[str, Any], reference_outputs: Dict[str, Any]) -> Dict:
-        selected: List[str] = outputs.get("selected_tool_names", [])[:k]
-        relevance: Dict[str, int] = reference_outputs.get("relevant_tools", {})
+    def evaluator(outputs: dict[str, Any], reference_outputs: dict[str, Any]) -> dict:
+        selected: list[str] = outputs.get("selected_tool_names", [])[:k]
+        relevance: dict[str, int] = reference_outputs.get("relevant_tools", {})
         hits = sum(1 for tool in selected if relevance.get(tool, 0) > 0)
         score = hits / k if k > 0 else 0.0
         return {"key": f"precision_at_{k}", "score": round(score, 4)}
@@ -129,7 +129,7 @@ def precision_at_k(k: int = 5):
 # Faithfulness — LLM-as-judge (Haiku)
 # ---------------------------------------------------------------------------
 
-def faithfulness_evaluator(outputs: Dict[str, Any], reference_outputs: Dict[str, Any]) -> Dict:
+def faithfulness_evaluator(outputs: dict[str, Any], reference_outputs: dict[str, Any]) -> dict:
     """
     Uses Claude Haiku to score whether the agent's answer contains each
     expected fact. Returns a float 0.0–1.0.
@@ -140,7 +140,7 @@ def faithfulness_evaluator(outputs: Dict[str, Any], reference_outputs: Dict[str,
     import anthropic
 
     answer: str = outputs.get("answer", "").strip()
-    expected_facts: List[str] = reference_outputs.get("expected_facts", [])
+    expected_facts: list[str] = reference_outputs.get("expected_facts", [])
 
     if not answer or not expected_facts:
         return {"key": "faithfulness", "score": 0.0}

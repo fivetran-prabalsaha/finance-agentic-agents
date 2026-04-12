@@ -4,11 +4,12 @@ Job Role Mapping Repository
 Handles database operations for job_role_mappings table
 """
 
-from typing import List, Optional, Dict, Any
-from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_
-from models.database import JobRoleMapping
 import logging
+from typing import Any
+
+from sqlalchemy.orm import Session
+
+from models.database import JobRoleMapping
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,7 @@ class JobRoleMappingRepository:
         """
         self.session = session
 
-    def get_by_job_title(self, job_title: str) -> Optional[JobRoleMapping]:
+    def get_by_job_title(self, job_title: str) -> JobRoleMapping | None:
         """
         Get job role mapping by job title (case-insensitive)
 
@@ -64,7 +65,7 @@ class JobRoleMappingRepository:
             logger.error(f"Error fetching job role mapping: {str(e)}")
             return None
 
-    def get_by_id(self, mapping_id: str) -> Optional[JobRoleMapping]:
+    def get_by_id(self, mapping_id: str) -> JobRoleMapping | None:
         """Get job role mapping by ID"""
         try:
             return self.session.query(JobRoleMapping).filter(
@@ -74,11 +75,11 @@ class JobRoleMappingRepository:
             logger.error(f"Error fetching job role mapping by ID: {str(e)}")
             return None
 
-    def get_all_active(self) -> List[JobRoleMapping]:
+    def get_all_active(self) -> list[JobRoleMapping]:
         """Get all active job role mappings"""
         try:
             return self.session.query(JobRoleMapping).filter(
-                JobRoleMapping.is_active == True
+                JobRoleMapping.is_active
             ).all()
         except Exception as e:
             logger.error(f"Error fetching active job role mappings: {str(e)}")
@@ -87,8 +88,8 @@ class JobRoleMappingRepository:
     def check_role_combination_acceptable(
         self,
         job_title: str,
-        role_names: List[str]
-    ) -> Dict[str, Any]:
+        role_names: list[str]
+    ) -> dict[str, Any]:
         """
         Check if role combination is acceptable for job title
 
@@ -142,7 +143,7 @@ class JobRoleMappingRepository:
             "expected_roles": [combo.get('roles', []) for combo in acceptable_combos]
         }
 
-    def create(self, data: Dict[str, Any]) -> JobRoleMapping:
+    def create(self, data: dict[str, Any]) -> JobRoleMapping:
         """Create new job role mapping"""
         try:
             mapping = JobRoleMapping(**data)
@@ -156,7 +157,7 @@ class JobRoleMappingRepository:
             logger.error(f"Error creating job role mapping: {str(e)}")
             raise
 
-    def update(self, mapping_id: str, data: Dict[str, Any]) -> Optional[JobRoleMapping]:
+    def update(self, mapping_id: str, data: dict[str, Any]) -> JobRoleMapping | None:
         """Update job role mapping"""
         try:
             mapping = self.get_by_id(mapping_id)

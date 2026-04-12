@@ -9,8 +9,7 @@ Handles:
 """
 
 import logging
-from typing import Optional, Dict, List, Tuple, Any
-from datetime import datetime
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +89,7 @@ class ApprovalService:
     # USER AUTHENTICATION
     # =========================================================================
 
-    def authenticate_user(self, email: str) -> Optional[Dict[str, Any]]:
+    def authenticate_user(self, email: str) -> dict[str, Any] | None:
         """
         Authenticate user by email and return user info
 
@@ -101,8 +100,8 @@ class ApprovalService:
             Dict with user info or None if not found/inactive
         """
         try:
-            from repositories.user_repository import UserRepository
             from models.database import UserStatus
+            from repositories.user_repository import UserRepository
 
             user_repo = UserRepository(self.session)
             user = user_repo.get_user_by_email(email)
@@ -144,7 +143,7 @@ class ApprovalService:
         user_email: str,
         risk_score: float,
         conflict_count: int = 0
-    ) -> Tuple[bool, str, Optional[str]]:
+    ) -> tuple[bool, str, str | None]:
         """
         Check if user has authority to approve exception at given risk level
 
@@ -194,7 +193,7 @@ class ApprovalService:
             logger.error(f"Error checking approval authority: {str(e)}")
             return False, "UNKNOWN", f"Error checking authority: {str(e)}"
 
-    def get_required_approval_roles(self, risk_score: float) -> List[str]:
+    def get_required_approval_roles(self, risk_score: float) -> list[str]:
         """
         Get list of roles that can approve exceptions at this risk level
 
@@ -216,7 +215,7 @@ class ApprovalService:
         user_email: str,
         risk_score: float,
         max_levels: int = 5
-    ) -> Optional[Dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """
         Walk up the manager chain to find someone with approval authority
 
@@ -290,10 +289,10 @@ class ApprovalService:
 
     def create_approval_jira_ticket(
         self,
-        requester_info: Dict[str, Any],
-        approver_info: Dict[str, Any],
-        exception_details: Dict[str, Any]
-    ) -> Optional[str]:
+        requester_info: dict[str, Any],
+        approver_info: dict[str, Any],
+        exception_details: dict[str, Any]
+    ) -> str | None:
         """
         Create Jira ticket for exception approval routing
 
@@ -375,9 +374,9 @@ class ApprovalService:
 
     def _format_jira_description(
         self,
-        requester_info: Dict[str, Any],
-        approver_info: Dict[str, Any],
-        exception_details: Dict[str, Any]
+        requester_info: dict[str, Any],
+        approver_info: dict[str, Any],
+        exception_details: dict[str, Any]
     ) -> str:
         """Format Jira ticket description"""
 
@@ -436,19 +435,19 @@ h3. Action Required
 """
         return description
 
-    def _format_roles_list(self, roles: List[str]) -> str:
+    def _format_roles_list(self, roles: list[str]) -> str:
         """Format roles for Jira"""
         if not roles:
             return "* None"
         return "\n".join(f"* {role}" for role in roles)
 
-    def _format_controls_list(self, controls: List[Dict[str, Any]]) -> str:
+    def _format_controls_list(self, controls: list[dict[str, Any]]) -> str:
         """Format controls for Jira"""
         if not controls:
             return "* No controls specified"
 
         lines = []
-        for i, control in enumerate(controls, 1):
+        for _i, control in enumerate(controls, 1):
             name = control.get('control_name', 'Unnamed')
             reduction = control.get('risk_reduction_percentage', 0)
             cost = control.get('estimated_annual_cost', 0)
@@ -476,8 +475,8 @@ h3. Action Required
     def process_approval_request(
         self,
         requester_email: str,
-        exception_details: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        exception_details: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Process an exception approval request with RBAC
 
@@ -535,8 +534,8 @@ h3. Action Required
                         "approved": False,
                         "risk_level": risk_level,
                         "message": (
-                            f"❌ No approver found in reporting chain. "
-                            f"Please escalate to CFO or Audit Committee manually."
+                            "❌ No approver found in reporting chain. "
+                            "Please escalate to CFO or Audit Committee manually."
                         ),
                         "jira_ticket": None,
                         "approver": None

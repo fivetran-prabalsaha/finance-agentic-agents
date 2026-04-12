@@ -9,22 +9,23 @@ Setup:
 3. Run: python slack_bot_local.py
 """
 
+import hashlib
+import itertools
+import json
+import logging
 import os
 import re
 import sys
-import logging
 import threading
-import itertools
-import hashlib
-from typing import Dict, Any, Optional, List
-import json
-import requests
+from typing import Any
+
 import redis as redis_lib
-from slack_bolt import App
-from slack_bolt.adapter.socket_mode import SocketModeHandler
+import requests
 from dotenv import load_dotenv
 from langsmith import traceable
 from langsmith.run_helpers import get_current_run_tree
+from slack_bolt import App
+from slack_bolt.adapter.socket_mode import SocketModeHandler
 
 # Configure logging
 logging.basicConfig(
@@ -54,7 +55,7 @@ ROLLING_SUMMARY_MIN_CHARS = int(os.environ.get("SLACK_ROLLING_SUMMARY_MIN_CHARS"
 MAX_SLACK_RESPONSE_CHARS = int(os.environ.get("SLACK_MAX_RESPONSE_CHARS", "2000"))
 
 # Global variable to store MCP tools (fetched at startup)
-MCP_TOOLS: List[Dict[str, Any]] = []
+MCP_TOOLS: list[dict[str, Any]] = []
 
 # ---------------------------------------------------------------------------
 # Phase A — Redis TTL Cache for MCP tool calls
@@ -172,8 +173,9 @@ def _get_prior_summaries(user_email: str, limit: int = 3) -> str:
         if not session:
             return ""
         try:
-            from models.conversation_summary import ConversationSummary
             from datetime import datetime as _dt
+
+            from models.conversation_summary import ConversationSummary
             rows = (
                 session.query(ConversationSummary)
                 .filter(ConversationSummary.user_email == user_email)
@@ -212,8 +214,10 @@ def _write_conversation_summary(
     if not USE_CONV_SUMMARIES:
         return
     try:
+        from datetime import datetime as _dt
+        from datetime import timedelta
+
         from langchain_anthropic import ChatAnthropic
-        from datetime import datetime as _dt, timedelta
         haiku_sum = ChatAnthropic(
             model="claude-haiku-4-5-20251001",
             max_tokens=200,
@@ -309,7 +313,7 @@ def fetch_mcp_tools():
 
 
 @traceable(run_type="tool")
-def call_mcp_tool(tool_name: str, arguments: Dict[str, Any]) -> str:
+def call_mcp_tool(tool_name: str, arguments: dict[str, Any]) -> str:
     """
     Call an MCP tool on the local server using JSON-RPC 2.0 protocol
 
@@ -324,7 +328,7 @@ def call_mcp_tool(tool_name: str, arguments: Dict[str, Any]) -> str:
     # Phase A — Redis cache read (before HTTP call)
     # -----------------------------------------------------------------------
     ttl = _MCP_CACHE_TTL.get(tool_name) if USE_MCP_CACHE else None
-    cache_key: Optional[str] = None
+    cache_key: str | None = None
     if ttl and tool_name not in _MUTATING_TOOLS:
         cache_key = (
             f"mcp:{tool_name}:"
@@ -423,7 +427,7 @@ def call_mcp_tool(tool_name: str, arguments: Dict[str, Any]) -> str:
         return f"❌ Exception calling {tool_name}: {str(e)}"
 
 
-def extract_user_mentions(message_text: str, slack_client) -> Dict[str, str]:
+def extract_user_mentions(message_text: str, slack_client) -> dict[str, str]:
     """
     Extract Slack user mentions from message and get their email addresses
 
@@ -469,7 +473,7 @@ def _sanitize_tool_output(tool_name: str, raw_output: str) -> str:
     return trimmed + f"\n\n[Output truncated — {len(raw_output) - TOOL_OUTPUT_MAX_CHARS} chars omitted]"
 
 
-def _trim_history(messages: List) -> List:
+def _trim_history(messages: list) -> list:
     """
     Keep at most MAX_HISTORY_TURNS turn-pairs (user + assistant) to cap context growth.
 
@@ -550,7 +554,7 @@ def _animate_thinking(client, channel: str, thinking_ts: str, stop_event: thread
             break
 
 
-def format_as_blocks(text: str) -> List[Dict[str, Any]]:
+def format_as_blocks(text: str) -> list[dict[str, Any]]:
     """
     Convert Claude's mrkdwn response into Slack Block Kit blocks.
     Splits on '---' dividers and respects Slack's 3000-char block limit.
@@ -579,7 +583,7 @@ def format_as_blocks(text: str) -> List[Dict[str, Any]]:
 
 
 def _feedback_blocks(run_id: str, user_email: str,
-                     query: str, answer: str, tool_called: str) -> Dict[str, Any]:
+                     query: str, answer: str, tool_called: str) -> dict[str, Any]:
     """
     Build a Slack actions block with 3 feedback buttons appended to bot responses.
 
@@ -614,7 +618,7 @@ def _feedback_blocks(run_id: str, user_email: str,
     }
 
 
-def _upload_full_response(client, channel: str, title: str, content: str) -> Optional[str]:
+def _upload_full_response(client, channel: str, title: str, content: str) -> str | None:
     """
     Upload a long response as a Slack file so the in-channel message stays concise.
     Returns the file permalink on success, None on failure.
@@ -679,8 +683,9 @@ def _save_feedback(signal: str, run_id: str, user_email: str, channel_id: str,
         session = _get_db_session()
         if session:
             try:
-                from models.answer_feedback import AnswerFeedback
                 from sqlalchemy import text as sqla_text
+
+                from models.answer_feedback import AnswerFeedback
                 if correction and run_id:
                     # UPDATE existing row written when the button was clicked
                     session.execute(
@@ -857,9 +862,9 @@ def fetch_thread_history(client, channel: str, thread_ts: str, bot_user_id: str,
 
 
 @traceable(name="slack_compliance_query", run_type="chain", tags=["slack", "compliance"])
-def process_with_claude(user_message: str, user_email: str, mentioned_users: Optional[Dict[str, Dict]] = None,
-                        thread_history: Optional[list] = None,
-                        prior_context: Optional[str] = None) -> str:
+def process_with_claude(user_message: str, user_email: str, mentioned_users: dict[str, dict] | None = None,
+                        thread_history: list | None = None,
+                        prior_context: str | None = None) -> str:
     """
     Process user message with Claude and execute any tool calls.
     Uses ChatAnthropic so LangChain's callback system populates LangSmith
@@ -871,7 +876,8 @@ def process_with_claude(user_message: str, user_email: str, mentioned_users: Opt
     """
     try:
         from langchain_anthropic import ChatAnthropic
-        from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, ToolMessage
+        from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
+
         from utils.langchain_callback import TokenTrackingCallback
         from utils.tool_router import select_tools_for_intent
 
@@ -998,6 +1004,8 @@ def process_with_claude(user_message: str, user_email: str, mentioned_users: Opt
             try:
                 from services.correction_service import (
                     find_similar_corrections as _find_corrections,
+                )
+                from services.correction_service import (
                     format_corrections_for_context as _fmt_corrections,
                 )
                 past_corrections = _find_corrections(user_message)
@@ -1031,7 +1039,7 @@ def process_with_claude(user_message: str, user_email: str, mentioned_users: Opt
         llm_with_tools = llm.bind_tools(tools)
 
         # Build message list: thread history (if any) + current user message
-        messages: List = []
+        messages: list = []
         for h in (thread_history or []):
             if h["role"] == "user":
                 messages.append(HumanMessage(content=h["content"]))
@@ -1221,6 +1229,7 @@ def handle_mention(event, say, client):
         mentioned_users = extract_user_mentions(message_text, client)
 
         # Fetch conversation history so Claude has full context
+        channel = event["channel"]
         thread_ts = event.get("thread_ts")
         thread_history = []
         if channel.startswith("D"):

@@ -12,6 +12,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from agents.data_collector import DataCollectionAgent
 
+
 def print_box(text, width=70):
     """Print text in a box"""
     print("┌" + "─" * width + "┐")
@@ -64,7 +65,7 @@ if result.get('success'):
     # Identify high-risk
     print("▶ Analyzing for SOD risks...")
     high_risk = agent.get_high_risk_users(users, min_roles=2)
-    print(f"  ✓ Analysis complete")
+    print("  ✓ Analysis complete")
     print(f"  ⚠️  Found {len(high_risk)} users with 2+ roles (potential SOD risks)\n")
 
     if high_risk:
@@ -85,7 +86,7 @@ if result.get('success'):
 
     print("📊 System Status:")
     print(f"  • Active Users: {metadata['total_users']:,}")
-    print(f"  • Agent Status: ✅ Production Ready")
+    print("  • Agent Status: ✅ Production Ready")
     print(f"  • Last Sync: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
 
 else:

@@ -11,11 +11,11 @@ import sys
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from models.database import UserStatus
 from models.database_config import get_db_config
-from repositories.user_repository import UserRepository
 from repositories.role_repository import RoleRepository
+from repositories.user_repository import UserRepository
 from repositories.violation_repository import ViolationRepository
-from models.database import UserStatus, ViolationSeverity, ViolationStatus
 
 
 def print_section(title):
@@ -65,7 +65,7 @@ def test_user_repository():
 
         # Get sample users
         users = repo.get_all_users(limit=5)
-        print(f"\n  Sample users:")
+        print("\n  Sample users:")
         for user in users:
             print(f"    • {user.name} ({user.email}) - {len(user.user_roles)} roles")
 
@@ -80,7 +80,7 @@ def test_user_repository():
         print(f"\n✓ High-risk users (3+ roles): {len(high_risk)}")
 
         if high_risk:
-            print(f"  Top high-risk user:")
+            print("  Top high-risk user:")
             user = high_risk[0]
             print(f"    • {user.name} ({user.email})")
             print(f"    • Roles: {len(user.user_roles)}")
@@ -120,7 +120,7 @@ def test_role_repository():
 
         # Get sample roles
         roles = repo.get_all_roles()[:5]
-        print(f"\n  Sample roles:")
+        print("\n  Sample roles:")
         for role in roles:
             print(f"    • {role.role_name} (ID: {role.role_id}) - {role.permission_count} permissions")
 
@@ -164,12 +164,12 @@ def test_violation_repository():
             print("  This is expected if analysis hasn't run")
             return True
 
-        print(f"\n  By severity:")
+        print("\n  By severity:")
         for severity, count in summary['by_severity'].items():
             if count > 0:
                 print(f"    • {severity}: {count}")
 
-        print(f"\n  By status:")
+        print("\n  By status:")
         for status, count in summary['by_status'].items():
             if count > 0:
                 print(f"    • {status}: {count}")
@@ -177,7 +177,7 @@ def test_violation_repository():
         # Get open violations
         open_violations = repo.get_open_violations(limit=5)
         if open_violations:
-            print(f"\n  Sample open violations:")
+            print("\n  Sample open violations:")
             for v in open_violations[:3]:
                 print(f"    • {v.title}")
                 print(f"      User: {v.user.name if v.user else 'N/A'}")
@@ -210,7 +210,7 @@ def test_users_with_roles():
             print("  ⚠  No users with roles found")
             return False
 
-        print(f"\n  Users and their roles:")
+        print("\n  Users and their roles:")
         for user in users[:5]:
             roles_list = [ur.role.role_name for ur in user.user_roles]
             print(f"    • {user.name}")

@@ -4,12 +4,13 @@ Anthropic Client Wrapper with Token Tracking
 Wraps the Anthropic API client to automatically track token usage and costs
 """
 
-from typing import Any, Dict, Optional
+import logging
+
 from anthropic import Anthropic
-from utils.token_tracker import get_global_tracker
 from langsmith import traceable
 from langsmith.run_helpers import get_current_run_tree
-import logging
+
+from utils.token_tracker import get_global_tracker
 
 logger = logging.getLogger(__name__)
 
@@ -26,8 +27,8 @@ class AnthropicClientWrapper:
 
     def __init__(
         self,
-        agent_name: Optional[str] = None,
-        api_key: Optional[str] = None,
+        agent_name: str | None = None,
+        api_key: str | None = None,
         track_tokens: bool = True
     ):
         """
@@ -70,7 +71,7 @@ class MessagesWrapper:
         model: str,
         max_tokens: int,
         messages: list,
-        operation: Optional[str] = None,
+        operation: str | None = None,
         **kwargs
     ):
         """
@@ -151,7 +152,7 @@ class MessagesWrapper:
         return response
 
 
-def create_tracked_client(agent_name: str, api_key: Optional[str] = None) -> AnthropicClientWrapper:
+def create_tracked_client(agent_name: str, api_key: str | None = None) -> AnthropicClientWrapper:
     """
     Convenience function to create a tracked Anthropic client
 

@@ -18,21 +18,19 @@ Author: Prabal Saha
 Date: 2026-02-12
 """
 
+import argparse
+import json
 import os
 import sys
-import json
-import argparse
-from pathlib import Path
-from typing import Dict, List, Set, Tuple, Any
 from collections import defaultdict
 from datetime import datetime
-import time
+from pathlib import Path
+from typing import Any
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from services.netsuite_client import NetSuiteClient
-
 
 # NetSuite Permission Categories (based on NetSuite documentation)
 PERMISSION_CATEGORIES = {
@@ -187,7 +185,7 @@ class AdvancedPermissionAnalyzer:
         self.categorized_permissions = defaultdict(list)
         self.conflict_rules = []
 
-    def fetch_fivetran_roles(self) -> Dict[str, Any]:
+    def fetch_fivetran_roles(self) -> dict[str, Any]:
         """Fetch all Fivetran roles and permissions from NetSuite"""
         print("=" * 80)
         print("STEP 1: Fetching Fivetran Roles from NetSuite")
@@ -200,7 +198,7 @@ class AdvancedPermissionAnalyzer:
         }
 
         print(f"\nCalling RESTlet: {self.restlet_url}")
-        print(f"Requesting roles starting with: 'Fivetran -'")
+        print("Requesting roles starting with: 'Fivetran -'")
 
         response = self.client.session.post(
             self.restlet_url,
@@ -228,7 +226,7 @@ class AdvancedPermissionAnalyzer:
         filtered_count = len(self.roles_data['roles'])
         excluded_count = original_count - filtered_count
 
-        print(f"\n✅ Successfully fetched Fivetran roles")
+        print("\n✅ Successfully fetched Fivetran roles")
         print(f"   • Total roles: {original_count}")
         print(f"   • Excluded roles ending with 'OLD': {excluded_count}")
         print(f"   • Active roles for analysis: {filtered_count}")
@@ -254,7 +252,7 @@ class AdvancedPermissionAnalyzer:
         # Load enhanced categorization from JSON file
         category_file = Path(__file__).parent.parent / 'data' / 'netsuite_permission_categories.json'
         if category_file.exists():
-            with open(category_file, 'r') as f:
+            with open(category_file) as f:
                 category_data = json.load(f)
                 enhanced_categories = category_data['categories']
         else:
@@ -320,13 +318,13 @@ class AdvancedPermissionAnalyzer:
         if categorized_count > 50:
             print(f"   ... and {categorized_count - 50} more categorized")
 
-        print(f"\n✅ Categorization complete")
+        print("\n✅ Categorization complete")
         print(f"   • Categorized: {categorized_count}")
         print(f"   • Uncategorized: {len(uncategorized)}")
         print(f"   • Categorization rate: {(categorized_count / len(self.all_permissions) * 100):.1f}%")
 
         if uncategorized:
-            print(f"\n   Uncategorized permissions (may need manual review):")
+            print("\n   Uncategorized permissions (may need manual review):")
             for perm in uncategorized[:10]:
                 print(f"      - {perm}")
             if len(uncategorized) > 10:
@@ -374,7 +372,7 @@ class AdvancedPermissionAnalyzer:
                 risk = config.get('risk', 'UNKNOWN')
                 print(f"      • {category:25s}: {len(perms):3d} permissions (Risk: {risk})")
 
-        print(f"\n✅ Permission matrix built")
+        print("\n✅ Permission matrix built")
         print(f"   • Total unique permissions: {len(self.permission_matrix)}")
         print(f"   • Permissions shared across roles: {sum(1 for p in self.permission_matrix.values() if len(p) > 1)}")
 
@@ -408,7 +406,7 @@ class AdvancedPermissionAnalyzer:
 
         self.conflict_rules = conflicts_found
 
-        print(f"✅ Analysis complete")
+        print("✅ Analysis complete")
         print(f"   • Total conflicts identified: {len(conflicts_found)}")
         print(f"   • CRITICAL conflicts: {sum(1 for c in conflicts_found if c['severity'] == 'CRITICAL')}")
         print(f"   • HIGH conflicts: {sum(1 for c in conflicts_found if c['severity'] == 'HIGH')}")
@@ -416,7 +414,7 @@ class AdvancedPermissionAnalyzer:
 
         return conflicts_found
 
-    def _analyze_role_pair(self, role1: Dict, role2: Dict) -> Dict:
+    def _analyze_role_pair(self, role1: dict, role2: dict) -> dict:
         """
         Analyze a pair of roles for fundamental conflicts
 
@@ -434,13 +432,13 @@ class AdvancedPermissionAnalyzer:
         max_severity = None
         reasons = []
 
-        for cat1, perms1 in role1_categories.items():
+        for cat1, _perms1 in role1_categories.items():
             if cat1 not in PERMISSION_CATEGORIES:
                 continue
 
             conflicts_with = PERMISSION_CATEGORIES[cat1]['conflicts_with']
 
-            for cat2, perms2 in role2_categories.items():
+            for cat2, _perms2 in role2_categories.items():
                 if cat2 not in PERMISSION_CATEGORIES:
                     continue
 
@@ -475,7 +473,7 @@ class AdvancedPermissionAnalyzer:
 
         return None
 
-    def _get_role_categories(self, role: Dict) -> Dict[str, List[str]]:
+    def _get_role_categories(self, role: dict) -> dict[str, list[str]]:
         """Get categorized permissions for a role"""
         categories = defaultdict(list)
 
@@ -508,7 +506,7 @@ class AdvancedPermissionAnalyzer:
         ranks = {'CRITICAL': 4, 'HIGH': 3, 'MEDIUM': 2, 'LOW': 1}
         return ranks.get(severity, 0)
 
-    def generate_sod_rules(self) -> List[Dict[str, Any]]:
+    def generate_sod_rules(self) -> list[dict[str, Any]]:
         """Generate SOD rules from fundamental conflicts"""
         print("\n" + "=" * 80)
         print("STEP 5: Generating Research-Backed SOD Rules")
@@ -567,7 +565,7 @@ class AdvancedPermissionAnalyzer:
 
         # 3. Categorized permissions
         categorized_file = output_path / f"categorized_permissions_{timestamp}.json"
-        categorized_dict = {k: v for k, v in self.categorized_permissions.items()}
+        categorized_dict = dict(self.categorized_permissions.items())
         with open(categorized_file, 'w') as f:
             json.dump(categorized_dict, f, indent=2)
         print(f"✅ Categorized permissions: {categorized_file}")
@@ -630,7 +628,7 @@ class AdvancedPermissionAnalyzer:
                 f.write(f"   Risk Level: {config.get('risk', 'N/A')}\n")
                 f.write(f"   Permission Count: {len(perms)}\n")
                 f.write(f"   Conflicts With: {', '.join(config.get('conflicts_with', []))}\n")
-                f.write(f"   Sample Permissions:\n")
+                f.write("   Sample Permissions:\n")
                 for perm in sorted(perms)[:5]:
                     f.write(f"      - {perm}\n")
 
@@ -645,7 +643,7 @@ class AdvancedPermissionAnalyzer:
 
                 # Category breakdown
                 role_cats = self._get_role_categories(role)
-                f.write(f"   Permission Categories:\n")
+                f.write("   Permission Categories:\n")
                 for cat, perms in sorted(role_cats.items()):
                     if cat == 'uncategorized':
                         continue
@@ -660,7 +658,7 @@ class AdvancedPermissionAnalyzer:
                 f.write(f"\n{i}. {conflict['role1']} + {conflict['role2']}\n")
                 f.write(f"   Severity: {conflict['severity']}\n")
                 f.write(f"   Business Risk: {conflict['reason']}\n")
-                f.write(f"   Conflicting Functions:\n")
+                f.write("   Conflicting Functions:\n")
                 for cat_pair in conflict['conflicting_categories']:
                     f.write(f"      • {cat_pair}\n")
 

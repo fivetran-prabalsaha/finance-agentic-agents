@@ -4,24 +4,23 @@ Exception Repository
 Handles database operations for approved exceptions, controls, violations, and reviews
 """
 
-from typing import List, Optional, Dict, Any, Tuple
-import sqlalchemy
-from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_, func, desc
-from datetime import datetime, date
 import logging
 import uuid
+from datetime import date, datetime
+from typing import Any
+
+import sqlalchemy
+from sqlalchemy import and_, desc, func
+from sqlalchemy.orm import Session
 
 from models.approved_exception import (
     ApprovedExceptionModel,
     ExceptionControlModel,
-    ExceptionViolationModel,
     ExceptionReviewModel,
     ExceptionStatus,
+    ExceptionViolationModel,
     ImplementationStatus,
-    RemediationStatus,
     ReviewOutcome,
-    CompensatingControl
 )
 
 logger = logging.getLogger(__name__)
@@ -47,8 +46,8 @@ class ExceptionRepository:
         self,
         user_id: uuid.UUID,
         user_name: str,
-        role_ids: List[int],
-        role_names: List[str],
+        role_ids: list[int],
+        role_names: list[str],
         conflict_count: int,
         risk_score: float,
         business_justification: str,
@@ -132,7 +131,7 @@ class ExceptionRepository:
     # APPROVED EXCEPTIONS - READ
     # =========================================================================
 
-    def get_by_id(self, exception_id: uuid.UUID) -> Optional[ApprovedExceptionModel]:
+    def get_by_id(self, exception_id: uuid.UUID) -> ApprovedExceptionModel | None:
         """Get exception by ID"""
         try:
             return self.session.query(ApprovedExceptionModel).filter(
@@ -142,7 +141,7 @@ class ExceptionRepository:
             logger.error(f"Error fetching exception by ID: {str(e)}")
             return None
 
-    def get_by_code(self, exception_code: str) -> Optional[ApprovedExceptionModel]:
+    def get_by_code(self, exception_code: str) -> ApprovedExceptionModel | None:
         """Get exception by exception code"""
         try:
             return self.session.query(ApprovedExceptionModel).filter(
@@ -155,8 +154,8 @@ class ExceptionRepository:
     def get_by_user(
         self,
         user_id: uuid.UUID,
-        status: Optional[ExceptionStatus] = None
-    ) -> List[ApprovedExceptionModel]:
+        status: ExceptionStatus | None = None
+    ) -> list[ApprovedExceptionModel]:
         """
         Get all exceptions for a user
 
@@ -184,7 +183,7 @@ class ExceptionRepository:
     def find_active_exception(
         self,
         user_id: uuid.UUID,
-        rule_id: Optional[str] = None
+        rule_id: str | None = None
     ) -> bool:
         """
         Check if there is an active approved exception for a user (and optional rule).
@@ -223,12 +222,12 @@ class ExceptionRepository:
 
     def find_similar_exceptions(
         self,
-        role_ids: List[int],
-        job_title: Optional[str] = None,
-        department: Optional[str] = None,
+        role_ids: list[int],
+        job_title: str | None = None,
+        department: str | None = None,
         limit: int = 3,
         status: ExceptionStatus = ExceptionStatus.ACTIVE
-    ) -> List[Tuple[ApprovedExceptionModel, float]]:
+    ) -> list[tuple[ApprovedExceptionModel, float]]:
         """
         Find similar exceptions based on role overlap
 
@@ -283,10 +282,10 @@ class ExceptionRepository:
 
     def list_all(
         self,
-        status: Optional[ExceptionStatus] = None,
+        status: ExceptionStatus | None = None,
         limit: int = 100,
         offset: int = 0
-    ) -> List[ApprovedExceptionModel]:
+    ) -> list[ApprovedExceptionModel]:
         """
         List all exceptions with optional filters
 
@@ -312,7 +311,7 @@ class ExceptionRepository:
             logger.error(f"Error listing exceptions: {str(e)}")
             return []
 
-    def count_by_status(self) -> Dict[str, int]:
+    def count_by_status(self) -> dict[str, int]:
         """
         Count exceptions by status
 
@@ -339,7 +338,7 @@ class ExceptionRepository:
         self,
         exception_id: uuid.UUID,
         new_status: ExceptionStatus,
-        reason: Optional[str] = None
+        reason: str | None = None
     ) -> bool:
         """
         Update exception status
@@ -394,10 +393,10 @@ class ExceptionRepository:
         self,
         exception_id: uuid.UUID,
         control_id: uuid.UUID,
-        estimated_annual_cost: Optional[float] = None,
-        risk_reduction_percentage: Optional[int] = None,
+        estimated_annual_cost: float | None = None,
+        risk_reduction_percentage: int | None = None,
         **kwargs
-    ) -> Optional[ExceptionControlModel]:
+    ) -> ExceptionControlModel | None:
         """
         Add a compensating control to an exception
 
@@ -446,7 +445,7 @@ class ExceptionRepository:
     def get_exception_controls(
         self,
         exception_id: uuid.UUID
-    ) -> List[ExceptionControlModel]:
+    ) -> list[ExceptionControlModel]:
         """Get all controls for an exception"""
         try:
             return self.session.query(ExceptionControlModel).filter(
@@ -460,7 +459,7 @@ class ExceptionRepository:
         self,
         exception_control_id: int,
         new_status: ImplementationStatus,
-        notes: Optional[str] = None
+        notes: str | None = None
     ) -> bool:
         """Update control implementation status"""
         try:
@@ -494,7 +493,7 @@ class ExceptionRepository:
         severity: str,
         description: str,
         **kwargs
-    ) -> Optional[ExceptionViolationModel]:
+    ) -> ExceptionViolationModel | None:
         """
         Record a violation of an approved exception
 
@@ -540,7 +539,7 @@ class ExceptionRepository:
     def get_exception_violations(
         self,
         exception_id: uuid.UUID
-    ) -> List[ExceptionViolationModel]:
+    ) -> list[ExceptionViolationModel]:
         """Get all violations for an exception"""
         try:
             return self.session.query(ExceptionViolationModel).filter(
@@ -560,7 +559,7 @@ class ExceptionRepository:
         reviewer_name: str,
         outcome: ReviewOutcome,
         **kwargs
-    ) -> Optional[ExceptionReviewModel]:
+    ) -> ExceptionReviewModel | None:
         """
         Create an exception review record
 
@@ -603,7 +602,7 @@ class ExceptionRepository:
     def get_exception_reviews(
         self,
         exception_id: uuid.UUID
-    ) -> List[ExceptionReviewModel]:
+    ) -> list[ExceptionReviewModel]:
         """Get all reviews for an exception"""
         try:
             return self.session.query(ExceptionReviewModel).filter(
@@ -617,7 +616,7 @@ class ExceptionRepository:
     # STATISTICS AND REPORTING
     # =========================================================================
 
-    def get_effectiveness_stats(self) -> Dict[str, Any]:
+    def get_effectiveness_stats(self) -> dict[str, Any]:
         """
         Get effectiveness statistics for all exceptions
 
@@ -664,7 +663,7 @@ class ExceptionRepository:
             logger.error(f"Error calculating effectiveness stats: {str(e)}")
             return {}
 
-    def get_exceptions_needing_review(self) -> List[ApprovedExceptionModel]:
+    def get_exceptions_needing_review(self) -> list[ApprovedExceptionModel]:
         """
         Get exceptions that need review (next_review_date in past or today)
 
@@ -686,4 +685,3 @@ class ExceptionRepository:
 
 
 # Add import to sqlalchemy for INTEGER cast
-import sqlalchemy

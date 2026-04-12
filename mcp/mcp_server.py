@@ -4,25 +4,20 @@ MCP Server - Model Context Protocol server for Claude UI integration
 This FastAPI server implements the MCP protocol (JSON-RPC 2.0) and provides
 tool discovery and execution for Claude UI.
 """
-import os
-import logging
-from typing import Any, Dict, Optional
-from datetime import datetime
 import asyncio
+import logging
+import os
+from datetime import datetime
+from typing import Any
 
-from fastapi import FastAPI, Request, HTTPException, Depends
-from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
 import uvicorn
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
 
-from .mcp_tools import (
-    get_all_tool_schemas,
-    get_tool_schema,
-    get_tool_handler,
-    TOOL_SCHEMAS
-)
-from .admin_api import auth_router, admin_router
+from .admin_api import admin_router, auth_router
+from .mcp_tools import TOOL_SCHEMAS, get_tool_handler, get_tool_schema
 
 # Configure logging
 logging.basicConfig(
@@ -71,8 +66,8 @@ class MCPRequest(BaseModel):
     """MCP JSON-RPC 2.0 request or notification"""
     jsonrpc: str = Field(default="2.0")
     method: str
-    params: Dict[str, Any] = Field(default_factory=dict)
-    id: Optional[int] = None  # None for notifications, int for requests
+    params: dict[str, Any] = Field(default_factory=dict)
+    id: int | None = None  # None for notifications, int for requests
 
 
 class MCPResponse(BaseModel):
@@ -80,16 +75,16 @@ class MCPResponse(BaseModel):
     model_config = {"exclude_none": True}  # Exclude None values from JSON
 
     jsonrpc: str = Field(default="2.0")
-    result: Optional[Dict[str, Any]] = None
-    error: Optional[Dict[str, Any]] = None
-    id: Optional[int] = None  # Must match request id
+    result: dict[str, Any] | None = None
+    error: dict[str, Any] | None = None
+    id: int | None = None  # Must match request id
 
 
 class MCPError(BaseModel):
     """MCP error object"""
     code: int
     message: str
-    data: Optional[Dict[str, Any]] = None
+    data: dict[str, Any] | None = None
 
 
 # ============================================================================
@@ -436,16 +431,16 @@ async def startup_event():
     # Initialize knowledge base with embeddings
     try:
         logger.info("Initializing Knowledge Base Agent...")
+        from agents.knowledge_base_pgvector import create_knowledge_base
         from models.database_config import DatabaseConfig
         from repositories.sod_rule_repository import SODRuleRepository
-        from agents.knowledge_base_pgvector import create_knowledge_base
 
         db_config = DatabaseConfig()
         session = db_config.get_session()
         rule_repo = SODRuleRepository(session)
 
         # This will auto-create embeddings from sod_rules.json if missing
-        kb_agent = create_knowledge_base(
+        create_knowledge_base(
             session=session,
             sod_rule_repo=rule_repo
         )

@@ -8,6 +8,7 @@ import os
 import sys
 import time
 from datetime import datetime
+
 from dotenv import load_dotenv
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -57,9 +58,9 @@ def demo_1_connection():
 
     if agent.test_connection():
         print("✓ Successfully connected to NetSuite Sandbox")
-        print(f"  Account: 5260239-sb1")
-        print(f"  RESTlet: script=3684, deploy=1")
-        print(f"  Authentication: OAuth 1.0a")
+        print("  Account: 5260239-sb1")
+        print("  RESTlet: script=3684, deploy=1")
+        print("  Authentication: OAuth 1.0a")
         return agent
     else:
         print("✗ Connection failed!")
@@ -82,12 +83,12 @@ def demo_2_fetch_sample(agent):
         users = result['data']['users']
         metadata = result['data']['metadata']
 
-        print(f"\n✓ Query successful!")
+        print("\n✓ Query successful!")
         print(f"  Total users in system: {metadata['total_users']:,}")
         print(f"  Fetched: {len(users)} users")
         print(f"  Execution time: {metadata['execution_time_seconds']:.2f}s")
 
-        print(f"\n  Sample Users:")
+        print("\n  Sample Users:")
         for i, user in enumerate(users[:5], 1):
             print(f"    {i}. {user['name']:<30} {user['email']:<40} ({user['roles_count']} roles)")
 
@@ -119,14 +120,14 @@ def demo_3_fetch_with_permissions(agent):
             for role in user.get('roles', []):
                 total_perms += len(role.get('permissions', []))
 
-        print(f"\n✓ Query successful!")
+        print("\n✓ Query successful!")
         print(f"  Users fetched: {len(users)}")
         print(f"  Total permissions retrieved: {total_perms:,}")
         print(f"  Execution time: {metadata['execution_time_seconds']:.2f}s")
 
         # Show detailed user
         if users:
-            print(f"\n  Detailed View - First User:")
+            print("\n  Detailed View - First User:")
             user = users[0]
             print(f"    Name: {user['name']}")
             print(f"    Email: {user['email']}")
@@ -135,13 +136,13 @@ def demo_3_fetch_with_permissions(agent):
             print(f"    Roles: {user['roles_count']}")
 
             if user.get('roles'):
-                print(f"\n    Role Breakdown:")
+                print("\n    Role Breakdown:")
                 for role in user['roles']:
                     perm_count = len(role.get('permissions', []))
                     print(f"      • {role['role_name']}: {perm_count} permissions")
 
                     if role.get('permissions'):
-                        print(f"        Sample permissions:")
+                        print("        Sample permissions:")
                         for perm in role['permissions'][:3]:
                             print(f"          - {perm['permission']}: {perm['level']}")
 
@@ -162,8 +163,8 @@ def demo_4_find_specific_user(agent):
     user = agent.netsuite_client.get_user_by_email(email, include_permissions=True)
 
     if user:
-        print(f"\n✓ User found!")
-        print(f"\n  Personal Information:")
+        print("\n✓ User found!")
+        print("\n  Personal Information:")
         print(f"    Name: {user['name']}")
         print(f"    Email: {user['email']}")
         print(f"    User ID: {user['user_id']}")
@@ -172,13 +173,13 @@ def demo_4_find_specific_user(agent):
         print(f"    Department: {user.get('department', 'N/A')}")
         print(f"    Subsidiary: {user.get('subsidiary', 'N/A')}")
 
-        print(f"\n  Role & Permission Analysis:")
+        print("\n  Role & Permission Analysis:")
         print(f"    Total Roles: {user['roles_count']}")
 
         if user.get('roles'):
             total_perms = sum(len(r.get('permissions', [])) for r in user['roles'])
             print(f"    Total Permissions: {total_perms}")
-            print(f"\n    Roles:")
+            print("\n    Roles:")
             for role in user['roles']:
                 perm_count = len(role.get('permissions', []))
                 print(f"      • {role['role_name']}")
@@ -215,12 +216,12 @@ def demo_5_high_risk_users(agent):
 
     high_risk = agent.get_high_risk_users(users, min_roles=3)
 
-    print(f"\n✓ Analysis complete!")
+    print("\n✓ Analysis complete!")
     print(f"  Total users analyzed: {len(users):,}")
     print(f"  High-risk users (3+ roles): {len(high_risk)}")
 
     if high_risk:
-        print(f"\n  ⚠️  HIGH RISK USERS - Multiple Role Assignments:")
+        print("\n  ⚠️  HIGH RISK USERS - Multiple Role Assignments:")
         print(f"  {'Name':<30} {'Email':<35} {'Roles':>5}")
         print(f"  {'-'*30} {'-'*35} {'-'*5}")
 
@@ -233,11 +234,11 @@ def demo_5_high_risk_users(agent):
         # Show role breakdown for top user
         if high_risk:
             print(f"\n  Top Risk User: {high_risk[0]['name']}")
-            print(f"  Roles assigned:")
+            print("  Roles assigned:")
             for role in high_risk[0]['roles'][:5]:
                 print(f"    • {role}")
     else:
-        print(f"\n  ✓ No high-risk users found (all users have < 3 roles)")
+        print("\n  ✓ No high-risk users found (all users have < 3 roles)")
 
     return high_risk
 
@@ -272,33 +273,33 @@ def demo_6_claude_analysis(agent):
     analysis = analysis_result['analysis']
     stats = analysis_result['raw_stats']
 
-    print(f"\n✓ Claude analysis complete!")
+    print("\n✓ Claude analysis complete!")
 
-    print(f"\n  📊 Statistics:")
+    print("\n  📊 Statistics:")
     print(f"    Total users analyzed: {stats['total_users']}")
     print(f"    Users with multiple roles: {stats['users_with_multiple_roles']}")
     print(f"    Users with no roles: {stats['users_with_no_roles']}")
     print(f"    Unique roles in system: {stats['unique_roles']}")
 
-    print(f"\n  📈 Top 5 Most Common Roles:")
+    print("\n  📈 Top 5 Most Common Roles:")
     for i, (role, count) in enumerate(stats['top_roles'][:5], 1):
         print(f"    {i}. {role}: {count} users")
 
-    print(f"\n  🤖 Claude's Analysis:")
+    print("\n  🤖 Claude's Analysis:")
     print(f"    {analysis.get('summary', 'N/A')}")
 
     if analysis.get('concerns'):
-        print(f"\n  ⚠️  Key Concerns:")
+        print("\n  ⚠️  Key Concerns:")
         for concern in analysis['concerns']:
             print(f"    • {concern}")
 
     if analysis.get('recommendations'):
-        print(f"\n  💡 Recommendations:")
+        print("\n  💡 Recommendations:")
         for rec in analysis['recommendations']:
             print(f"    • {rec}")
 
     if analysis.get('high_risk_patterns'):
-        print(f"\n  🚨 High-Risk Patterns Detected:")
+        print("\n  🚨 High-Risk Patterns Detected:")
         for pattern in analysis['high_risk_patterns']:
             print(f"    • {pattern}")
 

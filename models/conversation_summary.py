@@ -7,10 +7,11 @@ non-expired summaries are injected into the system message as prior context,
 replacing ~2K raw history tokens with ~150 summary tokens.
 """
 
-from datetime import datetime
 import uuid
-from sqlalchemy import Column, String, Text, DateTime, Index
-from sqlalchemy.dialects.postgresql import UUID, ARRAY
+from datetime import datetime
+
+from sqlalchemy import Column, DateTime, Index, String, Text
+from sqlalchemy.dialects.postgresql import ARRAY, UUID
 
 from models.database_config import Base
 

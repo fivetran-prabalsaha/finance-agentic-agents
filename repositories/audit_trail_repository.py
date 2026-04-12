@@ -5,12 +5,13 @@ Handles database operations for AuditTrail records, which log all significant
 compliance events (violation create/update/resolve, exception approvals, etc.)
 """
 
-from typing import List, Optional, Dict, Any
-from sqlalchemy.orm import Session
-from sqlalchemy import desc
-from datetime import datetime
 import logging
 import uuid
+from datetime import datetime
+from typing import Any
+
+from sqlalchemy import desc
+from sqlalchemy.orm import Session
 
 from models.database import AuditTrail
 
@@ -29,9 +30,9 @@ class AuditTrailRepository:
         entity_type: str,
         entity_id: str,
         performed_by: str,
-        details: Optional[Dict[str, Any]] = None,
-        user_id: Optional[uuid.UUID] = None,
-        violation_id: Optional[uuid.UUID] = None
+        details: dict[str, Any] | None = None,
+        user_id: uuid.UUID | None = None,
+        violation_id: uuid.UUID | None = None
     ) -> AuditTrail:
         """
         Create an audit trail record.
@@ -73,7 +74,7 @@ class AuditTrailRepository:
         entity_type: str,
         entity_id: str,
         limit: int = 50
-    ) -> List[AuditTrail]:
+    ) -> list[AuditTrail]:
         """Get audit trail records for a specific entity."""
         try:
             return (
@@ -94,7 +95,7 @@ class AuditTrailRepository:
         self,
         user_id: uuid.UUID,
         limit: int = 100
-    ) -> List[AuditTrail]:
+    ) -> list[AuditTrail]:
         """Get all audit trail records for a user."""
         try:
             return (
@@ -108,7 +109,7 @@ class AuditTrailRepository:
             logger.error(f"Error fetching audit trail for user {user_id}: {str(e)}")
             return []
 
-    def get_recent(self, limit: int = 100) -> List[AuditTrail]:
+    def get_recent(self, limit: int = 100) -> list[AuditTrail]:
         """Get the most recent audit trail records across all entities."""
         try:
             return (

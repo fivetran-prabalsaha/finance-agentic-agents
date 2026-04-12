@@ -13,11 +13,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from services.llm import (
+    ConfigEncryption,
+    LLMConfigManager,
+    LLMMessage,
     create_llm,
     get_llm_from_config,
-    LLMMessage,
-    LLMConfigManager,
-    ConfigEncryption
 )
 
 
@@ -56,9 +56,9 @@ def demo_basic_usage():
 
     response = llm.generate(messages)
 
-    print(f"\n📝 Response:")
+    print("\n📝 Response:")
     print(f"   {response.content}")
-    print(f"\n📊 Metrics:")
+    print("\n📊 Metrics:")
     print(f"   Input tokens: {response.usage['input_tokens']}")
     print(f"   Output tokens: {response.usage['output_tokens']}")
     print(f"   Total tokens: {response.usage['total_tokens']}")
@@ -83,13 +83,13 @@ def demo_config_file():
         # Load from config
         llm = get_llm_from_config(config_path=config_path)
 
-        print(f"\n✅ Loaded provider from config")
+        print("\n✅ Loaded provider from config")
         print(f"   Provider: {llm.get_provider_name()}")
         print(f"   Model: {llm.get_model_name()}")
 
         # Get model info
         info = llm.get_model_info()
-        print(f"\n📋 Model Information:")
+        print("\n📋 Model Information:")
         print(f"   Context length: {info['context_length']:,} tokens")
         print(f"   Input cost: ${info['pricing']['input_per_million']}/1M tokens")
         print(f"   Output cost: ${info['pricing']['output_per_million']}/1M tokens")
@@ -200,7 +200,7 @@ def demo_encryption():
     print("\n🔐 Generating encryption key...")
     encryption_key = ConfigEncryption.generate_key()
     print(f"   Key: {encryption_key[:20]}...")
-    print(f"   (Store this in MASTER_ENCRYPTION_KEY environment variable)")
+    print("   (Store this in MASTER_ENCRYPTION_KEY environment variable)")
 
     # Encrypt API key
     print("\n🔒 Encrypting API key...")
@@ -218,9 +218,9 @@ def demo_encryption():
     print(f"   Decrypted: {decrypted}")
 
     if decrypted == sample_key:
-        print(f"   ✅ Encryption/decryption successful!")
+        print("   ✅ Encryption/decryption successful!")
     else:
-        print(f"   ❌ Encryption/decryption failed!")
+        print("   ❌ Encryption/decryption failed!")
 
 
 def demo_cost_tracking():
@@ -259,7 +259,7 @@ def demo_cost_tracking():
         print(f"      Cost: ${response.cost:.4f}")
         print(f"      Tokens: {response.usage['total_tokens']}\n")
 
-    print(f"📊 Total:")
+    print("📊 Total:")
     print(f"   Total cost: ${total_cost:.4f}")
     print(f"   Total tokens: {total_tokens:,}")
     print(f"   Avg cost per call: ${total_cost / len(prompts):.4f}")

@@ -22,17 +22,17 @@ Run:
 Re-running is safe — conflicts are upserted on the unique constraint.
 """
 
-import sys
-import os
 import json
 import logging
-import itertools
+import os
+import sys
 from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from models.database_config import DatabaseConfig
 from sqlalchemy import text
+
+from models.database_config import DatabaseConfig
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)

@@ -10,13 +10,13 @@ This service provides:
 6. Cache statistics and monitoring
 """
 
-import logging
-import json
 import hashlib
-from typing import Any, Optional, Dict, List
-from datetime import timedelta
-import redis
+import json
+import logging
 from functools import wraps
+from typing import Any
+
+import redis
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +84,7 @@ class CacheService:
 
         return f"compliance:{prefix}:{key_hash}"
 
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Any | None:
         """
         Get value from cache
 
@@ -113,7 +113,7 @@ class CacheService:
         self,
         key: str,
         value: Any,
-        ttl: Optional[int] = None
+        ttl: int | None = None
     ) -> bool:
         """
         Set value in cache
@@ -196,9 +196,9 @@ class CacheService:
     def get_ai_analysis(
         self,
         user_id: str,
-        violation_ids: List[str],
-        role_names: List[str]
-    ) -> Optional[str]:
+        violation_ids: list[str],
+        role_names: list[str]
+    ) -> str | None:
         """
         Get cached AI analysis for user+violations
 
@@ -221,8 +221,8 @@ class CacheService:
     def set_ai_analysis(
         self,
         user_id: str,
-        violation_ids: List[str],
-        role_names: List[str],
+        violation_ids: list[str],
+        role_names: list[str],
         analysis: str,
         ttl: int = 86400  # 24 hours
     ) -> bool:
@@ -251,7 +251,7 @@ class CacheService:
         self,
         user_id: str,
         rule_version: str = "v1"
-    ) -> Optional[List[Dict]]:
+    ) -> list[dict] | None:
         """
         Get cached violation detection results for user
 
@@ -268,7 +268,7 @@ class CacheService:
     def set_user_violations(
         self,
         user_id: str,
-        violations: List[Dict],
+        violations: list[dict],
         rule_version: str = "v1",
         ttl: int = 3600  # 1 hour (violations change more frequently)
     ) -> bool:
@@ -291,7 +291,7 @@ class CacheService:
         self,
         user_id: str,
         calculation_method: str = "v1"
-    ) -> Optional[float]:
+    ) -> float | None:
         """
         Get cached risk score for user
 
@@ -350,7 +350,7 @@ class CacheService:
         logger.info(f"Invalidated {total_deleted} cache entries for user: {user_id}")
         return total_deleted
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """
         Get cache statistics
 
@@ -405,7 +405,7 @@ class CacheService:
 def cached(
     cache_service: CacheService,
     prefix: str,
-    ttl: Optional[int] = None,
+    ttl: int | None = None,
     key_func=None
 ):
     """
@@ -453,7 +453,7 @@ def cached(
 # Global Cache Instance
 # ==================================================================
 
-_global_cache_service: Optional[CacheService] = None
+_global_cache_service: CacheService | None = None
 
 
 def get_cache_service(

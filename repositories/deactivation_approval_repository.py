@@ -4,13 +4,14 @@ Deactivation Approval Repository
 Data access layer for user deactivation approval workflow
 """
 
-from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta
-from sqlalchemy.orm import Session
-from sqlalchemy import desc, and_, or_
-
-from models.database import DeactivationApproval, ApprovalStatus, ExecutionStatus, ExecutionMethod
 import logging
+from datetime import datetime, timedelta
+from typing import Any
+
+from sqlalchemy import and_, desc, or_
+from sqlalchemy.orm import Session
+
+from models.database import ApprovalStatus, DeactivationApproval, ExecutionMethod, ExecutionStatus
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,7 @@ class DeactivationApprovalRepository:
     def __init__(self, session: Session):
         self.session = session
 
-    def create_approval_request(self, request_data: Dict[str, Any]) -> DeactivationApproval:
+    def create_approval_request(self, request_data: dict[str, Any]) -> DeactivationApproval:
         """Create a new deactivation approval request"""
         # Calculate expiration (default 48 hours)
         expires_in_hours = request_data.get('expires_in_hours', 48)
@@ -43,19 +44,19 @@ class DeactivationApprovalRepository:
         logger.info(f"Created approval request {approval.request_id} for {approval.user_count} users")
         return approval
 
-    def get_approval_by_id(self, approval_id: str) -> Optional[DeactivationApproval]:
+    def get_approval_by_id(self, approval_id: str) -> DeactivationApproval | None:
         """Get approval by UUID"""
         return self.session.query(DeactivationApproval).filter(
             DeactivationApproval.id == approval_id
         ).first()
 
-    def get_approval_by_request_id(self, request_id: str) -> Optional[DeactivationApproval]:
+    def get_approval_by_request_id(self, request_id: str) -> DeactivationApproval | None:
         """Get approval by request ID"""
         return self.session.query(DeactivationApproval).filter(
             DeactivationApproval.request_id == request_id
         ).first()
 
-    def get_pending_approvals(self, limit: Optional[int] = None) -> List[DeactivationApproval]:
+    def get_pending_approvals(self, limit: int | None = None) -> list[DeactivationApproval]:
         """Get all pending approval requests"""
         query = self.session.query(DeactivationApproval).filter(
             and_(
@@ -72,8 +73,8 @@ class DeactivationApprovalRepository:
     def get_approvals_by_status(
         self,
         status: ApprovalStatus,
-        limit: Optional[int] = None
-    ) -> List[DeactivationApproval]:
+        limit: int | None = None
+    ) -> list[DeactivationApproval]:
         """Get approvals by status"""
         query = self.session.query(DeactivationApproval).filter(
             DeactivationApproval.status == status
@@ -84,19 +85,19 @@ class DeactivationApprovalRepository:
 
         return query.all()
 
-    def get_approved_pending_execution(self) -> List[DeactivationApproval]:
+    def get_approved_pending_execution(self) -> list[DeactivationApproval]:
         """Get approved requests that haven't been executed yet"""
         return self.session.query(DeactivationApproval).filter(
             and_(
                 DeactivationApproval.status == ApprovalStatus.APPROVED,
                 or_(
-                    DeactivationApproval.execution_status == None,
+                    DeactivationApproval.execution_status is None,
                     DeactivationApproval.execution_status == ExecutionStatus.NOT_STARTED
                 )
             )
         ).order_by(DeactivationApproval.approved_at).all()
 
-    def get_expired_approvals(self) -> List[DeactivationApproval]:
+    def get_expired_approvals(self) -> list[DeactivationApproval]:
         """Get approvals that have expired"""
         return self.session.query(DeactivationApproval).filter(
             and_(
@@ -109,8 +110,8 @@ class DeactivationApprovalRepository:
         self,
         request_id: str,
         approved_by: str,
-        execution_method: Optional[ExecutionMethod] = None
-    ) -> Optional[DeactivationApproval]:
+        execution_method: ExecutionMethod | None = None
+    ) -> DeactivationApproval | None:
         """Approve a deactivation request"""
         approval = self.get_approval_by_request_id(request_id)
 
@@ -141,7 +142,7 @@ class DeactivationApprovalRepository:
         request_id: str,
         rejected_by: str,
         rejection_reason: str
-    ) -> Optional[DeactivationApproval]:
+    ) -> DeactivationApproval | None:
         """Reject a deactivation request"""
         approval = self.get_approval_by_request_id(request_id)
 
@@ -177,7 +178,7 @@ class DeactivationApprovalRepository:
         self,
         request_id: str,
         execution_method: ExecutionMethod
-    ) -> Optional[DeactivationApproval]:
+    ) -> DeactivationApproval | None:
         """Mark approval execution as started"""
         approval = self.get_approval_by_request_id(request_id)
 
@@ -198,8 +199,8 @@ class DeactivationApprovalRepository:
         request_id: str,
         users_deactivated: int,
         users_failed: int,
-        execution_errors: Optional[List[Dict]] = None
-    ) -> Optional[DeactivationApproval]:
+        execution_errors: list[dict] | None = None
+    ) -> DeactivationApproval | None:
         """Mark approval execution as completed"""
         approval = self.get_approval_by_request_id(request_id)
 
@@ -227,7 +228,7 @@ class DeactivationApprovalRepository:
         self,
         request_id: str,
         error_message: str
-    ) -> Optional[DeactivationApproval]:
+    ) -> DeactivationApproval | None:
         """Mark approval execution as failed"""
         approval = self.get_approval_by_request_id(request_id)
 
@@ -243,7 +244,7 @@ class DeactivationApprovalRepository:
 
         return None
 
-    def get_approval_statistics(self, days: int = 30) -> Dict[str, Any]:
+    def get_approval_statistics(self, days: int = 30) -> dict[str, Any]:
         """Get approval statistics for the last N days"""
         cutoff_date = datetime.utcnow() - timedelta(days=days)
         query = self.session.query(DeactivationApproval).filter(
@@ -281,7 +282,7 @@ class DeactivationApprovalRepository:
             'success_rate': (total_users_deactivated / total_users_requested * 100) if total_users_requested > 0 else 0
         }
 
-    def get_recent_approvals(self, hours: int = 24, limit: Optional[int] = None) -> List[DeactivationApproval]:
+    def get_recent_approvals(self, hours: int = 24, limit: int | None = None) -> list[DeactivationApproval]:
         """Get approvals from the last N hours"""
         cutoff_date = datetime.utcnow() - timedelta(hours=hours)
         query = self.session.query(DeactivationApproval).filter(

@@ -5,12 +5,13 @@ Handles all database operations for User and UserRole models
 """
 
 import logging
-from typing import List, Optional, Dict, Any
 from datetime import datetime
-from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import and_, or_
+from typing import Any
 
-from models.database import User, Role, UserRole, UserStatus
+from sqlalchemy import and_, or_
+from sqlalchemy.orm import Session, joinedload
+
+from models.database import Role, User, UserRole, UserStatus
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,7 @@ class UserRepository:
         """
         self.session = session
 
-    def create_user(self, user_data: Dict[str, Any]) -> User:
+    def create_user(self, user_data: dict[str, Any]) -> User:
         """
         Create a new user
 
@@ -67,7 +68,7 @@ class UserRepository:
         logger.info(f"Created user: {user.email}")
         return user
 
-    def get_user_by_id(self, user_id: str) -> Optional[User]:
+    def get_user_by_id(self, user_id: str) -> User | None:
         """
         Get user by user_id
 
@@ -79,7 +80,7 @@ class UserRepository:
         """
         return self.session.query(User).filter(User.user_id == user_id).first()
 
-    def get_user_by_email(self, email: str) -> Optional[User]:
+    def get_user_by_email(self, email: str) -> User | None:
         """
         Get user by email (case-insensitive)
 
@@ -91,7 +92,7 @@ class UserRepository:
         """
         return self.session.query(User).filter(User.email.ilike(email)).first()
 
-    def get_user_by_uuid(self, uuid: str) -> Optional[User]:
+    def get_user_by_uuid(self, uuid: str) -> User | None:
         """
         Get user by UUID (database ID)
 
@@ -105,11 +106,11 @@ class UserRepository:
 
     def get_all_users(
         self,
-        status: Optional[UserStatus] = None,
-        department: Optional[str] = None,
+        status: UserStatus | None = None,
+        department: str | None = None,
         limit: int = 1000,
         offset: int = 0
-    ) -> List[User]:
+    ) -> list[User]:
         """
         Get all users with optional filters
 
@@ -132,7 +133,7 @@ class UserRepository:
 
         return query.order_by(User.name).limit(limit).offset(offset).all()
 
-    def upsert_user(self, user_data: Dict[str, Any]) -> User:
+    def upsert_user(self, user_data: dict[str, Any]) -> User:
         """
         Create or update user (upsert)
 
@@ -181,7 +182,7 @@ class UserRepository:
         self.session.commit()
         return user
 
-    def bulk_upsert_users(self, users_data: List[Dict[str, Any]]) -> int:
+    def bulk_upsert_users(self, users_data: list[dict[str, Any]]) -> int:
         """
         Bulk create or update users
 
@@ -205,9 +206,9 @@ class UserRepository:
 
     def get_users_with_roles(
         self,
-        status: Optional[UserStatus] = None,
+        status: UserStatus | None = None,
         min_roles: int = 0
-    ) -> List[User]:
+    ) -> list[User]:
         """
         Get users with their roles loaded
 
@@ -237,8 +238,8 @@ class UserRepository:
         self,
         user_id: str,
         role_id: str,
-        assigned_by: Optional[str] = None,
-        notes: Optional[str] = None
+        assigned_by: str | None = None,
+        notes: str | None = None
     ) -> UserRole:
         """
         Assign a role to a user
@@ -260,7 +261,7 @@ class UserRepository:
         )
 
         if existing:
-            logger.info(f"Role already assigned to user")
+            logger.info("Role already assigned to user")
             return existing
 
         user_role = UserRole(
@@ -296,7 +297,7 @@ class UserRepository:
             self.session.commit()
             logger.info(f"Removed role {role_id} from user {user_id}")
 
-    def get_user_roles(self, user_id: str) -> List[Role]:
+    def get_user_roles(self, user_id: str) -> list[Role]:
         """
         Get all roles for a user
 
@@ -318,7 +319,7 @@ class UserRepository:
 
         return [ur.role for ur in user.user_roles]
 
-    def get_high_risk_users(self, min_roles: int = 3) -> List[User]:
+    def get_high_risk_users(self, min_roles: int = 3) -> list[User]:
         """
         Get users with multiple roles (high SOD risk)
 
@@ -334,7 +335,7 @@ class UserRepository:
         logger.info(f"Found {len(high_risk)} high-risk users with {min_roles}+ roles")
         return high_risk
 
-    def search_users(self, search_term: str, limit: int = 100) -> List[User]:
+    def search_users(self, search_term: str, limit: int = 100) -> list[User]:
         """
         Search users by name or email
 
@@ -372,7 +373,7 @@ class UserRepository:
             self.session.commit()
             logger.info(f"Deleted user: {user.email}")
 
-    def get_user_count(self, status: Optional[UserStatus] = None) -> int:
+    def get_user_count(self, status: UserStatus | None = None) -> int:
         """
         Get total user count
 

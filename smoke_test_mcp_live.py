@@ -3,8 +3,8 @@
 Live MCP Server Smoke Test
 Tests all components through the actual MCP orchestrator
 """
-import sys
 import os
+import sys
 from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -56,8 +56,9 @@ def main():
     # TEST 2: Database Tables & Data
     print_header("TEST 2: Database Tables & Data")
     try:
-        from models.database_config import get_db_config
         from sqlalchemy import text
+
+        from models.database_config import get_db_config
 
         db_config = get_db_config()
         session = db_config.get_session()
@@ -76,8 +77,8 @@ def main():
             try:
                 count = session.execute(text(query)).scalar()
                 counts[table] = count
-            except Exception as e:
-                counts[table] = f"ERROR"
+            except Exception:
+                counts[table] = "ERROR"
 
         session.close()
 
@@ -97,8 +98,9 @@ def main():
     # TEST 3: pgvector Extension
     print_header("TEST 3: pgvector Vector Store")
     try:
-        from models.database_config import get_db_config
         from sqlalchemy import text
+
+        from models.database_config import get_db_config
 
         db_config = get_db_config()
         session = db_config.get_session()
@@ -130,8 +132,9 @@ def main():
     # TEST 4: Embedding Service
     print_header("TEST 4: Embedding Service")
     try:
-        from services.embedding_service import EmbeddingService
         import numpy as np
+
+        from services.embedding_service import EmbeddingService
 
         service = EmbeddingService()
 
@@ -190,9 +193,10 @@ def main():
     # TEST 7: Data Collector Agent
     print_header("TEST 7: Data Collection Agent")
     try:
+        from sqlalchemy import text
+
         from agents.data_collector import DataCollectionAgent
         from models.database_config import get_db_config
-        from sqlalchemy import text
 
         agent = DataCollectionAgent()
 
@@ -229,14 +233,14 @@ def main():
     print_header("TEST 8: SOD Analyzer Agent")
     try:
         from agents.analyzer import SODAnalysisAgent
-        from repositories.sod_rule_repository import SODRuleRepository
         from models.database_config import get_db_config
+        from repositories.sod_rule_repository import SODRuleRepository
 
         db_config = get_db_config()
         session = db_config.get_session()
 
         sod_repo = SODRuleRepository(session)
-        analyzer = SODAnalysisAgent(sod_repo)
+        SODAnalysisAgent(sod_repo)
 
         rules = sod_repo.get_active_rules()
 
@@ -265,10 +269,10 @@ def main():
     print_header("TEST 9: Notification Agent")
     try:
         from agents.notifier import NotificationAgent
-        from repositories.violation_repository import ViolationRepository
-        from repositories.user_repository import UserRepository
-        from repositories.job_role_mapping_repository import JobRoleMappingRepository
         from models.database_config import get_db_config
+        from repositories.job_role_mapping_repository import JobRoleMappingRepository
+        from repositories.user_repository import UserRepository
+        from repositories.violation_repository import ViolationRepository
 
         db_config = get_db_config()
         session = db_config.get_session()
@@ -350,10 +354,10 @@ def main():
     print_header("TEST 12: Data Repositories")
     try:
         from models.database_config import get_db_config
+        from repositories.job_role_mapping_repository import JobRoleMappingRepository
+        from repositories.sod_rule_repository import SODRuleRepository
         from repositories.user_repository import UserRepository
         from repositories.violation_repository import ViolationRepository
-        from repositories.sod_rule_repository import SODRuleRepository
-        from repositories.job_role_mapping_repository import JobRoleMappingRepository
 
         db_config = get_db_config()
         session = db_config.get_session()

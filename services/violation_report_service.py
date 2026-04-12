@@ -4,10 +4,10 @@ Violation Report Service
 Generates tabular reports of SOD violations with export options
 """
 
-import logging
-from typing import List, Dict, Any, Optional
-from datetime import datetime
 import json
+import logging
+from datetime import datetime
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ class ViolationReportService:
 
     def generate_markdown_table(
         self,
-        violations: List[Dict[str, Any]],
+        violations: list[dict[str, Any]],
         limit: int = 5
     ) -> str:
         """
@@ -90,7 +90,7 @@ class ViolationReportService:
 
     def generate_detailed_table(
         self,
-        violations: List[Dict[str, Any]],
+        violations: list[dict[str, Any]],
         limit: int = 10
     ) -> str:
         """
@@ -124,7 +124,7 @@ class ViolationReportService:
                     roles = [roles]
             all_roles.update(roles)
 
-        all_roles = sorted(list(all_roles))
+        all_roles = sorted(all_roles)
 
         # Build detailed table
         output = f"**Violation-Role Matrix (Top {limit} of {len(violations)}):**\n\n"
@@ -175,7 +175,7 @@ class ViolationReportService:
 
     def export_to_csv(
         self,
-        violations: List[Dict[str, Any]],
+        violations: list[dict[str, Any]],
         output_path: str
     ) -> str:
         """
@@ -243,9 +243,9 @@ class ViolationReportService:
 
     def export_to_excel(
         self,
-        violations: List[Dict[str, Any]],
+        violations: list[dict[str, Any]],
         output_path: str,
-        user_name: Optional[str] = None
+        user_name: str | None = None
     ) -> str:
         """
         Export violations to Excel file with formatting
@@ -261,7 +261,7 @@ class ViolationReportService:
         try:
             import pandas as pd
             from openpyxl import load_workbook
-            from openpyxl.styles import Font, PatternFill, Alignment
+            from openpyxl.styles import Alignment, Font, PatternFill
         except ImportError:
             return "❌ Excel export requires: pip install pandas openpyxl"
 
@@ -386,9 +386,9 @@ class ViolationReportService:
 
     def export_to_google_sheets(
         self,
-        violations: List[Dict[str, Any]],
+        violations: list[dict[str, Any]],
         sheet_name: str,
-        user_name: Optional[str] = None
+        user_name: str | None = None
     ) -> str:
         """
         Export violations to Google Sheets
@@ -402,8 +402,8 @@ class ViolationReportService:
             Success message with sheet URL
         """
         try:
-            import gspread
-            from oauth2client.service_account import ServiceAccountCredentials
+            import gspread  # noqa: F401
+            from oauth2client.service_account import ServiceAccountCredentials  # noqa: F401
         except ImportError:
             return "❌ Google Sheets export requires: pip install gspread oauth2client"
 

@@ -8,19 +8,20 @@ This agent replaces in-memory embeddings with pgvector persistence for:
 4. Production-ready performance
 """
 
-import logging
 import json
-from typing import Dict, Any, List, Optional
+import logging
 from datetime import datetime
 from pathlib import Path
-from sqlalchemy.orm import Session
-from sqlalchemy import text
+from typing import Any
 
-from services.embedding_service import create_embedding_service, EmbeddingService
-from services.llm import get_llm_from_config, LLMMessage
-from repositories.sod_rule_repository import SODRuleRepository
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+
 from repositories.exemption_repository import ExemptionRepository
-from utils.vector_search import create_vector_searcher, VectorSearcher, DistanceMetric
+from repositories.sod_rule_repository import SODRuleRepository
+from services.embedding_service import create_embedding_service
+from services.llm import LLMMessage, get_llm_from_config
+from utils.vector_search import DistanceMetric, create_vector_searcher
 
 logger = logging.getLogger(__name__)
 
@@ -32,8 +33,8 @@ class KnowledgeBaseAgentPgvector:
         self,
         session: Session,
         sod_rule_repo: SODRuleRepository,
-        exemption_repo: Optional[ExemptionRepository] = None,
-        sod_rules_path: Optional[str] = None,
+        exemption_repo: ExemptionRepository | None = None,
+        sod_rules_path: str | None = None,
         embedding_provider: str = "huggingface"
     ):
         """
@@ -91,7 +92,7 @@ class KnowledgeBaseAgentPgvector:
         logger.info(f"Loading SOD rules from: {rules_path}")
 
         try:
-            with open(rules_path, 'r') as f:
+            with open(rules_path) as f:
                 rules = json.load(f)
 
             count = 0
@@ -138,7 +139,7 @@ class KnowledgeBaseAgentPgvector:
         query: str,
         top_k: int = 5,
         min_similarity: float = 0.5
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Find SOD rules similar to a query using pgvector
 
@@ -175,8 +176,8 @@ class KnowledgeBaseAgentPgvector:
 
     def find_rules_for_permissions(
         self,
-        permissions: List[str]
-    ) -> List[Dict[str, Any]]:
+        permissions: list[str]
+    ) -> list[dict[str, Any]]:
         """
         Find SOD rules that might be violated by a set of permissions
 
@@ -218,7 +219,7 @@ class KnowledgeBaseAgentPgvector:
         self,
         violation_description: str,
         top_k: int = 3
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Find similar historical violations using pgvector (Step 8 feature)
 
@@ -248,7 +249,7 @@ class KnowledgeBaseAgentPgvector:
         self,
         query: str,
         top_k: int = 3
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Find similar approved exemptions (Phase 3: Learning from history)
 
@@ -282,8 +283,8 @@ class KnowledgeBaseAgentPgvector:
     def get_contextual_knowledge(
         self,
         violation_description: str,
-        user_context: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        user_context: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Get contextual knowledge combining rules, historical violations, and exemptions
 
@@ -326,7 +327,7 @@ class KnowledgeBaseAgentPgvector:
 
         return context
 
-    def explain_rule_with_ai(self, rule_id: str) -> Dict[str, Any]:
+    def explain_rule_with_ai(self, rule_id: str) -> dict[str, Any]:
         """
         Use LLM to provide detailed explanation of a rule
 
@@ -397,7 +398,7 @@ Provide explanation in this format:
                 'error': str(e)
             }
 
-    def get_knowledge_base_stats(self) -> Dict[str, Any]:
+    def get_knowledge_base_stats(self) -> dict[str, Any]:
         """Get statistics about the knowledge base"""
         stats = {
             'total_rules': 0,
@@ -431,8 +432,8 @@ Provide explanation in this format:
 def create_knowledge_base(
     session: Session,
     sod_rule_repo: SODRuleRepository,
-    exemption_repo: Optional[ExemptionRepository] = None,
-    sod_rules_path: Optional[str] = None
+    exemption_repo: ExemptionRepository | None = None,
+    sod_rules_path: str | None = None
 ) -> KnowledgeBaseAgentPgvector:
     """Create a configured Knowledge Base Agent with pgvector"""
     if sod_rules_path is None:

@@ -15,16 +15,15 @@ Options:
 """
 
 import json
+import logging
 import os
 import sys
-import logging
-from pathlib import Path
-from typing import Dict, List, Any
-from datetime import datetime
 import uuid
+from pathlib import Path
+
 import psycopg2
-from psycopg2.extras import Json, execute_values
 from dotenv import load_dotenv
+from psycopg2.extras import Json
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -80,10 +79,10 @@ class SODConfigSeeder:
             self.conn.close()
             logger.info("✓ Database connection closed")
 
-    def load_json_file(self, filepath: Path) -> Dict:
+    def load_json_file(self, filepath: Path) -> dict:
         """Load JSON configuration file"""
         try:
-            with open(filepath, 'r') as f:
+            with open(filepath) as f:
                 data = json.load(f)
             logger.info(f"✓ Loaded {filepath.name}")
             return data
@@ -106,7 +105,7 @@ class SODConfigSeeder:
             tables_exist = cursor.fetchone()[0]
 
             if not tables_exist:
-                with open(schema_file, 'r') as f:
+                with open(schema_file) as f:
                     schema_sql = f.read()
 
                 cursor.execute(schema_sql)
@@ -146,7 +145,7 @@ class SODConfigSeeder:
             logger.error(f"✗ Failed to reset tables: {e}")
             raise
 
-    def seed_permission_categories(self, sod_config: Dict):
+    def seed_permission_categories(self, sod_config: dict):
         """Seed permission categories to database"""
         logger.info("Seeding permission categories...")
 
@@ -181,7 +180,7 @@ class SODConfigSeeder:
             logger.error(f"✗ Failed to seed permission categories: {e}")
             raise
 
-    def seed_sod_rules(self, sod_config: Dict):
+    def seed_sod_rules(self, sod_config: dict):
         """Seed SOD rules with level-based conflict matrices"""
         logger.info("Seeding SOD rules...")
 
@@ -235,7 +234,7 @@ class SODConfigSeeder:
             logger.error(f"✗ Failed to seed SOD rules: {e}")
             raise
 
-    def seed_compensating_controls(self, controls_data: Dict):
+    def seed_compensating_controls(self, controls_data: dict):
         """Seed compensating controls to database"""
         logger.info("Seeding compensating controls...")
 
@@ -289,7 +288,7 @@ class SODConfigSeeder:
             logger.error(f"✗ Failed to seed compensating controls: {e}")
             raise
 
-    def seed_control_packages(self, controls_data: Dict):
+    def seed_control_packages(self, controls_data: dict):
         """Seed control packages to database"""
         logger.info("Seeding control packages...")
 
@@ -333,7 +332,7 @@ class SODConfigSeeder:
             logger.error(f"✗ Failed to seed control packages: {e}")
             raise
 
-    def seed_job_role_mappings(self, job_roles_data: Dict):
+    def seed_job_role_mappings(self, job_roles_data: dict):
         """Seed job role mappings to database"""
         logger.info("Seeding job role mappings...")
 
@@ -404,7 +403,7 @@ class SODConfigSeeder:
             logger.error(f"✗ Failed to seed job role mappings: {e}")
             raise
 
-    def create_knowledge_base_embeddings(self, sod_config: Dict, controls_data: Dict, job_roles_data: Dict):
+    def create_knowledge_base_embeddings(self, sod_config: dict, controls_data: dict, job_roles_data: dict):
         """Create vector embeddings for knowledge base"""
         logger.info("Creating knowledge base embeddings...")
 

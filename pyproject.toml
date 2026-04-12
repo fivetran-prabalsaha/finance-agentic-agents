@@ -76,6 +76,8 @@ include = '\.pyi?$'
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+
+[tool.ruff.lint]
 select = [
     "E",   # pycodestyle errors
     "W",   # pycodestyle warnings
@@ -87,7 +89,11 @@ select = [
 ]
 ignore = [
     "E501",  # line too long (handled by black)
+    "E402",  # module-level import not at top (intentional sys.path inserts in scripts/tests)
     "B008",  # do not perform function calls in argument defaults
+    "B904",  # raise-without-from-inside-except — pre-existing pattern, fix separately
+    "E722",  # bare except — pre-existing pattern, fix separately
+    "B007",  # unused loop control variable — pre-existing
 ]
 
 [tool.mypy]

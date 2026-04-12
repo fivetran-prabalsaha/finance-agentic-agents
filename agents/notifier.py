@@ -11,26 +11,25 @@ This agent is responsible for:
 
 import logging
 import os
-from typing import Dict, Any, List, Optional
 from datetime import datetime
-from enum import Enum
-import json
-
-from services.llm import get_llm_from_config, LLMMessage
-from services.cache_service import get_cache_service
+from enum import StrEnum
+from typing import Any
 
 from models.database import (
-    Notification, NotificationChannel, NotificationStatus,
-    Violation, ViolationSeverity, User
+    User,
+    Violation,
+    ViolationSeverity,
 )
-from repositories.violation_repository import ViolationRepository
-from repositories.user_repository import UserRepository
 from repositories.job_role_mapping_repository import JobRoleMappingRepository
+from repositories.user_repository import UserRepository
+from repositories.violation_repository import ViolationRepository
+from services.cache_service import get_cache_service
+from services.llm import LLMMessage, get_llm_from_config
 
 logger = logging.getLogger(__name__)
 
 
-class NotificationPriority(str, Enum):
+class NotificationPriority(StrEnum):
     """Notification priority levels"""
     URGENT = "URGENT"
     HIGH = "HIGH"
@@ -45,9 +44,9 @@ class NotificationAgent:
         self,
         violation_repo: ViolationRepository,
         user_repo: UserRepository,
-        job_role_mapping_repo: Optional[JobRoleMappingRepository] = None,
-        sendgrid_api_key: Optional[str] = None,
-        slack_webhook_url: Optional[str] = None,
+        job_role_mapping_repo: JobRoleMappingRepository | None = None,
+        sendgrid_api_key: str | None = None,
+        slack_webhook_url: str | None = None,
         enable_cache: bool = True
     ):
         """
@@ -115,9 +114,9 @@ class NotificationAgent:
     def notify_violation_detected(
         self,
         violation: Violation,
-        recipients: List[str],
-        channels: List[str] = ['EMAIL']
-    ) -> Dict[str, Any]:
+        recipients: list[str],
+        channels: list[str] = None
+    ) -> dict[str, Any]:
         """
         Send notification when a new violation is detected
 
@@ -129,6 +128,8 @@ class NotificationAgent:
         Returns:
             Notification results
         """
+        if channels is None:
+            channels = ['EMAIL']
         logger.info(f"Sending violation notification: {violation.id}")
 
         # Determine priority based on severity
@@ -174,9 +175,9 @@ class NotificationAgent:
 
     def notify_critical_violations_batch(
         self,
-        recipients: List[str],
-        channels: List[str] = ['EMAIL', 'SLACK']
-    ) -> Dict[str, Any]:
+        recipients: list[str],
+        channels: list[str] = None
+    ) -> dict[str, Any]:
         """
         Send batch notification for all open critical violations
 
@@ -187,6 +188,8 @@ class NotificationAgent:
         Returns:
             Notification results
         """
+        if channels is None:
+            channels = ['EMAIL', 'SLACK']
         logger.info("Sending batch notification for critical violations")
 
         # Get all critical violations
@@ -244,9 +247,9 @@ class NotificationAgent:
         user: User,
         risk_score: float,
         risk_level: str,
-        recipients: List[str],
-        channels: List[str] = ['EMAIL', 'SLACK']
-    ) -> Dict[str, Any]:
+        recipients: list[str],
+        channels: list[str] = None
+    ) -> dict[str, Any]:
         """
         Notify when user risk score exceeds threshold
 
@@ -260,6 +263,8 @@ class NotificationAgent:
         Returns:
             Notification results
         """
+        if channels is None:
+            channels = ['EMAIL', 'SLACK']
         logger.info(f"Sending risk threshold notification for user: {user.email}")
 
         subject = f"⚠️  Risk Alert: {user.email} - {risk_level} Risk ({risk_score}/100)"
@@ -299,13 +304,13 @@ class NotificationAgent:
 
     def _send_email(
         self,
-        recipients: List[str],
+        recipients: list[str],
         subject: str,
         message: str,
-        violation: Optional[Violation] = None,
-        user: Optional[User] = None,
+        violation: Violation | None = None,
+        user: User | None = None,
         is_batch: bool = False
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Send email notification via SendGrid"""
         if not self.email_enabled:
             return {
@@ -315,7 +320,7 @@ class NotificationAgent:
             }
 
         try:
-            from sendgrid.helpers.mail import Mail, Email, To, Content
+            from sendgrid.helpers.mail import Content, Email, Mail, To
 
             # Create HTML content
             html_content = self._format_email_html(message, violation, user)
@@ -355,12 +360,12 @@ class NotificationAgent:
     def _send_slack(
         self,
         message: str,
-        violation: Optional[Violation] = None,
-        user: Optional[User] = None,
+        violation: Violation | None = None,
+        user: User | None = None,
         priority: NotificationPriority = NotificationPriority.NORMAL,
         is_batch: bool = False,
         violation_count: int = 0
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Send Slack notification via webhook"""
         if not self.slack_enabled:
             return {
@@ -412,7 +417,7 @@ class NotificationAgent:
                 'error': str(e)
             }
 
-    def _log_to_console(self, subject: str, message: str) -> Dict[str, Any]:
+    def _log_to_console(self, subject: str, message: str) -> dict[str, Any]:
         """Log notification to console (fallback)"""
         logger.info("="*80)
         logger.info(f"NOTIFICATION: {subject}")
@@ -476,10 +481,10 @@ Action Required: Please review this violation and take appropriate action.
 """
         return message.strip()
 
-    def _generate_batch_message(self, violations: List[Violation]) -> str:
+    def _generate_batch_message(self, violations: list[Violation]) -> str:
         """Generate batch violation message"""
         message_parts = [
-            f"Critical SOD Violations Summary",
+            "Critical SOD Violations Summary",
             f"Total Violations: {len(violations)}",
             f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
             "",
@@ -539,8 +544,8 @@ Recommended Actions:
     def _format_email_html(
         self,
         message: str,
-        violation: Optional[Violation] = None,
-        user: Optional[User] = None
+        violation: Violation | None = None,
+        user: User | None = None
     ) -> str:
         """Format message as HTML for email"""
         # Simple HTML template
@@ -577,12 +582,12 @@ Recommended Actions:
     def _format_slack_message(
         self,
         message: str,
-        violation: Optional[Violation] = None,
-        user: Optional[User] = None,
+        violation: Violation | None = None,
+        user: User | None = None,
         priority: NotificationPriority = NotificationPriority.NORMAL,
         is_batch: bool = False,
         violation_count: int = 0
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Format message for Slack"""
         # Color based on priority
         color_map = {
@@ -630,10 +635,10 @@ Recommended Actions:
 
     def send_compliance_report(
         self,
-        scan_summary: Dict[str, Any],
-        recipients: List[str],
-        channels: List[str] = ['EMAIL', 'SLACK', 'CONSOLE']
-    ) -> Dict[str, Any]:
+        scan_summary: dict[str, Any],
+        recipients: list[str],
+        channels: list[str] = None
+    ) -> dict[str, Any]:
         """
         Send final compliance scan report
 
@@ -654,6 +659,8 @@ Recommended Actions:
         Returns:
             Notification results with status per channel
         """
+        if channels is None:
+            channels = ['EMAIL', 'SLACK', 'CONSOLE']
         logger.info(f"Sending compliance report to {len(recipients)} recipients via {channels}")
 
         # Generate subject and message
@@ -688,7 +695,7 @@ Recommended Actions:
         logger.info(f"Compliance report sent via {len(results['channels'])} channels")
         return results
 
-    def _generate_compliance_report_subject(self, scan_summary: Dict[str, Any]) -> str:
+    def _generate_compliance_report_subject(self, scan_summary: dict[str, Any]) -> str:
         """Generate subject line for compliance report"""
         total_violations = scan_summary.get('total_violations', 0)
         compliance_rate = scan_summary.get('compliance_rate', 0)
@@ -708,7 +715,7 @@ Recommended Actions:
 
         return f"{status_icon} SOD Compliance Report - {status} ({compliance_rate:.1f}% Compliant)"
 
-    def _generate_compliance_report_message(self, scan_summary: Dict[str, Any]) -> str:
+    def _generate_compliance_report_message(self, scan_summary: dict[str, Any]) -> str:
         """Generate plain text compliance report message"""
         lines = [
             "=" * 70,
@@ -806,7 +813,7 @@ Recommended Actions:
 
         return "\n".join(lines)
 
-    def _format_compliance_report_html(self, scan_summary: Dict[str, Any]) -> str:
+    def _format_compliance_report_html(self, scan_summary: dict[str, Any]) -> str:
         """Generate HTML formatted compliance report for email"""
         compliance_rate = scan_summary.get('compliance_rate', 0)
         total_violations = scan_summary.get('total_violations', 0)
@@ -909,7 +916,7 @@ Recommended Actions:
         """
         return html
 
-    def _format_compliance_report_slack(self, scan_summary: Dict[str, Any]) -> Dict[str, Any]:
+    def _format_compliance_report_slack(self, scan_summary: dict[str, Any]) -> dict[str, Any]:
         """Format compliance report for Slack"""
         compliance_rate = scan_summary.get('compliance_rate', 0)
         total_violations = scan_summary.get('total_violations', 0)
@@ -1000,8 +1007,8 @@ Recommended Actions:
     def _generate_ai_analysis(
         self,
         user: User,
-        violations: List[Violation],
-        role_names: List[str]
+        violations: list[Violation],
+        role_names: list[str]
     ) -> str:
         """
         Generate AI-powered analysis of why user has compliance issues
@@ -1150,7 +1157,7 @@ Provide 2-3 sentence summary: Is this OK for the job title? What action is neede
 
     def generate_user_comparison_table(
         self,
-        user_emails: List[str],
+        user_emails: list[str],
         include_border: bool = True
     ) -> str:
         """
@@ -1277,14 +1284,12 @@ Provide 2-3 sentence summary: Is this OK for the job title? What action is neede
 
     def _format_comparison_table(
         self,
-        user_data: List[Dict[str, Any]],
+        user_data: list[dict[str, Any]],
         include_border: bool
     ) -> str:
         """Format the user comparison data as an ASCII table"""
 
         # Define column widths
-        metric_width = 20
-        user_width = 25
 
         # Prepare rows
         rows = []
@@ -1367,8 +1372,8 @@ Provide 2-3 sentence summary: Is this OK for the job title? What action is neede
 def create_notifier(
     violation_repo: ViolationRepository,
     user_repo: UserRepository,
-    sendgrid_api_key: Optional[str] = None,
-    slack_webhook_url: Optional[str] = None
+    sendgrid_api_key: str | None = None,
+    slack_webhook_url: str | None = None
 ) -> NotificationAgent:
     """Create a configured Notification Agent instance"""
     return NotificationAgent(

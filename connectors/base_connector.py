@@ -1,9 +1,9 @@
 """
 Base Connector - Abstract base class for all system connectors
 """
-from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional
 import logging
+from abc import ABC, abstractmethod
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,7 @@ class BaseConnector(ABC):
         pass
 
     @abstractmethod
-    def fetch_users_with_roles_sync(self, **kwargs) -> List[Dict[str, Any]]:
+    def fetch_users_with_roles_sync(self, **kwargs) -> list[dict[str, Any]]:
         """
         Fetch all users with their roles from external system
 
@@ -62,10 +62,10 @@ class BaseConnector(ABC):
     @abstractmethod
     def sync_to_database_sync(
         self,
-        users_data: List[Dict[str, Any]],
+        users_data: list[dict[str, Any]],
         user_repo,
         role_repo
-    ) -> List[Any]:
+    ) -> list[Any]:
         """
         Sync fetched users to local database
 

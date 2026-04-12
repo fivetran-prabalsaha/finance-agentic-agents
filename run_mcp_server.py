@@ -9,10 +9,11 @@ Or make executable:
     chmod +x run_mcp_server.py
     ./run_mcp_server.py
 """
+import logging
 import os
 import sys
-import logging
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 # Add project root to path

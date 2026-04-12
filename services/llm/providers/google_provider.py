@@ -2,9 +2,9 @@
 Google Gemini Provider Implementation
 """
 
-import time
-from typing import List, Dict, Optional, Any
 import logging
+import time
+from typing import Any
 
 try:
     import google.generativeai as genai
@@ -14,8 +14,14 @@ except ImportError:
     logger = logging.getLogger(__name__)
     logger.warning("Google AI package not installed. Run: pip install google-generativeai")
 
-from ..base import BaseLLMProvider, LLMMessage, LLMResponse, LLMConfig
-from ..base import LLMConnectionError, LLMAuthenticationError
+from ..base import (
+    BaseLLMProvider,
+    LLMAuthenticationError,
+    LLMConfig,
+    LLMConnectionError,
+    LLMMessage,
+    LLMResponse,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -49,9 +55,9 @@ class GoogleProvider(BaseLLMProvider):
 
     def generate(
         self,
-        messages: List[LLMMessage],
-        temperature: Optional[float] = None,
-        max_tokens: Optional[int] = None,
+        messages: list[LLMMessage],
+        temperature: float | None = None,
+        max_tokens: int | None = None,
         **kwargs
     ) -> LLMResponse:
         """Generate completion using Gemini"""
@@ -116,9 +122,9 @@ class GoogleProvider(BaseLLMProvider):
 
     def generate_stream(
         self,
-        messages: List[LLMMessage],
-        temperature: Optional[float] = None,
-        max_tokens: Optional[int] = None,
+        messages: list[LLMMessage],
+        temperature: float | None = None,
+        max_tokens: int | None = None,
         **kwargs
     ):
         """Generate completion with streaming"""
@@ -154,7 +160,7 @@ class GoogleProvider(BaseLLMProvider):
         """Count tokens (approximation)"""
         return len(text) // 4
 
-    def get_model_info(self) -> Dict[str, Any]:
+    def get_model_info(self) -> dict[str, Any]:
         """Get model information"""
         return {
             'provider': self.provider_name,
@@ -177,7 +183,7 @@ class GoogleProvider(BaseLLMProvider):
                 LLMMessage(role='user', content='Hello')
             ]
 
-            response = self.generate(
+            self.generate(
                 messages=test_messages,
                 max_tokens=10
             )

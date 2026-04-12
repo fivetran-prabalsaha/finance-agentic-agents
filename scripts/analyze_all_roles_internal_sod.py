@@ -7,19 +7,17 @@ Identifies maker-checker violations, 3-way match bypasses, and other risky
 permission combinations within single roles.
 """
 
-import sys
-import os
 import json
-from pathlib import Path
-from typing import Dict, List, Set, Tuple
-from collections import defaultdict
+import sys
 from datetime import datetime
+from pathlib import Path
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from models.database_config import DatabaseConfig
 from sqlalchemy import text
+
+from models.database_config import DatabaseConfig
 
 
 class InternalSODAnalyzer:
@@ -32,7 +30,7 @@ class InternalSODAnalyzer:
         # Define conflict patterns
         self.conflict_patterns = self._load_conflict_patterns()
 
-    def _load_conflict_patterns(self) -> Dict:
+    def _load_conflict_patterns(self) -> dict:
         """Define internal SOD conflict patterns"""
         return {
             "maker_checker": {
@@ -117,7 +115,7 @@ class InternalSODAnalyzer:
             }
         }
 
-    def analyze_all_roles(self) -> Dict:
+    def analyze_all_roles(self) -> dict:
         """Analyze all roles for internal conflicts"""
         print("=" * 80)
         print("COMPREHENSIVE INTERNAL SOD ANALYSIS")
@@ -158,7 +156,7 @@ class InternalSODAnalyzer:
 
         return self._generate_report(all_results)
 
-    def analyze_role(self, role_name: str, permissions: List[Dict]) -> List[Dict]:
+    def analyze_role(self, role_name: str, permissions: list[dict]) -> list[dict]:
         """Analyze a single role for internal conflicts"""
         conflicts = []
 
@@ -185,7 +183,7 @@ class InternalSODAnalyzer:
 
         return conflicts
 
-    def _matches_pattern(self, perm_index: Dict, pattern: Tuple) -> bool:
+    def _matches_pattern(self, perm_index: dict, pattern: tuple) -> bool:
         """Check if permissions match a conflict pattern"""
         # Pattern format: (perm1_names, perm1_levels, perm2_names, perm2_levels, ...)
 
@@ -210,7 +208,7 @@ class InternalSODAnalyzer:
 
         return True
 
-    def _describe_pattern(self, pattern: Tuple) -> str:
+    def _describe_pattern(self, pattern: tuple) -> str:
         """Create human-readable description of pattern"""
         descriptions = []
         for i in range(0, len(pattern), 2):
@@ -222,7 +220,7 @@ class InternalSODAnalyzer:
 
         return " + ".join(descriptions)
 
-    def _generate_report(self, results: List[Dict]) -> Dict:
+    def _generate_report(self, results: list[dict]) -> dict:
         """Generate comprehensive report"""
         print("\n" + "=" * 80)
         print("ANALYSIS COMPLETE")
@@ -238,7 +236,7 @@ class InternalSODAnalyzer:
         critical_roles = [r for r in results if any(c['severity'] == 'CRITICAL' for c in r['conflicts'])]
         high_roles = [r for r in results if any(c['severity'] == 'HIGH' for c in r['conflicts']) and r not in critical_roles]
 
-        print(f"📊 SUMMARY")
+        print("📊 SUMMARY")
         print(f"   • Total Roles Analyzed: {total_roles}")
         print(f"   • Roles with Conflicts: {roles_with_conflicts} ({roles_with_conflicts*100//total_roles}%)")
         print(f"   • Total Conflicts Found: {total_conflicts}")
@@ -278,7 +276,7 @@ class InternalSODAnalyzer:
             'results': results
         }
 
-    def _save_detailed_report(self, results: List[Dict]):
+    def _save_detailed_report(self, results: list[dict]):
         """Save detailed report to file"""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_dir = Path("output/role_analysis")

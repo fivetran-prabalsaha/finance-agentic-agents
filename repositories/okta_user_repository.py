@@ -4,13 +4,14 @@ Okta User Repository
 Data access layer for Okta user data
 """
 
-from typing import List, Optional, Dict, Any
+import logging
 from datetime import datetime, timedelta
+from typing import Any
+
+from sqlalchemy import desc
 from sqlalchemy.orm import Session
-from sqlalchemy import desc, and_, or_
 
 from models.database import OktaUser, OktaUserStatus
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,7 @@ class OktaUserRepository:
     def __init__(self, session: Session):
         self.session = session
 
-    def create_user(self, user_data: Dict[str, Any]) -> OktaUser:
+    def create_user(self, user_data: dict[str, Any]) -> OktaUser:
         """Create a new Okta user"""
         user = OktaUser(
             okta_id=user_data['okta_id'],
@@ -50,19 +51,19 @@ class OktaUserRepository:
         logger.info(f"Created Okta user: {user.email} (ID: {user.id})")
         return user
 
-    def get_user_by_id(self, user_id: str) -> Optional[OktaUser]:
+    def get_user_by_id(self, user_id: str) -> OktaUser | None:
         """Get user by UUID"""
         return self.session.query(OktaUser).filter(OktaUser.id == user_id).first()
 
-    def get_user_by_okta_id(self, okta_id: str) -> Optional[OktaUser]:
+    def get_user_by_okta_id(self, okta_id: str) -> OktaUser | None:
         """Get user by Okta ID"""
         return self.session.query(OktaUser).filter(OktaUser.okta_id == okta_id).first()
 
-    def get_user_by_email(self, email: str) -> Optional[OktaUser]:
+    def get_user_by_email(self, email: str) -> OktaUser | None:
         """Get user by email"""
         return self.session.query(OktaUser).filter(OktaUser.email == email).first()
 
-    def upsert_user(self, user_data: Dict[str, Any]) -> OktaUser:
+    def upsert_user(self, user_data: dict[str, Any]) -> OktaUser:
         """Create or update Okta user"""
         existing_user = self.get_user_by_okta_id(user_data['okta_id'])
 
@@ -96,7 +97,7 @@ class OktaUserRepository:
             # Create new user
             return self.create_user(user_data)
 
-    def bulk_upsert_users(self, users_data: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def bulk_upsert_users(self, users_data: list[dict[str, Any]]) -> dict[str, Any]:
         """Bulk create/update Okta users"""
         created = 0
         updated = 0
@@ -125,7 +126,7 @@ class OktaUserRepository:
             'errors': errors
         }
 
-    def get_all_users(self, status: Optional[OktaUserStatus] = None, limit: Optional[int] = None) -> List[OktaUser]:
+    def get_all_users(self, status: OktaUserStatus | None = None, limit: int | None = None) -> list[OktaUser]:
         """Get all Okta users, optionally filtered by status"""
         query = self.session.query(OktaUser)
 
@@ -139,11 +140,11 @@ class OktaUserRepository:
 
         return query.all()
 
-    def get_active_users(self) -> List[OktaUser]:
+    def get_active_users(self) -> list[OktaUser]:
         """Get all active Okta users"""
         return self.get_all_users(status=OktaUserStatus.ACTIVE)
 
-    def get_deprovisioned_users(self, days: Optional[int] = None) -> List[OktaUser]:
+    def get_deprovisioned_users(self, days: int | None = None) -> list[OktaUser]:
         """Get deprovisioned users, optionally within the last N days"""
         query = self.session.query(OktaUser).filter(
             OktaUser.status == OktaUserStatus.DEPROVISIONED
@@ -155,24 +156,24 @@ class OktaUserRepository:
 
         return query.order_by(desc(OktaUser.status_changed)).all()
 
-    def get_suspended_users(self) -> List[OktaUser]:
+    def get_suspended_users(self) -> list[OktaUser]:
         """Get all suspended Okta users"""
         return self.get_all_users(status=OktaUserStatus.SUSPENDED)
 
-    def get_users_by_department(self, department: str) -> List[OktaUser]:
+    def get_users_by_department(self, department: str) -> list[OktaUser]:
         """Get users by department"""
         return self.session.query(OktaUser).filter(
             OktaUser.department == department
         ).order_by(OktaUser.email).all()
 
-    def get_stale_users(self, hours: int = 24) -> List[OktaUser]:
+    def get_stale_users(self, hours: int = 24) -> list[OktaUser]:
         """Get users not synced in the last N hours"""
         cutoff_date = datetime.utcnow() - timedelta(hours=hours)
         return self.session.query(OktaUser).filter(
             OktaUser.synced_at < cutoff_date
         ).order_by(OktaUser.synced_at).all()
 
-    def get_user_count_by_status(self) -> Dict[str, int]:
+    def get_user_count_by_status(self) -> dict[str, int]:
         """Get count of users by status"""
         results = {}
         for status in OktaUserStatus:

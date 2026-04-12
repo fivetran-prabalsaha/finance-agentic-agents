@@ -5,10 +5,11 @@ Handles tracking of autonomous collection agent sync jobs
 """
 
 import logging
-from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
+from typing import Any
+
+from sqlalchemy import and_, desc
 from sqlalchemy.orm import Session
-from sqlalchemy import desc, and_
 
 from models.database import SyncMetadata, SyncStatus, SyncType
 
@@ -27,7 +28,7 @@ class SyncMetadataRepository:
         """
         self.session = session
 
-    def create_sync(self, sync_data: Dict[str, Any]) -> SyncMetadata:
+    def create_sync(self, sync_data: dict[str, Any]) -> SyncMetadata:
         """
         Create a new sync metadata record
 
@@ -56,8 +57,8 @@ class SyncMetadataRepository:
     def update_sync(
         self,
         sync_id: str,
-        updates: Dict[str, Any]
-    ) -> Optional[SyncMetadata]:
+        updates: dict[str, Any]
+    ) -> SyncMetadata | None:
         """
         Update a sync metadata record
 
@@ -97,7 +98,7 @@ class SyncMetadataRepository:
         logger.info(f"Updated sync: {sync.id} - {sync.status.value}")
         return sync
 
-    def get_sync_by_id(self, sync_id: str) -> Optional[SyncMetadata]:
+    def get_sync_by_id(self, sync_id: str) -> SyncMetadata | None:
         """
         Get sync by ID
 
@@ -114,8 +115,8 @@ class SyncMetadataRepository:
     def get_last_successful_sync(
         self,
         system_name: str,
-        sync_type: Optional[str] = None
-    ) -> Optional[SyncMetadata]:
+        sync_type: str | None = None
+    ) -> SyncMetadata | None:
         """
         Get the last successful sync for a system
 
@@ -142,9 +143,9 @@ class SyncMetadataRepository:
 
     def get_recent_syncs(
         self,
-        system_name: Optional[str] = None,
+        system_name: str | None = None,
         limit: int = 10
-    ) -> List[SyncMetadata]:
+    ) -> list[SyncMetadata]:
         """
         Get recent syncs
 
@@ -164,9 +165,9 @@ class SyncMetadataRepository:
 
     def get_failed_syncs(
         self,
-        system_name: Optional[str] = None,
-        since: Optional[datetime] = None
-    ) -> List[SyncMetadata]:
+        system_name: str | None = None,
+        since: datetime | None = None
+    ) -> list[SyncMetadata]:
         """
         Get failed syncs
 
@@ -193,7 +194,7 @@ class SyncMetadataRepository:
         self,
         system_name: str,
         days: int = 7
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get sync statistics for a time period
 

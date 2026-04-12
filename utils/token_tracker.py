@@ -4,10 +4,9 @@ Token Usage and Cost Tracking Utility
 Tracks API token usage and calculates costs for Claude models
 """
 
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional
-from datetime import datetime
 import logging
+from dataclasses import dataclass, field
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -58,8 +57,8 @@ class TokenUsage:
     cache_creation_tokens: int = 0
     cache_read_tokens: int = 0
     timestamp: datetime = field(default_factory=datetime.utcnow)
-    agent_name: Optional[str] = None
-    operation: Optional[str] = None
+    agent_name: str | None = None
+    operation: str | None = None
 
     @property
     def total_tokens(self) -> int:
@@ -82,7 +81,7 @@ class TokenUsage:
             cache_read_tokens=self.cache_read_tokens
         )
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Convert to dictionary"""
         return {
             'model': self.model,
@@ -102,8 +101,8 @@ class TokenTracker:
     """Track token usage and costs across multiple API calls"""
 
     def __init__(self):
-        self.usages: List[TokenUsage] = []
-        self._agent_totals: Dict[str, Dict] = {}
+        self.usages: list[TokenUsage] = []
+        self._agent_totals: dict[str, dict] = {}
 
     def track(
         self,
@@ -112,8 +111,8 @@ class TokenTracker:
         output_tokens: int = 0,
         cache_creation_tokens: int = 0,
         cache_read_tokens: int = 0,
-        agent_name: Optional[str] = None,
-        operation: Optional[str] = None
+        agent_name: str | None = None,
+        operation: str | None = None
     ) -> TokenUsage:
         """
         Track a single API call
@@ -172,10 +171,10 @@ class TokenTracker:
 
     def track_from_response(
         self,
-        response: Dict,
-        agent_name: Optional[str] = None,
-        operation: Optional[str] = None
-    ) -> Optional[TokenUsage]:
+        response: dict,
+        agent_name: str | None = None,
+        operation: str | None = None
+    ) -> TokenUsage | None:
         """
         Track usage from Claude API response
 
@@ -221,15 +220,15 @@ class TokenTracker:
         """Total number of API calls"""
         return len(self.usages)
 
-    def get_agent_stats(self, agent_name: str) -> Optional[Dict]:
+    def get_agent_stats(self, agent_name: str) -> dict | None:
         """Get statistics for a specific agent"""
         return self._agent_totals.get(agent_name)
 
-    def get_all_agent_stats(self) -> Dict[str, Dict]:
+    def get_all_agent_stats(self) -> dict[str, dict]:
         """Get statistics for all agents"""
         return self._agent_totals.copy()
 
-    def get_summary(self) -> Dict:
+    def get_summary(self) -> dict:
         """Get overall summary"""
         return {
             'total_calls': self.total_calls,
@@ -252,7 +251,7 @@ class TokenTracker:
         print("  TOKEN USAGE & COST SUMMARY")
         print("="*80)
 
-        print(f"\n📊 Overall Statistics:")
+        print("\n📊 Overall Statistics:")
         print(f"   Total API Calls:       {summary['total_calls']}")
         print(f"   Total Tokens Used:     {summary['total_tokens']:,}")
         print(f"   Total Cost:            ${summary['total_cost']:.4f}")
@@ -260,7 +259,7 @@ class TokenTracker:
         print(f"   Avg Cost/Call:         ${summary['average_cost_per_call']:.4f}")
 
         if summary['agents']:
-            print(f"\n🤖 Per-Agent Breakdown:")
+            print("\n🤖 Per-Agent Breakdown:")
             print(f"   {'Agent':<25} {'Calls':<8} {'Tokens':<12} {'Cost':<12}")
             print(f"   {'-'*25} {'-'*8} {'-'*12} {'-'*12}")
 

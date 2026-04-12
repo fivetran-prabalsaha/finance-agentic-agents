@@ -3,8 +3,8 @@
 Verify Local Setup - Tests all components of the local development environment
 """
 
-import sys
 import os
+import sys
 
 # Colors for terminal output
 GREEN = '\033[0;32m'

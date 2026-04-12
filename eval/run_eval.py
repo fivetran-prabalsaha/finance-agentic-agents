@@ -18,10 +18,10 @@ Results appear in LangSmith → Experiments tab under the project set by
 LANGCHAIN_PROJECT in your .env (or default project if unset).
 """
 
-import sys
-import os
 import logging
-from typing import Any, Dict, List
+import os
+import sys
+from typing import Any
 
 from dotenv import load_dotenv
 
@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _build_stub_tools() -> List[Dict[str, Any]]:
+def _build_stub_tools() -> list[dict[str, Any]]:
     """
     Build a minimal tool list from TOOL_GROUPS so the tool-selection eval
     can run without a live MCP server.
@@ -55,7 +55,7 @@ def _build_stub_tools() -> List[Dict[str, Any]]:
     return tools
 
 
-def _fetch_live_tools() -> List[Dict[str, Any]]:
+def _fetch_live_tools() -> list[dict[str, Any]]:
     """Fetch tool schemas from the live MCP server at :8080."""
     import requests
 
@@ -68,7 +68,7 @@ def _fetch_live_tools() -> List[Dict[str, Any]]:
     return resp.json().get("result", {}).get("tools", [])
 
 
-def _get_tools(live: bool = False) -> List[Dict[str, Any]]:
+def _get_tools(live: bool = False) -> list[dict[str, Any]]:
     if live:
         try:
             tools = _fetch_live_tools()
@@ -91,6 +91,7 @@ def run_tool_selection_eval(live_tools: bool = False, router: str = "keyword") -
     router: "keyword" (regex-based) | "semantic" (embedding-based)
     """
     from langsmith import evaluate
+
     from eval.evaluators import hit_rate_at_k, mrr_evaluator, ndcg_at_k, precision_at_k
 
     tools = _get_tools(live=live_tools)
@@ -99,13 +100,13 @@ def run_tool_selection_eval(live_tools: bool = False, router: str = "keyword") -
         from utils.semantic_router import SemanticToolRouter
         _router = SemanticToolRouter(tools)
 
-        def target(inputs: Dict[str, Any]) -> Dict[str, Any]:
+        def target(inputs: dict[str, Any]) -> dict[str, Any]:
             selected = _router.select(inputs["query"], k=8)
             return {"selected_tool_names": [t["name"] for t in selected]}
     else:
         from utils.tool_router import select_tools_for_intent
 
-        def target(inputs: Dict[str, Any]) -> Dict[str, Any]:
+        def target(inputs: dict[str, Any]) -> dict[str, Any]:
             selected = select_tools_for_intent(inputs["query"], tools)
             return {"selected_tool_names": [t["name"] for t in selected]}
 
@@ -134,14 +135,15 @@ def run_tool_selection_eval(live_tools: bool = False, router: str = "keyword") -
 
 def run_answer_quality_eval() -> Any:
     from langsmith import evaluate
+
     from eval.evaluators import faithfulness_evaluator
 
     # Import the production function directly so LangSmith traces it
     sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-    from slack_bot_local import process_with_claude, fetch_mcp_tools
+    from slack_bot_local import fetch_mcp_tools, process_with_claude
     fetch_mcp_tools()   # populate global MCP_TOOLS
 
-    def target(inputs: Dict[str, Any]) -> Dict[str, Any]:
+    def target(inputs: dict[str, Any]) -> dict[str, Any]:
         query = inputs["query"]
         answer = process_with_claude(
             user_message=query,

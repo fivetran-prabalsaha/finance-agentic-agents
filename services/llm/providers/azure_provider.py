@@ -2,11 +2,10 @@
 Azure OpenAI Provider Implementation
 """
 
-from typing import List, Optional
 import logging
 
-from .openai_provider import OpenAIProvider
 from ..base import LLMConfig
+from .openai_provider import OpenAIProvider
 
 logger = logging.getLogger(__name__)
 

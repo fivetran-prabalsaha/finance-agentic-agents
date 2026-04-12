@@ -5,32 +5,31 @@ This orchestrator sits between the MCP server and the existing compliance agents
 routing requests to appropriate components and aggregating results.
 """
 import logging
-from typing import Dict, Any, List, Optional
-from datetime import datetime, timedelta
-import asyncio
-from functools import wraps
 import time
+from datetime import datetime, timedelta
+from functools import wraps
+from typing import Any
 
 # Import existing agents
 from agents.analyzer import SODAnalysisAgent
-from agents.notifier import NotificationAgent
 from agents.knowledge_base_pgvector import create_knowledge_base
-
-# Import LLM abstraction
-from services.llm import LLMMessage
+from agents.notifier import NotificationAgent
 
 # Import connectors
 from connectors.netsuite_connector import NetSuiteConnector
 
-# Import repositories
-from repositories.user_repository import UserRepository
-from repositories.role_repository import RoleRepository
-from repositories.violation_repository import ViolationRepository
-from repositories.sod_rule_repository import SODRuleRepository
-from repositories.job_role_mapping_repository import JobRoleMappingRepository
-
 # Import database
 from models.database_config import DatabaseConfig
+from repositories.job_role_mapping_repository import JobRoleMappingRepository
+from repositories.role_repository import RoleRepository
+from repositories.sod_rule_repository import SODRuleRepository
+
+# Import repositories
+from repositories.user_repository import UserRepository
+from repositories.violation_repository import ViolationRepository
+
+# Import LLM abstraction
+from services.llm import LLMMessage
 
 logger = logging.getLogger(__name__)
 
@@ -124,7 +123,7 @@ class ComplianceOrchestrator:
         logger.info("ComplianceOrchestrator initialized successfully")
 
     @timed_cache(seconds=60)  # Cache for 60 seconds (systems don't change often)
-    def list_available_systems_sync(self) -> List[Dict[str, Any]]:
+    def list_available_systems_sync(self) -> list[dict[str, Any]]:
         """
         List all configured systems with their status
 
@@ -176,7 +175,7 @@ class ComplianceOrchestrator:
         system_name: str,
         analysis_type: str = "sod_violations",
         include_recommendations: bool = True
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Perform a comprehensive access review for a system
 
@@ -325,7 +324,7 @@ class ComplianceOrchestrator:
         system_name: str,
         user_identifier: str,
         include_ai_analysis: bool = True
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get detailed violations for a specific user
 
@@ -443,7 +442,7 @@ class ComplianceOrchestrator:
         violation_id: str,
         action: str,
         notes: str = ""
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Create remediation plan for a violation
 
@@ -514,10 +513,10 @@ class ComplianceOrchestrator:
         self,
         system_name: str,
         frequency: str,
-        day_of_week: Optional[str] = None,
-        time: Optional[str] = None,
+        day_of_week: str | None = None,
+        time: str | None = None,
         timezone: str = "America/Los_Angeles"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Schedule recurring compliance review
 
@@ -553,9 +552,9 @@ class ComplianceOrchestrator:
     @timed_cache(seconds=120)  # Cache for 2 minutes (stats change slowly)
     def get_violation_stats_sync(
         self,
-        systems: Optional[List[str]] = None,
+        systems: list[str] | None = None,
         time_range: str = "month"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get aggregate violation statistics
 
@@ -585,7 +584,7 @@ class ComplianceOrchestrator:
         low_risk = len([v for v in all_violations if v.severity == "LOW"])
 
         # Get unique users
-        unique_users = set(v.user_id for v in all_violations if v.user_id)
+        unique_users = {v.user_id for v in all_violations if v.user_id}
         total_users = len(unique_users)
 
         # Group by system
@@ -622,8 +621,8 @@ class ComplianceOrchestrator:
     def _generate_recommendations_sync(
         self,
         system_name: str,
-        violations: List,
-        top_violators: List[Dict[str, Any]]
+        violations: list,
+        top_violators: list[dict[str, Any]]
     ) -> str:
         """Generate AI-powered recommendations based on violations"""
 
@@ -664,8 +663,8 @@ Be specific and actionable."""
     def _build_schedule_description(
         self,
         frequency: str,
-        day_of_week: Optional[str],
-        time: Optional[str]
+        day_of_week: str | None,
+        time: str | None
     ) -> str:
         """Build human-readable schedule description"""
         time_str = time or "09:00"
@@ -683,13 +682,12 @@ Be specific and actionable."""
     def _calculate_next_run(
         self,
         frequency: str,
-        day_of_week: Optional[str],
-        time: Optional[str],
+        day_of_week: str | None,
+        time: str | None,
         timezone: str
     ) -> str:
         """Calculate next run timestamp (simplified)"""
         # TODO: Implement actual calculation with timezone support
-        from datetime import timedelta
 
         now = datetime.utcnow()
 
@@ -708,9 +706,9 @@ Be specific and actionable."""
         self,
         system_name: str = "netsuite",
         include_inactive: bool = False,
-        filter_by_department: Optional[str] = None,
+        filter_by_department: str | None = None,
         limit: int = 100
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         List all users from a system with their roles
 

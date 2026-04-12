@@ -9,6 +9,7 @@ Demonstrates comparing low-risk vs high-risk users:
 
 import os
 import sys
+
 from dotenv import load_dotenv
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -32,14 +33,14 @@ def analyze_user(user, user_type="USER"):
     print(f"  {user_type}: {user['name']}")
     print(f"{'='*80}")
 
-    print(f"\n📋 Profile:")
+    print("\n📋 Profile:")
     print(f"  Name:       {user['name']}")
     print(f"  Email:      {user['email']}")
     print(f"  Status:     {user['status']}")
     print(f"  Department: {user.get('department', 'N/A')}")
     print(f"  Subsidiary: {user.get('subsidiary', 'N/A')}")
 
-    print(f"\n🎭 Access Control:")
+    print("\n🎭 Access Control:")
     print(f"  Total Roles: {user['roles_count']}")
 
     if user.get('roles'):
@@ -55,7 +56,7 @@ def analyze_user(user, user_type="USER"):
             print(f"    Permissions: {perm_count}")
 
             if perm_count > 0:
-                print(f"    Key Permissions:")
+                print("    Key Permissions:")
                 for perm in role['permissions'][:3]:
                     perm_name = perm.get('permission_name', perm.get('permission', 'Unknown'))
                     perm_level = perm.get('level', 'N/A')
@@ -64,7 +65,7 @@ def analyze_user(user, user_type="USER"):
                 if perm_count > 3:
                     print(f"      ... and {perm_count - 3} more")
 
-        print(f"\n📊 Risk Analysis:")
+        print("\n📊 Risk Analysis:")
         print(f"  Total Unique Permissions: {total_perms}")
 
         # Risk scoring
@@ -82,7 +83,7 @@ def analyze_user(user, user_type="USER"):
         else:
             risk_score = 20
             risk_level = "✅ LOW"
-            risk_factors.append(f"Single role assignment (standard practice)")
+            risk_factors.append("Single role assignment (standard practice)")
 
         # Check for admin role
         if any('admin' in r['role_name'].lower() for r in user['roles']):
@@ -106,22 +107,22 @@ def analyze_user(user, user_type="USER"):
         print(f"  Risk Score:  {risk_score}/100")
         print(f"  Risk Level:  {risk_level}")
 
-        print(f"\n  Risk Factors:")
+        print("\n  Risk Factors:")
         for factor in risk_factors:
             print(f"    • {factor}")
 
         # SOD recommendations
         if risk_score >= 60:
-            print(f"\n🔍 SOD Compliance Recommendations:")
+            print("\n🔍 SOD Compliance Recommendations:")
             if user['roles_count'] >= 3:
-                print(f"    1. Immediately review role assignments")
-                print(f"    2. Check for conflicting duties (create vs approve)")
-                print(f"    3. Consider role consolidation or separation")
+                print("    1. Immediately review role assignments")
+                print("    2. Check for conflicting duties (create vs approve)")
+                print("    3. Consider role consolidation or separation")
             if finance_roles:
-                print(f"    4. Verify financial transaction controls")
-                print(f"    5. Ensure proper approval workflows")
-            print(f"    6. Schedule quarterly access review")
-            print(f"    7. Document business justification for multiple roles")
+                print("    4. Verify financial transaction controls")
+                print("    5. Ensure proper approval workflows")
+            print("    6. Schedule quarterly access review")
+            print("    7. Document business justification for multiple roles")
 
     print()
 
@@ -201,35 +202,35 @@ def main():
         print(f"  {'Department':<30} {prabal.get('department', 'N/A'):<25} {robin.get('department', 'N/A'):<25}")
         print(f"  {'Risk Level':<30} {'✅ LOW':<25} {'🚨 CRITICAL':<25}")
 
-        print(f"\n  Key Findings:")
+        print("\n  Key Findings:")
         print(f"    • Robin Turner has {robin['roles_count']}x more roles than Prabal")
         print(f"    • Robin has {robin_perms - prabal_perms} more permissions")
-        print(f"    • Robin's profile requires immediate SOD review")
-        print(f"    • Robin works in Finance with admin access (high-risk combination)")
+        print("    • Robin's profile requires immediate SOD review")
+        print("    • Robin works in Finance with admin access (high-risk combination)")
 
     # Next steps
     print("\n" + "="*80)
     print("  RECOMMENDED ACTIONS")
     print("="*80)
 
-    print(f"\n  ⚡ Immediate (High Risk Users):")
-    print(f"    1. Schedule compliance review meeting with Robin Turner's manager")
-    print(f"    2. Document business justification for multiple role assignments")
-    print(f"    3. Review recent financial transactions for approval conflicts")
-    print(f"    4. Implement compensating controls if roles cannot be reduced")
+    print("\n  ⚡ Immediate (High Risk Users):")
+    print("    1. Schedule compliance review meeting with Robin Turner's manager")
+    print("    2. Document business justification for multiple role assignments")
+    print("    3. Review recent financial transactions for approval conflicts")
+    print("    4. Implement compensating controls if roles cannot be reduced")
 
-    print(f"\n  📅 Ongoing (All Users):")
-    print(f"    5. Run automated SOD scans every 4 hours (via Celery)")
-    print(f"    6. Set up Slack alerts for new high-risk role assignments")
-    print(f"    7. Quarterly access reviews for all users with 2+ roles")
-    print(f"    8. Maintain audit trail of all role changes")
+    print("\n  📅 Ongoing (All Users):")
+    print("    5. Run automated SOD scans every 4 hours (via Celery)")
+    print("    6. Set up Slack alerts for new high-risk role assignments")
+    print("    7. Quarterly access reviews for all users with 2+ roles")
+    print("    8. Maintain audit trail of all role changes")
 
     print("\n" + "="*80)
     print("\n✅ SOD Use Case Demo Complete!\n")
     print("📊 Results:")
-    print(f"   • Identified 1 high-risk user (Robin Turner)")
-    print(f"   • Risk score: 90+/100 (SOD violation)")
-    print(f"   • Compliance action required: Yes")
+    print("   • Identified 1 high-risk user (Robin Turner)")
+    print("   • Risk score: 90+/100 (SOD violation)")
+    print("   • Compliance action required: Yes")
     print("\n" + "="*80 + "\n")
 
 

@@ -8,12 +8,13 @@ This utility:
 """
 
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Any
+
 from sqlalchemy.orm import Session
 
 from models.database import Violation
 from repositories.violation_repository import ViolationRepository
-from services.embedding_service import create_embedding_service, EmbeddingService
+from services.embedding_service import create_embedding_service
 
 logger = logging.getLogger(__name__)
 
@@ -83,9 +84,9 @@ class ViolationEmbedder:
 
     def embed_violations_batch(
         self,
-        violations: List[Violation],
+        violations: list[Violation],
         batch_size: int = 10
-    ) -> Dict[str, int]:
+    ) -> dict[str, int]:
         """
         Embed multiple violations in batches
 
@@ -124,7 +125,7 @@ class ViolationEmbedder:
 
         return stats
 
-    def backfill_embeddings(self, batch_size: int = 100) -> Dict[str, int]:
+    def backfill_embeddings(self, batch_size: int = 100) -> dict[str, int]:
         """
         Backfill embeddings for violations that don't have them
 
@@ -163,7 +164,7 @@ class ViolationEmbedder:
 
         return total_stats
 
-    def embed_new_violation(self, violation_data: Dict[str, Any]) -> Dict[str, Any]:
+    def embed_new_violation(self, violation_data: dict[str, Any]) -> dict[str, Any]:
         """
         Generate embedding for new violation data (before creating in DB)
 
@@ -195,7 +196,7 @@ def embed_violations_for_scan(
     session: Session,
     scan_id: str,
     embedding_provider: str = "huggingface"
-) -> Dict[str, int]:
+) -> dict[str, int]:
     """
     Embed all violations from a specific scan
 
@@ -234,7 +235,7 @@ def embed_violations_for_scan(
 # Factory function
 def create_violation_embedder(
     session: Session,
-    violation_repo: Optional[ViolationRepository] = None,
+    violation_repo: ViolationRepository | None = None,
     embedding_provider: str = "huggingface"
 ) -> ViolationEmbedder:
     """Create a configured ViolationEmbedder instance"""

@@ -14,16 +14,12 @@ Usage:
 import argparse
 import logging
 import sys
-import json
-from datetime import datetime
-from typing import Optional
 
 from agents.data_collector import (
     get_collection_agent,
     start_collection_agent,
-    stop_collection_agent
+    stop_collection_agent,
 )
-from models.database_config import DatabaseConfig
 
 # Configure logging
 logging.basicConfig(
@@ -38,7 +34,7 @@ def cmd_start(args):
     print("🚀 Starting Autonomous Data Collection Agent...")
 
     try:
-        agent = start_collection_agent()
+        start_collection_agent()
         print("✅ Agent started successfully!")
         print("\nScheduled Jobs:")
         print("  • Full sync: Daily at 2:00 AM")
@@ -230,10 +226,10 @@ def cmd_stats(args):
         print(f"  • Successful: {stats['successful']} ({stats['success_rate']:.1f}%)")
         print(f"  • Failed: {stats['failed']}")
         print()
-        print(f"Performance:")
+        print("Performance:")
         print(f"  • Average Duration: {stats['avg_duration']:.2f}s")
         print()
-        print(f"Data Synced:")
+        print("Data Synced:")
         print(f"  • Total Users: {stats['total_users_synced']}")
         print(f"  • Total Roles: {stats['total_roles_synced']}")
         print(f"  • Total Violations: {stats['total_violations_detected']}")

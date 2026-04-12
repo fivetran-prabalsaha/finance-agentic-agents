@@ -10,30 +10,28 @@ This orchestrator is responsible for:
 """
 
 import logging
-from typing import Dict, Any, List, Optional, TypedDict, Annotated
-from datetime import datetime
 import operator
-from enum import Enum
+from datetime import datetime
+from enum import StrEnum
+from typing import Annotated, Any, TypedDict
 
-from langgraph.graph import StateGraph, END
-from langchain_core.messages import HumanMessage, AIMessage
+from langgraph.graph import END, StateGraph
 
-from agents.data_collector import DataCollectionAgent
 from agents.analyzer import SODAnalysisAgent
-from agents.risk_assessor import RiskAssessmentAgent
+from agents.data_collector import DataCollectionAgent
 from agents.knowledge_base import KnowledgeBaseAgent
 from agents.notifier import NotificationAgent
-
-from services.netsuite_client import NetSuiteClient
-from repositories.user_repository import UserRepository
+from agents.risk_assessor import RiskAssessmentAgent
 from repositories.role_repository import RoleRepository
-from repositories.violation_repository import ViolationRepository
 from repositories.sod_rule_repository import SODRuleRepository
+from repositories.user_repository import UserRepository
+from repositories.violation_repository import ViolationRepository
+from services.netsuite_client import NetSuiteClient
 
 logger = logging.getLogger(__name__)
 
 
-class WorkflowStage(str, Enum):
+class WorkflowStage(StrEnum):
     """Workflow execution stages"""
     INIT = "INIT"
     COLLECT_DATA = "COLLECT_DATA"
@@ -47,14 +45,14 @@ class WorkflowStage(str, Enum):
 class WorkflowState(TypedDict):
     """State object for LangGraph workflow"""
     stage: str
-    scan_id: Optional[str]
+    scan_id: str | None
     users_collected: int
     violations_detected: int
     notifications_sent: int
-    errors: Annotated[List[str], operator.add]
-    results: Dict[str, Any]
+    errors: Annotated[list[str], operator.add]
+    results: dict[str, Any]
     start_time: datetime
-    end_time: Optional[datetime]
+    end_time: datetime | None
 
 
 class ComplianceOrchestrator:
@@ -69,7 +67,7 @@ class ComplianceOrchestrator:
         role_repo: RoleRepository,
         violation_repo: ViolationRepository,
         sod_rule_repo: SODRuleRepository,
-        notification_recipients: Optional[List[str]] = None
+        notification_recipients: list[str] | None = None
     ):
         """
         Initialize Compliance Orchestrator
@@ -325,8 +323,8 @@ class ComplianceOrchestrator:
 
     def execute_compliance_scan(
         self,
-        scan_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+        scan_id: str | None = None
+    ) -> dict[str, Any]:
         """
         Execute full compliance scan workflow
 
@@ -389,7 +387,7 @@ class ComplianceOrchestrator:
                 'message': 'Workflow execution failed'
             }
 
-    def execute_user_scan(self, user_email: str) -> Dict[str, Any]:
+    def execute_user_scan(self, user_email: str) -> dict[str, Any]:
         """
         Execute targeted scan for a specific user
 
@@ -446,7 +444,7 @@ class ComplianceOrchestrator:
                 'error': str(e)
             }
 
-    def get_compliance_status(self) -> Dict[str, Any]:
+    def get_compliance_status(self) -> dict[str, Any]:
         """
         Get current compliance status summary
 
@@ -488,7 +486,7 @@ def create_orchestrator(
     role_repo: RoleRepository,
     violation_repo: ViolationRepository,
     sod_rule_repo: SODRuleRepository,
-    notification_recipients: Optional[List[str]] = None
+    notification_recipients: list[str] | None = None
 ) -> ComplianceOrchestrator:
     """Create a configured Compliance Orchestrator instance"""
     return ComplianceOrchestrator(

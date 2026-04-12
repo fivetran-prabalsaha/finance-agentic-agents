@@ -5,19 +5,19 @@ Tests the new job role mapping integration with prabal.saha@fivetran.com
 """
 
 import sys
-import os
 from pathlib import Path
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+import logging
+
+from agents.notifier import NotificationAgent
 from models.database_config import DatabaseConfig
+from repositories.job_role_mapping_repository import JobRoleMappingRepository
 from repositories.user_repository import UserRepository
 from repositories.violation_repository import ViolationRepository
-from repositories.job_role_mapping_repository import JobRoleMappingRepository
-from agents.notifier import NotificationAgent
 
-import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -46,7 +46,7 @@ def test_prabal_saha():
         logger.error("❌ User not found: prabal.saha@fivetran.com")
         return
 
-    logger.info(f"\n📋 USER INFORMATION")
+    logger.info("\n📋 USER INFORMATION")
     logger.info(f"   Name: {user.name}")
     logger.info(f"   Email: {user.email}")
     logger.info(f"   Job Title: {user.title or 'NOT SET'}")
@@ -73,7 +73,7 @@ def test_prabal_saha():
             logger.info(f"   • {severity}: {count}")
 
     # CHECK JOB ROLE MAPPING (THE FIX)
-    logger.info(f"\n🔍 JOB ROLE CONTEXT ANALYSIS")
+    logger.info("\n🔍 JOB ROLE CONTEXT ANALYSIS")
 
     if not user.title:
         logger.warning("   ⚠️  No job title set for user - cannot perform context-aware analysis")
@@ -89,14 +89,14 @@ def test_prabal_saha():
         logger.info(f"   Requires Controls: {validation.get('requires_controls')}")
 
         if validation.get('is_acceptable'):
-            logger.info(f"\n✅ ACCEPTABLE CONFIGURATION")
-            logger.info(f"   Business Justification:")
+            logger.info("\n✅ ACCEPTABLE CONFIGURATION")
+            logger.info("   Business Justification:")
             justification = validation.get('business_justification', '')
             for line in justification.split('.'):
                 if line.strip():
                     logger.info(f"   • {line.strip()}")
 
-            logger.info(f"\n🛡️  REQUIRED COMPENSATING CONTROLS:")
+            logger.info("\n🛡️  REQUIRED COMPENSATING CONTROLS:")
             controls = validation.get('typical_controls', [])
             for control in controls:
                 logger.info(f"   • {control}")
@@ -105,24 +105,24 @@ def test_prabal_saha():
             if approval:
                 logger.info(f"\n📝 APPROVAL REQUIRED: {approval}")
 
-            logger.info(f"\n💡 RECOMMENDATION:")
+            logger.info("\n💡 RECOMMENDATION:")
             logger.info(f"   This is the PROPER configuration for {user.title}.")
-            logger.info(f"   Focus on implementing compensating controls, NOT role removal.")
-            logger.info(f"   This is a legitimate business need, not a compliance violation.")
+            logger.info("   Focus on implementing compensating controls, NOT role removal.")
+            logger.info("   This is a legitimate business need, not a compliance violation.")
 
         else:
-            logger.info(f"\n❌ NOT ACCEPTABLE CONFIGURATION")
+            logger.info("\n❌ NOT ACCEPTABLE CONFIGURATION")
             reason = validation.get('reason', '')
             logger.info(f"   Reason: {reason}")
 
             expected = validation.get('expected_roles', [])
             if expected:
-                logger.info(f"\n   Expected Role Combinations:")
+                logger.info("\n   Expected Role Combinations:")
                 for combo in expected:
                     logger.info(f"   • {combo}")
 
     # Test AI Analysis with new context
-    logger.info(f"\n🤖 TESTING AI ANALYSIS WITH JOB ROLE CONTEXT")
+    logger.info("\n🤖 TESTING AI ANALYSIS WITH JOB ROLE CONTEXT")
     logger.info("=" * 80)
 
     try:

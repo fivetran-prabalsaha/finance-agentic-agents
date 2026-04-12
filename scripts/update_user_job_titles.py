@@ -4,19 +4,19 @@ Update User Job Titles from NetSuite
 Triggers a manual sync to fetch job titles for all existing users
 """
 
-import sys
-import os
 import logging
+import sys
 from pathlib import Path
+
 from sqlalchemy import text
 
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from models.database_config import DatabaseConfig
-from repositories.user_repository import UserRepository
-from repositories.role_repository import RoleRepository
 from connectors.netsuite_connector import NetSuiteConnector
+from models.database_config import DatabaseConfig
+from repositories.role_repository import RoleRepository
+from repositories.user_repository import UserRepository
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -34,7 +34,7 @@ def update_job_titles():
     session = db_config.get_session()
 
     user_repo = UserRepository(session)
-    role_repo = RoleRepository(session)
+    RoleRepository(session)
 
     # Initialize NetSuite connector
     try:

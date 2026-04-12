@@ -3,13 +3,15 @@ MCP Tools - Tool definitions and handlers for Claude UI integration
 
 Each tool represents a capability that Claude can invoke via MCP protocol.
 """
-from typing import List, Dict, Any, Optional
-import logging
 import asyncio
+import logging
 import os
 from datetime import datetime, timedelta
 from functools import lru_cache
+from typing import Any
+
 from sqlalchemy import text
+
 try:
     from dateutil.relativedelta import relativedelta
 except ImportError:
@@ -1057,9 +1059,9 @@ async def list_systems_handler() -> str:
     except Exception as e:
         import traceback
         full_traceback = traceback.format_exc()
-        print(f"=== ERROR IN list_systems_handler ===", flush=True)
+        print("=== ERROR IN list_systems_handler ===", flush=True)
         print(full_traceback, flush=True)
-        print(f"=== END ERROR ===", flush=True)
+        print("=== END ERROR ===", flush=True)
         logger.error(f"Error in list_systems_handler: {str(e)}\n{full_traceback}")
         return f"Error listing systems: {str(e)}"
 
@@ -1089,7 +1091,7 @@ async def perform_access_review_handler(
 
         # Format response
         output = f"**Access Review Complete - {result['system_name'].upper()}**\n\n"
-        output += f"📊 **Summary:**\n"
+        output += "📊 **Summary:**\n"
         output += f"   • Users Analyzed: {result['users_analyzed']:,}\n"
         output += f"   • Total Violations: {result['total_violations']:,}\n"
         output += f"   • High-Risk: {result['high_risk_count']} 🔴\n"
@@ -1117,19 +1119,19 @@ async def perform_access_review_handler(
         return f"❌ Error performing access review: {str(e)}"
 
 
-def _format_violations_table(result: Dict[str, Any], include_ai_analysis: bool = True) -> str:
+def _format_violations_table(result: dict[str, Any], include_ai_analysis: bool = True) -> str:
     """Format violations as tables (concise tabular format)"""
     output = f"**SOD Violation Analysis: {result['user_name']}**\n\n"
 
     # User Status - Show first
-    user_status = result.get('status', 'UNKNOWN')
+    result.get('status', 'UNKNOWN')
     is_active = result.get('is_active', False)
     synced_at = result.get('synced_at', 'Unknown')
 
     status_emoji = "✅" if is_active else "❌"
     status_text = "ACTIVE" if is_active else "INACTIVE"
 
-    output += f"**👤 User Status**\n\n"
+    output += "**👤 User Status**\n\n"
     output += f"{status_emoji} **{status_text}** in NetSuite (as of {synced_at})\n\n"
     output += "---\n\n"
 
@@ -1203,7 +1205,7 @@ def _format_violations_table(result: Dict[str, Any], include_ai_analysis: bool =
     return output
 
 
-def _format_violations_concise(result: Dict[str, Any]) -> str:
+def _format_violations_concise(result: dict[str, Any]) -> str:
     """Format violations in concise format"""
     # User Status - Show first
     is_active = result.get('is_active', False)
@@ -1226,7 +1228,7 @@ def _format_violations_concise(result: Dict[str, Any]) -> str:
     output += f"{severity_counts['HIGH']} HIGH | "
     output += f"{severity_counts['MEDIUM']} MEDIUM\n\n"
 
-    output += f"**Root cause:** Administrator role combined with financial roles\n\n"
+    output += "**Root cause:** Administrator role combined with financial roles\n\n"
 
     output += "**Top 3 critical conflicts:**\n"
     critical_violations = [v for v in result['violations'] if v.get('severity') == 'CRITICAL'][:3]
@@ -1244,8 +1246,8 @@ def _format_violations_concise(result: Dict[str, Any]) -> str:
 
         output += f"{i}. {short_title}\n"
 
-    output += f"\n**Action required:** Remove Administrator role immediately. "
-    output += f"Retain only Controller + NetSuite 360 for appropriate financial access."
+    output += "\n**Action required:** Remove Administrator role immediately. "
+    output += "Retain only Controller + NetSuite 360 for appropriate financial access."
 
     return output
 
@@ -1363,7 +1365,7 @@ async def remediate_violation_handler(
             output += f"💬 Notes: {notes}\n"
 
         if result.get('next_steps'):
-            output += f"\n📌 **Next Steps:**\n"
+            output += "\n📌 **Next Steps:**\n"
             for step in result['next_steps']:
                 output += f"   • {step}\n"
 
@@ -1379,8 +1381,8 @@ async def remediate_violation_handler(
 async def schedule_review_handler(
     system_name: str,
     frequency: str,
-    day_of_week: Optional[str] = None,
-    time: Optional[str] = None,
+    day_of_week: str | None = None,
+    time: str | None = None,
     timezone: str = "America/Los_Angeles"
 ) -> str:
     """
@@ -1425,7 +1427,7 @@ async def schedule_review_handler(
 
 
 async def get_violation_stats_handler(
-    systems: List[str] = None,
+    systems: list[str] = None,
     time_range: str = "month"
 ) -> str:
     """
@@ -1447,18 +1449,18 @@ async def get_violation_stats_handler(
 
         # Format response
         output = f"**Violation Statistics - {time_range.capitalize()}**\n\n"
-        output += f"📊 **Overview:**\n"
+        output += "📊 **Overview:**\n"
         output += f"   • Systems Analyzed: {result['system_count']}\n"
         output += f"   • Total Users: {result['total_users']:,}\n"
         output += f"   • Total Violations: {result['total_violations']:,}\n\n"
 
-        output += f"🎯 **Risk Distribution:**\n"
+        output += "🎯 **Risk Distribution:**\n"
         output += f"   • 🔴 High-Risk: {result['high_risk']} ({result['high_risk_percent']}%)\n"
         output += f"   • 🟡 Medium-Risk: {result['medium_risk']} ({result['medium_risk_percent']}%)\n"
         output += f"   • 🟢 Low-Risk: {result['low_risk']} ({result['low_risk_percent']}%)\n\n"
 
         if result['by_system']:
-            output += f"🏢 **Violations by System:**\n"
+            output += "🏢 **Violations by System:**\n"
             for system in result['by_system']:
                 output += f"   • {system['name']}: {system['violation_count']} violations\n"
 
@@ -1536,7 +1538,7 @@ async def stop_collection_agent_handler() -> str:
         return f"❌ Error stopping collection agent: {str(e)}"
 
 
-async def get_collection_agent_status_handler(system_name: Optional[str] = None) -> str:
+async def get_collection_agent_status_handler(system_name: str | None = None) -> str:
     """
     Get collection agent status
 
@@ -1648,7 +1650,7 @@ async def trigger_manual_sync_handler(
 async def list_all_users_handler(
     system_name: str = "netsuite",
     include_inactive: bool = False,
-    filter_by_department: Optional[str] = None,
+    filter_by_department: str | None = None,
     limit: int = 100
 ) -> str:
     """
@@ -1672,7 +1674,7 @@ async def list_all_users_handler(
 
         # Format response
         output = f"**User List - {result['system_name'].upper()}**\n\n"
-        output += f"📊 **Summary:**\n"
+        output += "📊 **Summary:**\n"
         output += f"   • Total Users: {result['total_users']:,}\n"
         output += f"   • Active Users: {result['active_users']:,}\n"
         if result.get('inactive_users'):
@@ -1699,7 +1701,7 @@ async def list_all_users_handler(
         else:
             output += "No users found.\n"
 
-        output += f"\nℹ️  _Use `get_user_violations` to see details for specific users._"
+        output += "\nℹ️  _Use `get_user_violations` to see details for specific users._"
 
         return output
 
@@ -1710,8 +1712,8 @@ async def list_all_users_handler(
 
 async def analyze_access_request_handler(
     job_title: str,
-    requested_roles: List[str],
-    user_email: Optional[str] = None
+    requested_roles: list[str],
+    user_email: str | None = None
 ) -> str:
     """
     Analyze access request with level-based SOD analysis
@@ -1722,9 +1724,8 @@ async def analyze_access_request_handler(
     try:
         logger.info(f"Analyzing access request for {job_title}: {requested_roles}")
 
-        import subprocess
         import json
-        import tempfile
+        import subprocess
 
         # Prepare command
         roles_arg = ",".join(requested_roles)
@@ -1749,7 +1750,7 @@ async def analyze_access_request_handler(
             if not output_file.exists():
                 return f"❌ **Analysis Failed**\n\nOutput file not found: {output_file}"
 
-            with open(output_file, 'r') as f:
+            with open(output_file) as f:
                 analysis = json.load(f)
 
         except json.JSONDecodeError as e:
@@ -1776,7 +1777,7 @@ async def analyze_access_request_handler(
             'LOW': '🟢'
         }.get(risk, '⚪')
 
-        output += f"**Overall Assessment:**\n"
+        output += "**Overall Assessment:**\n"
         output += f"   • Conflicts Found: {conflicts_found}\n"
         output += f"   • Risk Level: {risk_emoji} {risk}\n"
         output += f"   • Recommendation: **{recommendation}**\n\n"
@@ -1784,7 +1785,7 @@ async def analyze_access_request_handler(
         # Job role validation
         if 'job_role_validation' in analysis:
             validation = analysis['job_role_validation']
-            output += f"**Job Role Validation:**\n"
+            output += "**Job Role Validation:**\n"
             output += f"   • Is Typical Combination: {'✅ Yes' if validation.get('is_typical_combination') else '❌ No'}\n"
             output += f"   • Requires Controls: {'⚠️  Yes' if validation.get('requires_compensating_controls') else '✅ No'}\n"
             if validation.get('business_justification'):
@@ -1850,7 +1851,7 @@ async def analyze_access_request_handler(
 
         # Resolutions
         if analysis.get('resolutions'):
-            output += f"**Recommended Controls:**\n\n"
+            output += "**Recommended Controls:**\n\n"
             for i, resolution in enumerate(analysis['resolutions'][:3], 1):
                 output += f"{i}. **{resolution.get('recommended_action', 'Unknown')}**\n"
                 output += f"   • Inherent Risk: {resolution.get('inherent_risk', 0):.1f}/100\n"
@@ -1878,9 +1879,9 @@ async def analyze_access_request_handler(
 
 
 async def query_sod_rules_handler(
-    category1: Optional[str] = None,
-    category2: Optional[str] = None,
-    severity: Optional[str] = None,
+    category1: str | None = None,
+    category2: str | None = None,
+    severity: str | None = None,
     limit: int = 10
 ) -> str:
     """
@@ -1892,8 +1893,8 @@ async def query_sod_rules_handler(
     try:
         logger.info(f"Querying SOD rules: cat1={category1}, cat2={category2}, sev={severity}")
 
+
         import psycopg2
-        import json
 
         conn = psycopg2.connect(os.getenv('DATABASE_URL'))
         try:
@@ -1963,8 +1964,8 @@ async def get_compensating_controls_handler(
     try:
         logger.info(f"Getting compensating controls for {severity}")
 
+
         import psycopg2
-        import json
 
         conn = psycopg2.connect(os.getenv('DATABASE_URL'))
         try:
@@ -1990,7 +1991,7 @@ async def get_compensating_controls_handler(
             output = f"**{pkg_name}** (for {severity} severity)\n\n"
             if desc:
                 output += f"{desc}\n\n"
-            output += f"**Package Details:**\n"
+            output += "**Package Details:**\n"
             output += f"   • Risk Reduction: {risk_reduction}%\n"
             if include_cost:
                 output += f"   • Annual Cost: {cost}\n"
@@ -2032,7 +2033,7 @@ async def get_compensating_controls_handler(
 
 async def validate_job_role_handler(
     job_title: str,
-    requested_roles: List[str]
+    requested_roles: list[str]
 ) -> str:
     """
     Validate job role combination
@@ -2043,8 +2044,8 @@ async def validate_job_role_handler(
     try:
         logger.info(f"Validating job role: {job_title}")
 
+
         import psycopg2
-        import json
 
         conn = psycopg2.connect(os.getenv('DATABASE_URL'))
         try:
@@ -2079,7 +2080,7 @@ async def validate_job_role_handler(
 
         matches = [r for r in requested_roles if r in typical_role_names]
 
-        output += f"**Requested Roles Analysis:**\n"
+        output += "**Requested Roles Analysis:**\n"
         output += f"   • Roles Requested: {len(requested_roles)}\n"
         output += f"   • Typical for Role: {len(matches)}/{len(requested_roles)}\n"
         output += f"   • Resolution Strategy: {strategy}\n\n"
@@ -2094,14 +2095,14 @@ async def validate_job_role_handler(
 
         # Required controls
         if controls and len(controls) > 0:
-            output += f"**Typically Required Controls:**\n"
+            output += "**Typically Required Controls:**\n"
             for ctrl in controls[:5]:
                 output += f"   • {ctrl}\n"
             output += "\n"
 
         # Business justification
         if justification:
-            output += f"**Business Justification:**\n"
+            output += "**Business Justification:**\n"
             output += f"{justification[:300]}...\n\n"
 
         # Recommendation
@@ -2150,7 +2151,7 @@ async def check_permission_conflict_handler(
 
         severity = severity_matrix[level1][level2]
 
-        output = f"**Permission Conflict Analysis**\n\n"
+        output = "**Permission Conflict Analysis**\n\n"
         output += f"**Permission 1**: {permission1_name} ({permission1_level}, level {level1})\n"
         output += f"**Permission 2**: {permission2_name} ({permission2_level}, level {level2})\n\n"
 
@@ -2191,8 +2192,8 @@ async def get_permission_categories_handler(
     try:
         logger.info("Getting permission categories")
 
+
         import psycopg2
-        import json
 
         conn = psycopg2.connect(os.getenv('DATABASE_URL'))
         try:
@@ -2231,9 +2232,9 @@ async def get_permission_categories_handler(
 
 
 async def search_permissions_handler(
-    search_term: Optional[str] = None,
-    category: Optional[str] = None,
-    risk_level: Optional[str] = None,
+    search_term: str | None = None,
+    category: str | None = None,
+    risk_level: str | None = None,
     limit: int = 20
 ) -> str:
     """
@@ -2253,14 +2254,14 @@ async def search_permissions_handler(
         if not mapping_file.exists():
             return "❌ Permission mapping file not found. Run `analyze_and_categorize_permissions.py` first."
 
-        with open(mapping_file, 'r') as f:
+        with open(mapping_file) as f:
             data = json.load(f)
 
         permissions = data.get('permissions', {})
 
         # Filter permissions
         filtered = []
-        for perm_id, perm in permissions.items():
+        for _perm_id, perm in permissions.items():
             matches = True
 
             if search_term:
@@ -2322,9 +2323,10 @@ async def query_knowledge_base_handler(
     try:
         logger.info(f"Querying knowledge base: query='{query}', type={doc_type}, limit={limit}")
 
+        import json
+
         import psycopg2
         from sentence_transformers import SentenceTransformer
-        import json
 
         # Load embedding model
         model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
@@ -2440,21 +2442,21 @@ async def recommend_roles_for_job_title_handler(
         dept_filter = f" in {department}" if department else ""
         output = f"**{job_title}{dept_filter}**\n\n"
 
-        output += f"📊 **Peer Analysis:**\n"
+        output += "📊 **Peer Analysis:**\n"
         output += f"   • {result['peers_analyzed']} peer(s) found\n"
         output += f"   • {peers_with_roles} with roles, {peers_without_roles} without\n"
 
         # Warn if sample size is too small
         if peers_with_roles == 0:
-            output += f"\n❌ No peers with roles assigned.\n"
-            output += f"Use `analyze_access_request` to test role combinations.\n"
+            output += "\n❌ No peers with roles assigned.\n"
+            output += "Use `analyze_access_request` to test role combinations.\n"
             return output
         elif peers_with_roles < 2:
             output += f"\n⚠️ Limited data ({peers_with_roles} peer with roles)\n"
 
         # Show roles
         if result['recommended_roles']:
-            output += f"\n**Recommended Roles** (from peers):\n"
+            output += "\n**Recommended Roles** (from peers):\n"
             for rec in result['recommended_roles']:
                 output += f"• {rec['role_name']}\n"
 
@@ -2464,9 +2466,9 @@ async def recommend_roles_for_job_title_handler(
             risk_emoji = "🔴" if conflict.get('risk_level') == 'HIGH' else "🟠" if conflict.get('risk_level') == 'MEDIUM' else "🟡"
             if conflict.get('conflict_count'):
                 output += f"\n{risk_emoji} **{conflict['conflict_count']} SOD conflicts** ({conflict.get('risk_level', 'UNKNOWN')} risk)\n"
-            output += f"Requires compensating controls. Use `analyze_access_request` for details.\n"
+            output += "Requires compensating controls. Use `analyze_access_request` for details.\n"
         else:
-            output += f"\n✅ No significant conflicts detected\n"
+            output += "\n✅ No significant conflicts detected\n"
 
         return output
 
@@ -2494,11 +2496,12 @@ async def analyze_role_permissions_handler(
     try:
         logger.info(f"Analyzing role: {role_name}")
 
-        import psycopg2
         import json
+        from collections import defaultdict
         from datetime import datetime
         from pathlib import Path
-        from collections import defaultdict
+
+        import psycopg2
 
         # Get role permissions from database
         conn = psycopg2.connect(os.getenv('DATABASE_URL'))
@@ -2524,9 +2527,9 @@ async def analyze_role_permissions_handler(
         # Load permission mapping
         perm_mapping_path = Path('data/netsuite_permission_mapping.json')
         if not perm_mapping_path.exists():
-            return f"❌ Permission mapping file not found. Run analyze_and_categorize_permissions.py first."
+            return "❌ Permission mapping file not found. Run analyze_and_categorize_permissions.py first."
 
-        with open(perm_mapping_path, 'r') as f:
+        with open(perm_mapping_path) as f:
             perm_mapping = json.load(f)['permissions']
 
         # Level values
@@ -2631,29 +2634,29 @@ async def analyze_role_permissions_handler(
             f.write(f"**Total Permissions**: {len(permissions)}\n")
             f.write(f"**Categorized Permissions**: {len([p for p in categorized_perms if p['categories']])}\n")
             f.write(f"**Internal Conflicts Found**: {len(conflicts)}\n\n")
-            f.write(f"---\n\n")
+            f.write("---\n\n")
 
             # Executive Summary
-            f.write(f"## Executive Summary\n\n")
+            f.write("## Executive Summary\n\n")
 
             if conflicts:
-                f.write(f"### Risk Assessment\n\n")
-                f.write(f"| Severity | Count | Risk Level |\n")
-                f.write(f"|----------|-------|------------|\n")
+                f.write("### Risk Assessment\n\n")
+                f.write("| Severity | Count | Risk Level |\n")
+                f.write("|----------|-------|------------|\n")
                 f.write(f"| 🔴 CRITICAL | {len(by_sev.get('CRIT', []))} | {'Unacceptable - Immediate action required' if by_sev.get('CRIT') else 'None'} |\n")
                 f.write(f"| 🟠 HIGH | {len(by_sev.get('HIGH', []))} | {'High Risk - Remediation needed' if by_sev.get('HIGH') else 'None'} |\n")
                 f.write(f"| 🟡 MEDIUM | {len(by_sev.get('MED', []))} | {'Moderate Risk - Review recommended' if by_sev.get('MED') else 'None'} |\n")
                 f.write(f"| **Total** | **{len(conflicts)}** | **{'Role requires attention' if conflicts else 'No issues'}** |\n\n")
 
                 if by_sev.get('CRIT'):
-                    f.write(f"### ⚠️  Overall Recommendation\n\n")
+                    f.write("### ⚠️  Overall Recommendation\n\n")
                     f.write(f"**ROLE REQUIRES REDESIGN** - {len(by_sev['CRIT'])} CRITICAL conflicts detected.\n\n")
             else:
-                f.write(f"✅ **No internal SOD conflicts detected in this role.**\n\n")
+                f.write("✅ **No internal SOD conflicts detected in this role.**\n\n")
 
             # Detailed conflicts
             if conflicts:
-                f.write(f"---\n\n## Detailed Conflict Analysis\n\n")
+                f.write("---\n\n## Detailed Conflict Analysis\n\n")
 
                 for sev in ['CRIT', 'HIGH', 'MED']:
                     if sev in by_sev:
@@ -2665,7 +2668,7 @@ async def analyze_role_permissions_handler(
 
                             f.write(f"#### Conflict #{i}\n\n")
                             f.write(f"**{p1['name']}** ({p1['level']}, level {p1['level_value']})\n")
-                            f.write(f"↔\n")
+                            f.write("↔\n")
                             f.write(f"**{p2['name']}** ({p2['level']}, level {p2['level_value']})\n\n")
                             f.write(f"- **Category Conflict**: {conflict['categories']}\n")
                             f.write(f"- **Severity**: {sev}\n")
@@ -2675,13 +2678,13 @@ async def analyze_role_permissions_handler(
                             f.write(f"_... and {len(by_sev[sev]) - 20} more {sev} conflicts_\n\n")
 
             # Permission breakdown
-            f.write(f"---\n\n## Permission Breakdown by Category\n\n")
+            f.write("---\n\n## Permission Breakdown by Category\n\n")
 
             for cat in sorted(by_category.keys()):
                 perms = by_category[cat]
                 f.write(f"### {cat.upper().replace('_', ' ')} ({len(perms)} permissions)\n\n")
-                f.write(f"| Permission | Level | Risk |\n")
-                f.write(f"|------------|-------|------|\n")
+                f.write("| Permission | Level | Risk |\n")
+                f.write("|------------|-------|------|\n")
 
                 for p in perms[:30]:
                     risk_icon = '🔴' if p['risk'] == 'HIGH' else '🟡' if p['risk'] == 'MEDIUM' else '🟢'
@@ -2689,17 +2692,17 @@ async def analyze_role_permissions_handler(
 
                 if len(perms) > 30:
                     f.write(f"\n_... and {len(perms) - 30} more permissions_\n")
-                f.write(f"\n")
+                f.write("\n")
 
             # Remediation recommendations
             if include_remediation_plan and conflicts:
-                f.write(f"---\n\n## Remediation Recommendations\n\n")
+                f.write("---\n\n## Remediation Recommendations\n\n")
 
                 # Priority level changes
-                f.write(f"### Priority 1: Critical Level Changes\n\n")
-                f.write(f"These changes will eliminate the most CRITICAL conflicts:\n\n")
-                f.write(f"| Permission | Current Level | Recommended Level | Impact |\n")
-                f.write(f"|------------|---------------|-------------------|--------|\n")
+                f.write("### Priority 1: Critical Level Changes\n\n")
+                f.write("These changes will eliminate the most CRITICAL conflicts:\n\n")
+                f.write("| Permission | Current Level | Recommended Level | Impact |\n")
+                f.write("|------------|---------------|-------------------|--------|\n")
 
                 # Find permissions involved in CRIT conflicts
                 crit_perms = set()
@@ -2719,11 +2722,11 @@ async def analyze_role_permissions_handler(
 
                     f.write(f"| {name} | {level} ({level_val}) | {recommended} | Reduces CRIT conflicts |\n")
 
-                f.write(f"\n")
+                f.write("\n")
 
         # Generate summary for MCP response
         summary = f"**Role Analysis Complete: {role_name}**\n\n"
-        summary += f"📊 **Analysis Summary**:\n"
+        summary += "📊 **Analysis Summary**:\n"
         summary += f"• Total Permissions: {len(permissions)}\n"
         summary += f"• Total Conflicts: {len(conflicts)}\n"
         summary += f"• 🔴 CRITICAL: {len(by_sev.get('CRIT', []))}\n"
@@ -2731,32 +2734,32 @@ async def analyze_role_permissions_handler(
         summary += f"• 🟡 MEDIUM: {len(by_sev.get('MED', []))}\n\n"
 
         if len(by_sev.get('CRIT', [])) > 0:
-            summary += f"⚠️  **CRITICAL ISSUES FOUND**\n\n"
-            summary += f"Top 5 Critical Conflicts:\n\n"
+            summary += "⚠️  **CRITICAL ISSUES FOUND**\n\n"
+            summary += "Top 5 Critical Conflicts:\n\n"
             for i, c in enumerate(by_sev['CRIT'][:5], 1):
                 p1 = c['perm1']
                 p2 = c['perm2']
                 summary += f"{i}. **{p1['name']}** ({p1['level']}) ↔ **{p2['name']}** ({p2['level']})\n"
                 summary += f"   Category: {c['categories']}\n\n"
         else:
-            summary += f"✅ **No critical conflicts found**\n\n"
+            summary += "✅ **No critical conflicts found**\n\n"
 
-        summary += f"📄 **Detailed Report Generated**:\n"
+        summary += "📄 **Detailed Report Generated**:\n"
         summary += f"• File: `{report_path}`\n"
-        summary += f"• Format: Markdown\n"
+        summary += "• Format: Markdown\n"
         summary += f"• Size: {len(conflicts)} conflicts analyzed\n\n"
 
         if include_remediation_plan and conflicts:
-            summary += f"📋 **Remediation Options Included**:\n"
-            summary += f"• Priority level changes\n"
-            summary += f"• Permission breakdown by category\n"
-            summary += f"• Specific recommendations for each conflict\n\n"
+            summary += "📋 **Remediation Options Included**:\n"
+            summary += "• Priority level changes\n"
+            summary += "• Permission breakdown by category\n"
+            summary += "• Specific recommendations for each conflict\n\n"
 
-        summary += f"💡 **Next Steps**:\n"
+        summary += "💡 **Next Steps**:\n"
         summary += f"1. Review detailed report at: `{report_path}`\n"
-        summary += f"2. Implement recommended level changes\n"
-        summary += f"3. Test role functionality after changes\n"
-        summary += f"4. Re-run analysis to verify conflict resolution\n"
+        summary += "2. Implement recommended level changes\n"
+        summary += "3. Test role functionality after changes\n"
+        summary += "4. Re-run analysis to verify conflict resolution\n"
 
         logger.info(f"Role analysis complete. Report saved to: {report_path}")
 
@@ -2777,9 +2780,10 @@ async def get_role_conflicts_handler(role_name: str) -> str:
     try:
         logger.info(f"Querying knowledge base for role conflicts: {role_name}")
 
+        import json
+
         import psycopg2
         from sentence_transformers import SentenceTransformer
-        import json
 
         # Load embedding model
         model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')
@@ -2825,8 +2829,8 @@ Tip: Try using query_knowledge_base with a broader search."""
         metadata = json.loads(metadata_json) if isinstance(metadata_json, str) else metadata_json
 
         # Format response
-        conflict_count = metadata.get('conflict_count', 0)
-        severity_max = metadata.get('severity_max', 'UNKNOWN')
+        metadata.get('conflict_count', 0)
+        metadata.get('severity_max', 'UNKNOWN')
 
         response = f"""# {title}
 
@@ -2860,7 +2864,7 @@ Use `analyze_access_request` to check if specific users have additional conflict
 async def record_exception_approval_handler(
     user_identifier: str,
     user_name: str,
-    role_names: List[str],
+    role_names: list[str],
     conflict_count: int,
     risk_score: float,
     business_justification: str,
@@ -2869,7 +2873,7 @@ async def record_exception_approval_handler(
     job_title: str = None,
     department: str = None,
     critical_conflicts: int = 0,
-    compensating_controls: List[Dict[str, Any]] = None,
+    compensating_controls: list[dict[str, Any]] = None,
     review_frequency: str = "Quarterly",
     expiration_days: int = None
 ) -> str:
@@ -2882,11 +2886,12 @@ async def record_exception_approval_handler(
     try:
         logger.info(f"Recording exception approval for user: {user_identifier}")
 
+        from datetime import datetime, timedelta
+
         from models.database_config import DatabaseConfig
         from repositories.exception_repository import ExceptionRepository
-        from repositories.user_repository import UserRepository
         from repositories.role_repository import RoleRepository
-        from datetime import datetime, timedelta
+        from repositories.user_repository import UserRepository
 
         db_config = DatabaseConfig()
         session = db_config.get_session()
@@ -2936,12 +2941,11 @@ async def record_exception_approval_handler(
 
         # Add compensating controls if provided
         total_cost = 0
-        combined_risk_reduction = 0
         if compensating_controls:
             for control in compensating_controls:
                 # Look up control by name in compensating_controls table
                 control_name = control.get('control_name', '')
-                control_query = session.query(text("SELECT id FROM compensating_controls WHERE name ILIKE :name LIMIT 1"))
+                session.query(text("SELECT id FROM compensating_controls WHERE name ILIKE :name LIMIT 1"))
                 result = session.execute(text("SELECT id FROM compensating_controls WHERE name ILIKE :name LIMIT 1"), {"name": f"%{control_name}%"}).fetchone()
 
                 if result:
@@ -2952,7 +2956,7 @@ async def record_exception_approval_handler(
                     control_id = result[0] if result else None
 
                 if control_id:
-                    control_record = exception_repo.add_control_to_exception(
+                    exception_repo.add_control_to_exception(
                         exception.exception_id,
                         control_id=control_id,
                         estimated_annual_cost=control.get('estimated_annual_cost', 0),
@@ -3003,10 +3007,10 @@ async def record_exception_approval_handler(
 
         output += f"\n\n**Business Justification:**\n{business_justification}"
 
-        output += f"\n\n💡 **Next Steps:**\n"
-        output += f"• Implement all compensating controls\n"
+        output += "\n\n💡 **Next Steps:**\n"
+        output += "• Implement all compensating controls\n"
         output += f"• Set up {review_frequency.lower()} review calendar\n"
-        output += f"• Monitor for violations using exception tracking\n"
+        output += "• Monitor for violations using exception tracking\n"
         output += f"• Use `get_exception_details('{exception.exception_code}')` to check status"
 
         return output
@@ -3017,7 +3021,7 @@ async def record_exception_approval_handler(
 
 
 async def find_similar_exceptions_handler(
-    role_names: List[str],
+    role_names: list[str],
     job_title: str = None,
     department: str = None,
     limit: int = 3
@@ -3060,25 +3064,25 @@ async def find_similar_exceptions_handler(
         )
 
         if not similar:
-            output = f"📝 **No Similar Exceptions Found**\n\n"
-            output += f"**Searched For:**\n"
+            output = "📝 **No Similar Exceptions Found**\n\n"
+            output += "**Searched For:**\n"
             output += f"• Roles: {', '.join(role_names)}\n"
             if job_title:
                 output += f"• Job Title: {job_title}\n"
             if department:
                 output += f"• Department: {department}\n"
-            output += f"\n💡 This appears to be a novel role combination. You may need to design new compensating controls."
+            output += "\n💡 This appears to be a novel role combination. You may need to design new compensating controls."
             return output
 
         # Format response
         output = f"💡 **Similar Approved Exceptions Found** ({len(similar)})\n\n"
-        output += f"**Searching for:**\n"
+        output += "**Searching for:**\n"
         output += f"• Roles: {', '.join(role_names)}\n"
         if job_title:
             output += f"• Job Title: {job_title}\n"
         if department:
             output += f"• Department: {department}\n"
-        output += f"\n---\n\n"
+        output += "\n---\n\n"
 
         for i, (exception, similarity) in enumerate(similar, 1):
             similarity_pct = similarity * 100
@@ -3112,17 +3116,17 @@ async def find_similar_exceptions_handler(
                 if total_cost > 0:
                     output += f"  └─ **Total Annual Cost:** ${total_cost:,.0f}\n"
 
-            output += f"\n"
+            output += "\n"
 
             if i == 1 and similarity >= 0.8:
-                output += f"✅ **Recommendation:** This exception is highly similar (≥80%). Consider using the same control framework.\n\n"
+                output += "✅ **Recommendation:** This exception is highly similar (≥80%). Consider using the same control framework.\n\n"
 
-            output += f"---\n\n"
+            output += "---\n\n"
 
-        output += f"💡 **Next Steps:**\n"
-        output += f"• Review controls from best match for reusability\n"
-        output += f"• Use `get_exception_details('<code>')` for full details\n"
-        output += f"• Adapt controls to your specific situation\n"
+        output += "💡 **Next Steps:**\n"
+        output += "• Review controls from best match for reusability\n"
+        output += "• Use `get_exception_details('<code>')` for full details\n"
+        output += "• Adapt controls to your specific situation\n"
 
         return output
 
@@ -3228,13 +3232,13 @@ async def get_exception_details_handler(
                     effectiveness = (prevented / (prevented + occurred)) * 100
                     output += f"   • Effectiveness: {effectiveness:.1f}% ({prevented} prevented, {occurred} occurred)\n"
 
-                output += f"\n"
+                output += "\n"
 
             if total_cost > 0:
                 output += f"**Total Annual Cost:** ${total_cost:,.0f}\n"
 
         else:
-            output += f"\n## Compensating Controls\n\n⚠️ No controls recorded\n"
+            output += "\n## Compensating Controls\n\n⚠️ No controls recorded\n"
 
         # Violations section
         if violations:
@@ -3247,9 +3251,9 @@ async def get_exception_details_handler(
                 if violation.failure_reason:
                     output += f"   • Failure Reason: {violation.failure_reason}\n"
                 output += f"   • Remediation: {violation.remediation_status.value}\n"
-                output += f"\n"
+                output += "\n"
         else:
-            output += f"\n## Violations\n\n✅ No violations recorded\n"
+            output += "\n## Violations\n\n✅ No violations recorded\n"
 
         # Reviews section
         if reviews:
@@ -3267,7 +3271,7 @@ async def get_exception_details_handler(
                 output += f"   • Outcome: {review.outcome.value}\n"
                 if review.findings:
                     output += f"   • Findings: {review.findings}\n"
-                output += f"\n"
+                output += "\n"
 
         # Next review
         if exception.next_review_date:
@@ -3299,10 +3303,10 @@ async def list_approved_exceptions_handler(
     try:
         logger.info(f"Listing exceptions: status={status}, user={user_identifier}, limit={limit}")
 
+        from models.approved_exception import ExceptionStatus
         from models.database_config import DatabaseConfig
         from repositories.exception_repository import ExceptionRepository
         from repositories.user_repository import UserRepository
-        from models.approved_exception import ExceptionStatus
 
         db_config = DatabaseConfig()
         session = db_config.get_session()
@@ -3336,11 +3340,11 @@ async def list_approved_exceptions_handler(
         total = sum(counts.values())
 
         # Format response
-        output = f"📋 **Approved SOD Exceptions**\n\n"
+        output = "📋 **Approved SOD Exceptions**\n\n"
         output += f"**Total:** {total} exceptions\n"
 
         if counts:
-            output += f"**By Status:**\n"
+            output += "**By Status:**\n"
             for st, count in sorted(counts.items()):
                 status_emoji = {
                     "ACTIVE": "🟢",
@@ -3351,7 +3355,7 @@ async def list_approved_exceptions_handler(
                 }
                 output += f"  • {status_emoji.get(st, '•')} {st}: {count}\n"
 
-        output += f"\n---\n\n"
+        output += "\n---\n\n"
 
         if not exceptions:
             filter_desc = []
@@ -3360,7 +3364,7 @@ async def list_approved_exceptions_handler(
             if user_identifier:
                 filter_desc.append(f"user={user_identifier}")
 
-            output += f"No exceptions found"
+            output += "No exceptions found"
             if filter_desc:
                 output += f" with filters: {', '.join(filter_desc)}"
             return output
@@ -3391,12 +3395,12 @@ async def list_approved_exceptions_handler(
             if controls:
                 output += f"   • Controls: {len(controls)}\n"
 
-            output += f"\n"
+            output += "\n"
 
         if offset + limit < total:
             output += f"_Use offset={offset + limit} to see more results_\n"
 
-        output += f"\n💡 Use `get_exception_details('<code>')` for full details of any exception.\n"
+        output += "\n💡 Use `get_exception_details('<code>')` for full details of any exception.\n"
 
         return output
 
@@ -3491,7 +3495,7 @@ async def record_exception_violation_handler(
         if failure_reason:
             output += f"**Why It Failed:** {failure_reason}\n"
 
-        output += f"\n**Detection:**\n"
+        output += "\n**Detection:**\n"
         output += f"• Detected By: {detected_by}\n"
         if detection_method:
             output += f"• Detection Method: {detection_method}\n"
@@ -3499,11 +3503,11 @@ async def record_exception_violation_handler(
 
         output += f"\n**Exception Status Updated:** {exception.status.value}\n"
 
-        output += f"\n⚠️ **Action Required:**\n"
-        output += f"• Investigate root cause immediately\n"
-        output += f"• Review all controls for this exception\n"
-        output += f"• Consider temporary revocation if pattern continues\n"
-        output += f"• Document remediation actions\n"
+        output += "\n⚠️ **Action Required:**\n"
+        output += "• Investigate root cause immediately\n"
+        output += "• Review all controls for this exception\n"
+        output += "• Consider temporary revocation if pattern continues\n"
+        output += "• Document remediation actions\n"
 
         output += f"\n💡 Use `get_exception_details('{exception.exception_code}')` to see full violation history.\n"
 
@@ -3572,12 +3576,12 @@ async def get_exception_effectiveness_stats_handler() -> str:
                 output += f"• {exception.exception_code} ({exception.user_name})"
                 if days_overdue > 0:
                     output += f" - {days_overdue} days overdue"
-                output += f"\n"
+                output += "\n"
 
             if len(needs_review) > 5:
                 output += f"_...and {len(needs_review) - 5} more_\n"
 
-        output += f"\n## Control Effectiveness\n\n"
+        output += "\n## Control Effectiveness\n\n"
 
         # Calculate overall effectiveness
         total_prevented = 0
@@ -3596,9 +3600,9 @@ async def get_exception_effectiveness_stats_handler() -> str:
             output += f"• **Violations Prevented:** {total_prevented}\n"
             output += f"• **Violations Occurred:** {total_occurred}\n"
         else:
-            output += f"_No effectiveness data available yet_\n"
+            output += "_No effectiveness data available yet_\n"
 
-        output += f"\n## Recommendations\n\n"
+        output += "\n## Recommendations\n\n"
 
         violated_count = stats['by_status'].get('VIOLATED', 0)
         if violated_count > 0:
@@ -3608,16 +3612,16 @@ async def get_exception_effectiveness_stats_handler() -> str:
             output += f"⚠️ **{len(needs_review)} exception(s) overdue for review** - schedule reviews promptly\n"
 
         if stats['total_violations'] > stats['total_exceptions'] * 0.1:  # More than 10% violation rate
-            output += f"⚠️ **High violation rate detected** - consider strengthening controls or revoking problematic exceptions\n"
+            output += "⚠️ **High violation rate detected** - consider strengthening controls or revoking problematic exceptions\n"
 
         if stats['total_annual_cost'] > 1000000:  # Over $1M
-            output += f"💡 Consider cost optimization - review high-cost exceptions for potential consolidation\n"
+            output += "💡 Consider cost optimization - review high-cost exceptions for potential consolidation\n"
 
         if violated_count == 0 and len(needs_review) == 0 and stats['total_violations'] == 0:
-            output += f"✅ **All exceptions performing well** - continue monitoring\n"
+            output += "✅ **All exceptions performing well** - continue monitoring\n"
 
-        output += f"\n---\n\n"
-        output += f"💡 Use `list_approved_exceptions(status='VIOLATED')` to see problematic exceptions\n"
+        output += "\n---\n\n"
+        output += "💡 Use `list_approved_exceptions(status='VIOLATED')` to see problematic exceptions\n"
 
         return output
 
@@ -3632,7 +3636,7 @@ async def get_exception_effectiveness_stats_handler() -> str:
 
 async def detect_exception_violations_handler(
     check_all: bool = True,
-    exception_codes: List[str] = None,
+    exception_codes: list[str] = None,
     auto_record: bool = False
 ) -> str:
     """
@@ -3649,10 +3653,10 @@ async def detect_exception_violations_handler(
     try:
         logger.info(f"Detecting exception violations: check_all={check_all}, auto_record={auto_record}")
 
+        from models.approved_exception import ExceptionStatus
         from models.database_config import DatabaseConfig
         from repositories.exception_repository import ExceptionRepository
         from repositories.user_repository import UserRepository
-        from models.approved_exception import ExceptionStatus
 
         db_config = DatabaseConfig()
         session = db_config.get_session()
@@ -3753,7 +3757,7 @@ async def detect_exception_violations_handler(
                 output += f"   • User: {exc.user_name}\n"
                 output += f"   • Severity: {violation['severity']}\n"
                 output += f"   • Issue: {violation['description']}\n"
-                output += f"\n"
+                output += "\n"
 
                 # Auto-record if requested
                 if auto_record:
@@ -3767,16 +3771,16 @@ async def detect_exception_violations_handler(
                     )
 
                     if recorded:
-                        output += f"   ✅ Violation auto-recorded\n\n"
+                        output += "   ✅ Violation auto-recorded\n\n"
                         session.commit()
                     else:
-                        output += f"   ❌ Failed to auto-record\n\n"
+                        output += "   ❌ Failed to auto-record\n\n"
 
             if not auto_record:
-                output += f"\n💡 **Tip:** Run with `auto_record=true` to automatically record these violations\n"
+                output += "\n💡 **Tip:** Run with `auto_record=true` to automatically record these violations\n"
 
         else:
-            output += f"✅ **All exceptions compliant** - No violations detected\n"
+            output += "✅ **All exceptions compliant** - No violations detected\n"
 
         if clean_exceptions:
             output += f"\n## Clean Exceptions ({len(clean_exceptions)})\n\n"
@@ -3786,11 +3790,11 @@ async def detect_exception_violations_handler(
             if len(clean_exceptions) > 5:
                 output += f"_...and {len(clean_exceptions) - 5} more_\n"
 
-        output += f"\n---\n\n"
-        output += f"**Checks Performed:**\n"
-        output += f"1. ✓ User still has approved role combination\n"
-        output += f"2. ✓ No unauthorized additional roles\n"
-        output += f"3. ✓ All compensating controls still active\n"
+        output += "\n---\n\n"
+        output += "**Checks Performed:**\n"
+        output += "1. ✓ User still has approved role combination\n"
+        output += "2. ✓ No unauthorized additional roles\n"
+        output += "3. ✓ All compensating controls still active\n"
 
         return output
 
@@ -3805,7 +3809,7 @@ async def conduct_exception_review_handler(
     outcome: str,
     findings: str = None,
     recommendations: str = None,
-    control_modifications: List[Dict[str, str]] = None
+    control_modifications: list[dict[str, str]] = None
 ) -> str:
     """
     Conduct a periodic review of an approved exception
@@ -3816,10 +3820,11 @@ async def conduct_exception_review_handler(
     try:
         logger.info(f"Conducting review for exception: {exception_code}")
 
+        from dateutil.relativedelta import relativedelta
+
+        from models.approved_exception import ExceptionStatus, ReviewOutcome
         from models.database_config import DatabaseConfig
         from repositories.exception_repository import ExceptionRepository
-        from models.approved_exception import ReviewOutcome, ExceptionStatus
-        from dateutil.relativedelta import relativedelta
 
         db_config = DatabaseConfig()
         session = db_config.get_session()
@@ -3835,7 +3840,7 @@ async def conduct_exception_review_handler(
         outcome_enum = ReviewOutcome[outcome]
 
         # Create review record
-        review = exception_repo.create_review(
+        exception_repo.create_review(
             exception_id=exception.exception_id,
             reviewer_name=reviewer_name,
             outcome=outcome_enum,
@@ -3900,33 +3905,33 @@ async def conduct_exception_review_handler(
             output += f"**Control Modifications ({len(control_modifications)}):**\n"
             for mod in control_modifications:
                 output += f"• {mod.get('control_name', 'Unknown')}: {mod.get('modification', 'No details')}\n"
-            output += f"\n"
+            output += "\n"
 
         # Next steps based on outcome
         if outcome_enum == ReviewOutcome.REVOKED:
-            output += f"**Status:** Exception REVOKED\n"
-            output += f"\n⚠️ **Action Required:**\n"
-            output += f"• Remove conflicting roles from user immediately\n"
-            output += f"• Notify user and manager\n"
-            output += f"• Update access control systems\n"
-            output += f"• Document reason for revocation\n"
+            output += "**Status:** Exception REVOKED\n"
+            output += "\n⚠️ **Action Required:**\n"
+            output += "• Remove conflicting roles from user immediately\n"
+            output += "• Notify user and manager\n"
+            output += "• Update access control systems\n"
+            output += "• Document reason for revocation\n"
 
         elif outcome_enum == ReviewOutcome.APPROVED_CONTINUE:
             output += f"**Next Review:** {next_review_date.strftime('%Y-%m-%d')} ({exception.review_frequency})\n"
-            output += f"\n✅ **Status:** Exception continues with current controls\n"
+            output += "\n✅ **Status:** Exception continues with current controls\n"
 
         elif outcome_enum == ReviewOutcome.APPROVED_MODIFY:
             output += f"**Next Review:** {next_review_date.strftime('%Y-%m-%d')} ({exception.review_frequency})\n"
-            output += f"\n🔄 **Action Required:**\n"
-            output += f"• Implement control modifications as specified\n"
-            output += f"• Update control status once implemented\n"
-            output += f"• Notify affected stakeholders\n"
+            output += "\n🔄 **Action Required:**\n"
+            output += "• Implement control modifications as specified\n"
+            output += "• Update control status once implemented\n"
+            output += "• Notify affected stakeholders\n"
 
         elif outcome_enum == ReviewOutcome.ESCALATED:
-            output += f"\n⬆️ **Escalated for Higher Authority Review**\n"
-            output += f"• Route to CFO/Audit Committee\n"
-            output += f"• Provide full context and recommendations\n"
-            output += f"• Await decision before next scheduled review\n"
+            output += "\n⬆️ **Escalated for Higher Authority Review**\n"
+            output += "• Route to CFO/Audit Committee\n"
+            output += "• Provide full context and recommendations\n"
+            output += "• Await decision before next scheduled review\n"
 
         output += f"\n💡 Use `get_exception_details('{exception_code}')` to see full review history.\n"
 
@@ -4009,9 +4014,9 @@ async def get_exceptions_for_review_handler(
                 if violations:
                     output += f"   • ⚠️ {len(violations)} violation(s) recorded\n"
 
-                output += f"\n"
+                output += "\n"
 
-            output += f"⚠️ **Action Required:** Schedule reviews immediately for overdue exceptions\n\n"
+            output += "⚠️ **Action Required:** Schedule reviews immediately for overdue exceptions\n\n"
 
         if upcoming:
             output += f"## 🟡 Upcoming Reviews (Next {days_ahead} Days)\n\n"
@@ -4024,27 +4029,27 @@ async def get_exceptions_for_review_handler(
                 output += f"   • Due Date: {exception.next_review_date}\n"
                 output += f"   • In {days_until} day(s)\n"
                 output += f"   • Frequency: {exception.review_frequency}\n"
-                output += f"\n"
+                output += "\n"
 
             if len(upcoming) > 10:
                 output += f"_...and {len(upcoming) - 10} more_\n\n"
 
-            output += f"💡 **Tip:** Schedule review sessions for upcoming exceptions\n\n"
+            output += "💡 **Tip:** Schedule review sessions for upcoming exceptions\n\n"
 
         if not overdue and not upcoming:
             output += f"✅ **All reviews current** - No overdue or upcoming reviews in the next {days_ahead} days\n\n"
 
-        output += f"---\n\n"
-        output += f"**To conduct a review:**\n"
-        output += f"```\n"
-        output += f"conduct_exception_review(\n"
-        output += f"  exception_code='EXC-2026-001',\n"
-        output += f"  reviewer_name='Your Name',\n"
-        output += f"  outcome='APPROVED_CONTINUE',  # or APPROVED_MODIFY, REVOKED, ESCALATED\n"
-        output += f"  findings='Review findings...',\n"
-        output += f"  recommendations='Recommendations...'\n"
-        output += f")\n"
-        output += f"```\n"
+        output += "---\n\n"
+        output += "**To conduct a review:**\n"
+        output += "```\n"
+        output += "conduct_exception_review(\n"
+        output += "  exception_code='EXC-2026-001',\n"
+        output += "  reviewer_name='Your Name',\n"
+        output += "  outcome='APPROVED_CONTINUE',  # or APPROVED_MODIFY, REVOKED, ESCALATED\n"
+        output += "  findings='Review findings...',\n"
+        output += "  recommendations='Recommendations...'\n"
+        output += ")\n"
+        output += "```\n"
 
         return output
 
@@ -4122,18 +4127,18 @@ Contact your administrator if you need access.
 """
 
         if approval_level != "NONE":
-            output += f"""**What You Can Do:**
+            output += """**What You Can Do:**
 """
             if can_approve_low:
-                output += f"✅ Approve LOW risk exceptions (score < 40)\n"
+                output += "✅ Approve LOW risk exceptions (score < 40)\n"
             if can_approve_medium:
-                output += f"✅ Approve MEDIUM risk exceptions (score 40-59)\n"
+                output += "✅ Approve MEDIUM risk exceptions (score 40-59)\n"
             if can_approve_high:
-                output += f"✅ Approve HIGH risk exceptions (score 60-74)\n"
+                output += "✅ Approve HIGH risk exceptions (score 60-74)\n"
             if can_approve_critical:
-                output += f"✅ Approve CRITICAL risk exceptions (score ≥75)\n"
+                output += "✅ Approve CRITICAL risk exceptions (score ≥75)\n"
 
-            output += f"""
+            output += """
 **Available Actions:**
 • Use `request_exception_approval` to approve exceptions with RBAC validation
 • Use `record_exception_approval` to directly record pre-approved exceptions
@@ -4142,7 +4147,7 @@ Contact your administrator if you need access.
 
 """
         else:
-            output += f"""**Your Access:**
+            output += """**Your Access:**
 ❌ You do not have approval authority for SOD exceptions
 
 **What You Can Do:**
@@ -4159,7 +4164,7 @@ All exception requests from you will be automatically routed to an authorized ap
 
         # Show key roles
         if user_info['roles']:
-            output += f"**Your NetSuite Roles:**\n"
+            output += "**Your NetSuite Roles:**\n"
             for i, role in enumerate(user_info['roles'][:5], 1):
                 output += f"{i}. {role}\n"
             if len(user_info['roles']) > 5:
@@ -4222,7 +4227,7 @@ async def check_my_approval_authority_handler(
         else:
             output += "• No roles assigned\n"
 
-        output += f"\n**Approval Authority Matrix:**\n\n"
+        output += "\n**Approval Authority Matrix:**\n\n"
 
         # Check authority for each risk level
         risk_levels = ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
@@ -4265,14 +4270,14 @@ async def check_my_approval_authority_handler(
                 # Find who can approve
                 approver = approval_service.find_approver_in_chain(my_email, check_for_risk_score)
                 if approver:
-                    output += f"**Escalation Path:**\n"
+                    output += "**Escalation Path:**\n"
                     output += f"• Will route to: {approver['name']} ({approver['email']})\n"
                     output += f"• Levels Up: {approver['levels_up']}\n"
-                    output += f"• Jira ticket will be auto-created\n"
+                    output += "• Jira ticket will be auto-created\n"
 
-        output += f"\n💡 **Usage:**\n"
-        output += f"• If authorized: Use `record_exception_approval` to approve directly\n"
-        output += f"• If not authorized: Use `request_exception_approval` to escalate via Jira\n"
+        output += "\n💡 **Usage:**\n"
+        output += "• If authorized: Use `record_exception_approval` to approve directly\n"
+        output += "• If not authorized: Use `request_exception_approval` to escalate via Jira\n"
 
         return output
 
@@ -4285,14 +4290,14 @@ async def request_exception_approval_handler(
     requester_email: str,
     user_identifier: str,
     user_name: str,
-    role_names: List[str],
+    role_names: list[str],
     conflict_count: int,
     risk_score: float,
     business_justification: str,
     job_title: str = None,
     department: str = None,
     critical_conflicts: int = 0,
-    compensating_controls: List[Dict[str, Any]] = None,
+    compensating_controls: list[dict[str, Any]] = None,
     review_frequency: str = "Quarterly",
     auto_approve_if_authorized: bool = False
 ) -> str:
@@ -4372,7 +4377,7 @@ Unable to authenticate user: {requester_email}
 
             if auto_approve_if_authorized:
                 # Auto-approve and record exception
-                output += f"\n🔄 **Auto-Approving Exception...**\n\n"
+                output += "\n🔄 **Auto-Approving Exception...**\n\n"
 
                 # Call record_exception_approval
                 approval_result = await record_exception_approval_handler(
@@ -4394,8 +4399,8 @@ Unable to authenticate user: {requester_email}
                 output += approval_result
 
             else:
-                output += f"\n💡 **Next Steps:**\n"
-                output += f"• Use `record_exception_approval` to formally record this exception\n"
+                output += "\n💡 **Next Steps:**\n"
+                output += "• Use `record_exception_approval` to formally record this exception\n"
                 output += f"• Include your name ({result['approver']['name']}) as approved_by\n"
                 output += f"• Reference your authority level: {result['risk_level']} approval rights\n"
 
@@ -4416,29 +4421,29 @@ Unable to authenticate user: {requester_email}
 """
 
             if result['approver']:
-                output += f"**Approval Routed To:**\n"
+                output += "**Approval Routed To:**\n"
                 output += f"• Name: {result['approver']['name']}\n"
                 output += f"• Email: {result['approver']['email']}\n"
                 output += f"• Job Title: {result['approver'].get('job_title', 'N/A')}\n"
                 output += f"• Relationship: {result['approver']['levels_up']} level(s) up in reporting chain\n\n"
 
             if result['jira_ticket']:
-                output += f"**Jira Ticket Created:**\n"
+                output += "**Jira Ticket Created:**\n"
                 output += f"• Ticket: {result['jira_ticket']}\n"
                 output += f"• Assigned to: {result['approver']['name']}\n"
                 output += f"• Priority: {approval_service._get_jira_priority(risk_score)}\n\n"
 
-                output += f"**Next Steps:**\n"
+                output += "**Next Steps:**\n"
                 output += f"1. Approver ({result['approver']['name']}) will review Jira ticket\n"
-                output += f"2. Once approved, use `record_exception_approval` with approver's name\n"
+                output += "2. Once approved, use `record_exception_approval` with approver's name\n"
                 output += f"3. Link Jira ticket: `ticket_reference='{result['jira_ticket']}'`\n"
 
             else:
-                output += f"**Jira Integration:**\n"
-                output += f"• Jira not configured (no ticket created)\n"
+                output += "**Jira Integration:**\n"
+                output += "• Jira not configured (no ticket created)\n"
                 if result.get('approver'):
                     output += f"• Please contact {result['approver']['name']} directly\n"
-                output += f"• Manual approval required before recording exception\n"
+                output += "• Manual approval required before recording exception\n"
 
         output += f"\n**Business Justification:**\n{business_justification}\n"
 
@@ -4460,7 +4465,7 @@ async def generate_violation_report_handler(
     user_email: str,
     format: str = "markdown",
     limit: int = 5,
-    export_path: Optional[str] = None
+    export_path: str | None = None
 ) -> str:
     """
     Generate a detailed violation report for a user
@@ -4527,7 +4532,7 @@ async def generate_violation_report_handler(
                 sev = v.get('severity', 'UNKNOWN')
                 severity_counts[sev] = severity_counts.get(sev, 0) + 1
 
-            output += f"**Severity Breakdown:**\n"
+            output += "**Severity Breakdown:**\n"
             if severity_counts.get('CRITICAL', 0) > 0:
                 output += f"🔴 CRITICAL: {severity_counts['CRITICAL']}\n"
             if severity_counts.get('HIGH', 0) > 0:
@@ -4543,7 +4548,7 @@ async def generate_violation_report_handler(
             # Add export suggestion for large lists
             if len(violation_dicts) > 10:
                 output += f"\n\n💡 **Tip:** For {len(violation_dicts)} violations, consider exporting to Excel:\n"
-                output += f"   Use format='excel' and export_path='/path/to/file.xlsx'\n"
+                output += "   Use format='excel' and export_path='/path/to/file.xlsx'\n"
 
             return output
 
@@ -4591,8 +4596,8 @@ async def generate_violation_report_handler(
 
 
 async def list_violations_handler(
-    department: Optional[str] = None,
-    severity: Optional[str] = None,
+    department: str | None = None,
+    severity: str | None = None,
     status: str = "OPEN",
     roles_only: bool = False,
     limit: int = 25
@@ -4828,8 +4833,8 @@ async def list_violations_handler(
 
 
 async def get_role_risk_matrix_handler(
-    role_name: Optional[str] = None,
-    severity: Optional[str] = None,
+    role_name: str | None = None,
+    severity: str | None = None,
     include_intra_role: bool = True,
     include_cross_role: bool = True,
     limit: int = 50
@@ -5024,12 +5029,12 @@ TOOLS = [
 ]
 
 
-def get_tool_schema(tool_name: str) -> Optional[Dict[str, Any]]:
+def get_tool_schema(tool_name: str) -> dict[str, Any] | None:
     """Get schema for a specific tool"""
     return TOOL_SCHEMAS.get(tool_name)
 
 
-def get_all_tool_schemas() -> Dict[str, Any]:
+def get_all_tool_schemas() -> dict[str, Any]:
     """Get all tool schemas"""
     return TOOL_SCHEMAS
 

@@ -11,15 +11,15 @@ Usage:
     python netsuite/test_restlet.py --subsidiary "United States"
 """
 
-import os
-import sys
 import argparse
 import json
+import os
+import sys
 from datetime import datetime
 
 try:
-    from requests_oauthlib import OAuth1Session
     from dotenv import load_dotenv
+    from requests_oauthlib import OAuth1Session
 except ImportError:
     print("Error: Required packages not installed")
     print("Run: poetry install")

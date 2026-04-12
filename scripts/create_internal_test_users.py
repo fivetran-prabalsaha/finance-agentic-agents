@@ -20,18 +20,24 @@ Usage:
     python3 scripts/create_internal_test_users.py --list
 """
 
-import sys
-import os
-import uuid
 import argparse
-from datetime import datetime
+import os
+import sys
+import uuid
 
 # Add parent directory to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+
+from models.database import (
+    Role,
+    User,
+    UserRole,
+    UserStatus,
+    Violation,
+    ViolationStatus,
+)
 from models.database_config import get_db_config
-from models.database import User, Role, UserRole, Violation, UserStatus, ViolationSeverity, ViolationStatus
-from sqlalchemy import text
 
 # Test user configurations
 TEST_USERS = {
@@ -74,7 +80,7 @@ def create_test_user(source_email: str, test_name: str, test_email: str, descrip
         existing = session.query(User).filter_by(email=test_email).first()
         if existing:
             print(f"❌ Test user {test_email} already exists!")
-            print(f"   Use --delete first to remove existing test user")
+            print("   Use --delete first to remove existing test user")
             return False
 
         # 2. Find source user
@@ -90,7 +96,7 @@ def create_test_user(source_email: str, test_name: str, test_email: str, descrip
         print(f"   Job Title: {source_user.title or 'N/A'}")
 
         # 3. Get source user's roles
-        print(f"\n📋 Copying roles...")
+        print("\n📋 Copying roles...")
         source_roles = session.query(UserRole).filter_by(user_id=source_user.id).all()
         print(f"   Found {len(source_roles)} roles to copy")
 
@@ -106,7 +112,7 @@ def create_test_user(source_email: str, test_name: str, test_email: str, descrip
                 print(f"   - {role.role_name}")
 
         # 4. Get source user's violations
-        print(f"\n⚠️  Copying violations...")
+        print("\n⚠️  Copying violations...")
         source_violations = session.query(Violation).filter_by(user_id=source_user.id).all()
         print(f"   Found {len(source_violations)} violations to copy")
 
@@ -121,7 +127,7 @@ def create_test_user(source_email: str, test_name: str, test_email: str, descrip
             print(f"   {emoji} {severity}: {count}")
 
         # 5. Create test user
-        print(f"\n👤 Creating test user...")
+        print("\n👤 Creating test user...")
         new_user_id = str(uuid.uuid4())
         new_user = User(
             user_id=new_user_id,
@@ -141,7 +147,7 @@ def create_test_user(source_email: str, test_name: str, test_email: str, descrip
         print(f"   Department: {new_user.department}")
 
         # 6. Copy roles
-        print(f"\n🎭 Assigning roles...")
+        print("\n🎭 Assigning roles...")
         for role_info in role_details:
             new_user_role = UserRole(
                 user_id=new_user.id,  # Use the UUID primary key, not user_id string
@@ -151,7 +157,7 @@ def create_test_user(source_email: str, test_name: str, test_email: str, descrip
             print(f"   ✅ Assigned: {role_info['role_name']}")
 
         # 7. Copy violations
-        print(f"\n⚠️  Creating violations...")
+        print("\n⚠️  Creating violations...")
         for old_violation in source_violations:
             new_violation = Violation(
                 user_id=new_user.id,  # Use the UUID primary key, not user_id string
@@ -169,20 +175,20 @@ def create_test_user(source_email: str, test_name: str, test_email: str, descrip
         print(f"   ✅ Created {len(source_violations)} violations")
 
         # 8. Commit all changes
-        print(f"\n💾 Committing changes...")
+        print("\n💾 Committing changes...")
         session.commit()
 
         print(f"\n{'='*70}")
-        print(f"✅ SUCCESS: Test user created")
+        print("✅ SUCCESS: Test user created")
         print(f"{'='*70}")
-        print(f"\n📊 Summary:")
+        print("\n📊 Summary:")
         print(f"   Name: {test_name}")
         print(f"   Email: {test_email}")
         print(f"   Roles: {len(role_details)}")
         print(f"   Violations: {len(source_violations)}")
         print(f"   Department: {new_user.department}")
         print(f"   Job Title: {new_user.title or 'N/A'}")
-        print(f"\n🧪 Test with:")
+        print("\n🧪 Test with:")
         print(f'   get_user_violations(user_identifier="{test_email}", format="table")')
         print(f'   "Review violations for {test_name}"')
 
@@ -212,7 +218,6 @@ def delete_test_user(test_email: str):
             print(f"❌ Test user not found: {test_email}")
             return False
 
-        user_id = user.id  # Use UUID primary key
 
         # Delete violations
         violations = session.query(Violation).filter_by(user_id=user.id).all()
@@ -232,7 +237,7 @@ def delete_test_user(test_email: str):
 
         session.commit()
 
-        print(f"\n✅ Test user deleted successfully")
+        print("\n✅ Test user deleted successfully")
         return True
 
     except Exception as e:
@@ -252,7 +257,7 @@ def list_test_users():
 
     try:
         print(f"\n{'='*70}")
-        print(f"INTERNAL TEST USERS")
+        print("INTERNAL TEST USERS")
         print(f"{'='*70}\n")
 
         # Find all test users
@@ -262,7 +267,7 @@ def list_test_users():
         if not users:
             print("No test users found.\n")
             print("Available test users to create:")
-            for key, info in TEST_USERS.items():
+            for _key, info in TEST_USERS.items():
                 print(f"  • {info['test_name']} ({info['test_email']})")
                 print(f"    {info['description']}")
             return

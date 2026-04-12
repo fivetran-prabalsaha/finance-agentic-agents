@@ -6,18 +6,26 @@ Creates a test user based on Robin Turner's profile with sanitized data
 for external demos (no Fivetran branding)
 """
 
-import sys
-import os
-import uuid
 import json
+import os
+import sys
+import uuid
 from datetime import datetime
 
 # Add parent directory to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+
+from models.database import (
+    Role,
+    User,
+    UserRole,
+    UserStatus,
+    Violation,
+    ViolationStatus,
+)
 from models.database_config import get_db_config
-from models.database import User, Role, UserRole, Violation, UserStatus, ViolationSeverity, ViolationStatus
-from sqlalchemy import text
+
 
 def sanitize_text(text_value):
     """Remove Fivetran branding from text"""
@@ -137,16 +145,16 @@ def create_demo_user(source_email='robin.turner@fivetran.com',
         existing_demo_user = session.query(User).filter(User.email == demo_email).first()
 
         if existing_demo_user:
-            print(f"⚠️  Demo user already exists. Deleting old user...")
+            print("⚠️  Demo user already exists. Deleting old user...")
             # Delete old violations first (FK constraint)
             session.query(Violation).filter(Violation.user_id == existing_demo_user.id).delete()
             session.query(UserRole).filter(UserRole.user_id == existing_demo_user.id).delete()
             session.delete(existing_demo_user)
             session.commit()
-            print(f"✅ Deleted old demo user")
+            print("✅ Deleted old demo user")
 
         # 3. Create sanitized demo user
-        print(f"\nStep 3: Creating sanitized demo user...")
+        print("\nStep 3: Creating sanitized demo user...")
         demo_user = User(
             id=uuid.uuid4(),
             user_id=f"demo_{uuid.uuid4().hex[:8]}",
@@ -174,7 +182,7 @@ def create_demo_user(source_email='robin.turner@fivetran.com',
         print(f"   Department: {demo_user.department}")
 
         # 4. Get source user's roles
-        print(f"\nStep 4: Copying and sanitizing roles...")
+        print("\nStep 4: Copying and sanitizing roles...")
         source_roles = session.query(Role).join(
             UserRole, UserRole.role_id == Role.id
         ).filter(
@@ -189,7 +197,7 @@ def create_demo_user(source_email='robin.turner@fivetran.com',
         sanitized_roles = create_sanitized_roles(session, source_roles)
 
         # 6. Assign sanitized roles to demo user
-        print(f"\nStep 5: Assigning roles to demo user...")
+        print("\nStep 5: Assigning roles to demo user...")
         for role in sanitized_roles:
             user_role = UserRole(
                 id=uuid.uuid4(),
@@ -204,7 +212,7 @@ def create_demo_user(source_email='robin.turner@fivetran.com',
         session.commit()
 
         # 7. Copy and sanitize violations
-        print(f"\nStep 6: Copying and sanitizing violations...")
+        print("\nStep 6: Copying and sanitizing violations...")
         source_violations = session.query(Violation).filter(
             Violation.user_id == source_user.id,
             Violation.status == ViolationStatus.OPEN
@@ -238,9 +246,9 @@ def create_demo_user(source_email='robin.turner@fivetran.com',
 
         # 8. Summary
         print(f"\n{'='*60}")
-        print(f"✅ Demo User Created Successfully!")
+        print("✅ Demo User Created Successfully!")
         print(f"{'='*60}")
-        print(f"\nDemo User Details:")
+        print("\nDemo User Details:")
         print(f"  Name:       {demo_user.name}")
         print(f"  Email:      {demo_user.email}")
         print(f"  Department: {demo_user.department}")
@@ -257,19 +265,19 @@ def create_demo_user(source_email='robin.turner@fivetran.com',
             severity_counts[sev] = severity_counts.get(sev, 0) + 1
 
         if severity_counts:
-            print(f"\n  Severity Breakdown:")
+            print("\n  Severity Breakdown:")
             for sev in ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']:
                 if sev in severity_counts:
                     print(f"    • {sev}: {severity_counts[sev]}")
 
         print(f"\n{'='*60}")
-        print(f"Test Commands:")
+        print("Test Commands:")
         print(f"{'='*60}")
-        print(f"\nIn Claude UI, try:")
-        print(f'  "Show me violations for test_user@xyz.com"')
+        print("\nIn Claude UI, try:")
+        print('  "Show me violations for test_user@xyz.com"')
         print(f'  "Generate violation report for {demo_email}"')
-        print(f'  "List users in Finance department"')
-        print(f"\nAll data will be sanitized (no Fivetran branding)!")
+        print('  "List users in Finance department"')
+        print("\nAll data will be sanitized (no Fivetran branding)!")
         print(f"{'='*60}\n")
 
     except Exception as e:
@@ -308,7 +316,7 @@ def delete_demo_user(demo_email='test_user@xyz.com'):
         session.delete(demo_user)
         session.commit()
 
-        print(f"✅ Deleted demo user")
+        print("✅ Deleted demo user")
         print(f"   • {violation_count} violations")
         print(f"   • {role_count} role assignments")
 

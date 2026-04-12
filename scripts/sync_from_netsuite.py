@@ -8,20 +8,21 @@ This script:
 3. Reports statistics
 """
 
+import logging
 import os
 import sys
-import logging
 from datetime import datetime
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from agents.data_collector import DataCollectionAgent
-from models.database_config import get_db_config
-from repositories.user_repository import UserRepository
-from repositories.role_repository import RoleRepository
-from models.database import UserStatus
 from dotenv import load_dotenv
+
+from agents.data_collector import DataCollectionAgent
+from models.database import UserStatus
+from models.database_config import get_db_config
+from repositories.role_repository import RoleRepository
+from repositories.user_repository import UserRepository
 
 # Configure logging
 logging.basicConfig(
@@ -179,7 +180,7 @@ def sync_users_and_roles(limit: int = 100, include_permissions: bool = True):
         print(f"   • High-risk users (3+ roles): {high_risk_users}")
 
         # Show sample users
-        print(f"\n   Sample users in database:")
+        print("\n   Sample users in database:")
         users = user_repo.get_all_users(limit=5)
         for user in users:
             role_count = len(user.user_roles)

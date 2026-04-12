@@ -12,12 +12,11 @@ Usage:
     python3 tests/test_restlet_optimization.py
 """
 
+import json
 import os
 import sys
-import json
 import time
 from datetime import datetime
-from typing import Dict, Any, List
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -234,14 +233,14 @@ class RESTletOptimizationTester:
                 for warning in warnings:
                     print(f"      - {warning}")
             else:
-                print(f"   ✅ Warnings:          None")
+                print("   ✅ Warnings:          None")
 
             # Calculate efficiency
             units_used = governance.get('units_used', 0)
             units_per_user = float(governance.get('units_per_user', 0))
             users_returned = result['data']['metadata'].get('returned_count', 0)
 
-            print(f"\n📈 EFFICIENCY ANALYSIS:")
+            print("\n📈 EFFICIENCY ANALYSIS:")
             print(f"   Users Processed:      {users_returned}")
             print(f"   Total Units Used:     {units_used}")
             print(f"   Efficiency:           {units_per_user} units/user")
@@ -386,15 +385,15 @@ class RESTletOptimizationTester:
             )
 
             # Display version info
-            print(f"\n📦 VERSION INFORMATION:")
+            print("\n📦 VERSION INFORMATION:")
             print(f"   RESTlet Version:      {version}")
             print(f"   Timestamp:            {metadata.get('timestamp', 'N/A')}")
-            print(f"   Features:")
-            print(f"      ✅ Batch Role Fetching (SuiteQL)")
-            print(f"      ✅ Batch Permission Fetching")
-            print(f"      ✅ Governance Monitoring")
-            print(f"      ✅ Reduced Default Limit (50)")
-            print(f"      ✅ Governance Dashboard")
+            print("   Features:")
+            print("      ✅ Batch Role Fetching (SuiteQL)")
+            print("      ✅ Batch Permission Fetching")
+            print("      ✅ Governance Monitoring")
+            print("      ✅ Reduced Default Limit (50)")
+            print("      ✅ Governance Dashboard")
 
             return is_optimized
 
@@ -422,7 +421,7 @@ class RESTletOptimizationTester:
             )
 
             end_time = time.time()
-            execution_time = end_time - start_time
+            end_time - start_time
 
             if not result['success']:
                 self.print_test(
@@ -469,7 +468,7 @@ class RESTletOptimizationTester:
             # Calculate efficiency
             units_per_user = float(governance.get('units_per_user', 0))
 
-            print(f"\n📊 STRESS TEST RESULTS:")
+            print("\n📊 STRESS TEST RESULTS:")
             print(f"   Users Processed:      {len(users)}")
             print(f"   Total Units Used:     {units_used}")
             print(f"   Units Per User:       {units_per_user}")

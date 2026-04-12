@@ -11,6 +11,7 @@ This script will:
 
 import os
 import sys
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from services.netsuite_client import NetSuiteClient
@@ -112,11 +113,11 @@ def main():
                 print(f"    Roles: {user['roles_count']}")
 
                 if user['roles_count'] == 0:
-                    print(f"    ⚠️  No roles found")
-                    print(f"    → Check if this user has roles in NetSuite UI")
-                    print(f"    → Check NetSuite logs for 'Role Count' message")
+                    print("    ⚠️  No roles found")
+                    print("    → Check if this user has roles in NetSuite UI")
+                    print("    → Check NetSuite logs for 'Role Count' message")
         else:
-            print(f"  ❌ Not found")
+            print("  ❌ Not found")
 
     print()
     print("=" * 80)
